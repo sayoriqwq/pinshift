@@ -262,3 +262,27 @@
 "Automatic cleanup protection is unavailable. Resolve the Mac controller check and retry." = "自动清理保护不可用。请解决 Mac 控制器检查项后重试。";
 "This Mac controller is too old for protected time-bounded sessions. Update it with rl-install." = "此 Mac 控制器版本过旧，无法使用受保护的限时模拟。请使用 rl-install 更新。";
 "Waiting for the Mac to confirm automatic-cleanup protection." = "正在等待 Mac 确认自动清理保护。";
+
+/* Spatial Calm 主页与设置 */
+"Settings" = "设置";
+"Appearance" = "外观";
+"Language" = "语言";
+"Active Simulation" = "当前模拟位置";
+"Choose a Location" = "选择地点";
+"Adjust Selected Location" = "调整待应用位置";
+"Choose a place on the map before starting a simulation." = "开始模拟前，请先在地图上选择地点。";
+"Controller, permissions, diagnostics, and saved locations" = "控制器、权限、诊断与已保存地点";
+"Ready" = "已就绪";
+"Finding Mac" = "正在查找 Mac";
+"Pairing Required" = "需要配对";
+"Needs Attention" = "需要处理";
+"Mac Unavailable" = "Mac 不可用";
+"Automatic cleanup is protected" = "自动清理已受保护";
+"Automatic cleanup needs attention" = "自动清理需要处理";
+"Cleanup stays pending until the Mac acknowledges a successful devicectl clear." = "在 Mac 确认 devicectl 已成功清除前，清理会始终保持待处理状态。";
+"Update the Mac controller before starting a protected simulation." = "开始受保护的模拟前，请先更新 Mac 控制器。";
+"Connect to the Mac to confirm Cleanup Guardian readiness." = "请连接 Mac，以确认清理守护者已就绪。";
+"Selected via %@" = "选择方式：%@";
+"Coordinates" = "坐标位置";
+"Map Selection" = "地图选点";
+"Search Result" = "搜索结果";

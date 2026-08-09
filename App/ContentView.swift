@@ -1,5 +1,6 @@
 import CoreLocation
 import Foundation
+import MapKit
 import SwiftUI
 
 struct ContentView: View {
@@ -41,59 +42,48 @@ struct ContentView: View {
 
   var body: some View {
     NavigationStack {
-      Form {
-        selectionSection
-        savedLocationsSection
-        simulationSection
-        observationSection
-        controllerLinkSection
-        diagnosticsSection
-        baselineSection
-        limitationsSection
-      }
-      .navigationTitle(appDisplayName)
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .principal) {
-          HStack(spacing: 8) {
-            Image("BrandMark")
-              .resizable()
-              .scaledToFit()
-              .frame(width: 28, height: 28)
-              .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-              .accessibilityHidden(true)
+      homeView
+        .navigationTitle(appDisplayName)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+          ToolbarItem(placement: .principal) {
+            HStack(spacing: 8) {
+              Image("BrandMark")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 28, height: 28)
+                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .accessibilityHidden(true)
 
-            Text(appDisplayName)
-              .font(.headline)
-          }
-          .accessibilityElement(children: .combine)
-          .accessibilityLabel(
-            Text(
-              AppLocalization.format(
-                "%@, trusted iOS location simulation",
-                locale: locale,
-                appDisplayName
+              Text(appDisplayName)
+                .font(.headline)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(
+              Text(
+                AppLocalization.format(
+                  "%@, trusted iOS location simulation",
+                  locale: locale,
+                  appDisplayName
+                )
               )
             )
-          )
-          .accessibilityIdentifier("brand-header")
-        }
-
-        ToolbarItem(placement: .topBarTrailing) {
-          Button {
-            language = language.alternate
-          } label: {
-            HStack(spacing: 4) {
-              Image(systemName: "globe")
-              Text(verbatim: language.alternateButtonTitle)
-            }
-            .font(.subheadline.weight(.semibold))
+            .accessibilityIdentifier("brand-header")
           }
-          .accessibilityLabel(Text(languageSwitchAccessibilityLabel))
-          .accessibilityIdentifier("language-toggle")
+
+          ToolbarItem(placement: .topBarTrailing) {
+            NavigationLink {
+              settingsView
+            } label: {
+              Image(systemName: "gearshape")
+                .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel(Text(localized("Settings")))
+            .accessibilityIdentifier("open-settings")
+          }
         }
-      }
     }
+    .tint(PinshiftDesign.primary)
     .task {
       if !didRecordLaunch {
         didRecordLaunch = true
@@ -225,11 +215,501 @@ struct ContentView: View {
   }
 
   private var languageSwitchAccessibilityLabel: String {
-    localized(
+    AppLocalization.string(
       language == .english
         ? "Switch to Simplified Chinese"
-        : "Switch to English"
+        : "Switch to English",
+      locale: language.locale
     )
+  }
+
+  private var homeView: some View {
+    ScrollView {
+      VStack(spacing: 0) {
+        homeMap
+        homeControlPanel
+      }
+    }
+    .scrollIndicators(.hidden)
+    .background(PinshiftDesign.background)
+    .toolbarBackground(PinshiftDesign.surface, for: .navigationBar)
+    .toolbarBackground(.visible, for: .navigationBar)
+    .accessibilityIdentifier("pinshift-home")
+  }
+
+  private var homeMap: some View {
+    Map(initialPosition: homeMapPosition) {
+      if let activeLocation = model.manualSession.activeAppliedRequest?.location {
+        Marker(
+          localized("Active Simulation"),
+          coordinate: coordinate(for: activeLocation)
+        )
+        .tint(PinshiftDesign.destructive)
+      }
+
+      if let selectedLocation = model.selection.selected,
+        selectedLocation != model.manualSession.activeAppliedRequest?.location
+      {
+        Marker(
+          localized("Selected Location"),
+          coordinate: coordinate(for: selectedLocation)
+        )
+        .tint(PinshiftDesign.primary)
+      }
+    }
+    .id(homeMapIdentity)
+    .accessibilityIdentifier("home-map")
+    .frame(height: 356)
+    .overlay(alignment: .topLeading) {
+      Label(homeReadinessTitle, systemImage: homeReadinessIcon)
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(homeReadinessColor)
+        .padding(.horizontal, 12)
+        .frame(minHeight: 36)
+        .background(.regularMaterial, in: Capsule())
+        .padding(PinshiftDesign.spaceM)
+        .accessibilityLabel(
+          Text(
+            "\(homeReadinessTitle). \(controllerLinkStatus). \(cleanupProtectionDescription)"
+          )
+        )
+        .accessibilityIdentifier("home-readiness-status")
+    }
+    .overlay(alignment: .bottom) {
+      Button {
+        showingLocationPicker = true
+      } label: {
+        Label(
+          model.selection.selected == nil
+            ? localized("Choose a Location")
+            : localized("Adjust Selected Location"),
+          systemImage: "scope"
+        )
+        .font(.subheadline.weight(.semibold))
+        .foregroundStyle(PinshiftDesign.textPrimary)
+        .padding(.horizontal, PinshiftDesign.spaceM)
+        .frame(minHeight: 44)
+        .background(.regularMaterial, in: Capsule())
+      }
+      .buttonStyle(.plain)
+      .padding(.bottom, PinshiftDesign.spaceXL + PinshiftDesign.spaceS)
+      .accessibilityIdentifier("open-location-picker")
+    }
+  }
+
+  private var homeControlPanel: some View {
+    VStack(alignment: .leading, spacing: PinshiftDesign.spaceL) {
+      homeSelectedLocation
+      homeSavedLocations
+      simulationSection
+      homeCleanupPromise
+      homeSettingsLink
+    }
+    .padding(.horizontal, PinshiftDesign.spaceM)
+    .padding(.top, PinshiftDesign.spaceL)
+    .padding(.bottom, PinshiftDesign.spaceXL)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(PinshiftDesign.surface)
+    .clipShape(
+      UnevenRoundedRectangle(
+        topLeadingRadius: PinshiftDesign.radiusL,
+        bottomLeadingRadius: 0,
+        bottomTrailingRadius: 0,
+        topTrailingRadius: PinshiftDesign.radiusL,
+        style: .continuous
+      )
+    )
+    .padding(.top, -PinshiftDesign.spaceXL)
+    .zIndex(1)
+  }
+
+  private var homeSelectedLocation: some View {
+    VStack(alignment: .leading, spacing: PinshiftDesign.spaceS) {
+      Text(localized("Selected Location"))
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(PinshiftDesign.textSecondary)
+
+      if let selected = model.selection.selected {
+        Text(selectedLocationDisplayName)
+          .font(.system(size: 28, weight: .semibold, design: .default))
+          .foregroundStyle(PinshiftDesign.textPrimary)
+          .lineLimit(2)
+
+        HStack(spacing: PinshiftDesign.spaceXS) {
+          Text(selected.latitude.formatted(.number.precision(.fractionLength(6))))
+            .accessibilityIdentifier("selected-latitude")
+          Text(verbatim: ",")
+          Text(selected.longitude.formatted(.number.precision(.fractionLength(6))))
+            .accessibilityIdentifier("selected-longitude")
+        }
+        .font(.caption.monospacedDigit())
+        .foregroundStyle(PinshiftDesign.textSecondary)
+
+        if let source = model.selection.source {
+          Label(
+            localizedFormat("Selected via %@", selectionSourceDescription(source)),
+            systemImage: "location"
+          )
+          .font(.caption)
+          .foregroundStyle(PinshiftDesign.textSecondary)
+          .accessibilityIdentifier("selection-source")
+        }
+      } else {
+        Text(localized("No location selected"))
+          .font(.title2.weight(.semibold))
+          .foregroundStyle(PinshiftDesign.textPrimary)
+        Text(localized("Choose a place on the map before starting a simulation."))
+          .font(.body)
+          .foregroundStyle(PinshiftDesign.textSecondary)
+      }
+
+      if let inputError = model.inputError {
+        Label(localized(inputError), systemImage: "exclamationmark.circle.fill")
+          .font(.footnote)
+          .foregroundStyle(PinshiftDesign.destructive)
+          .accessibilityIdentifier("selection-error")
+      }
+    }
+  }
+
+  @ViewBuilder
+  private var homeSavedLocations: some View {
+    if !model.savedLocations.locations.isEmpty {
+      VStack(alignment: .leading, spacing: PinshiftDesign.spaceS) {
+        Text(localized("Saved Locations"))
+          .font(.caption.weight(.semibold))
+          .foregroundStyle(PinshiftDesign.textSecondary)
+
+        ScrollView(.horizontal) {
+          HStack(spacing: PinshiftDesign.spaceS) {
+            ForEach(model.savedLocations.locations) { savedLocation in
+              homeSavedLocationButton(savedLocation)
+            }
+          }
+        }
+        .scrollIndicators(.hidden)
+      }
+    }
+  }
+
+  private func homeSavedLocationButton(_ savedLocation: SavedLocation) -> some View {
+    let isSelected = model.selection.selected == savedLocation.coordinate
+
+    return Button {
+      _ = model.select(savedLocation.coordinate, source: .saved)
+    } label: {
+      HStack(spacing: PinshiftDesign.spaceS) {
+        Image(systemName: isSelected ? "checkmark.circle.fill" : "mappin")
+        Text(savedLocation.name)
+          .lineLimit(1)
+      }
+      .font(.subheadline.weight(.medium))
+      .foregroundStyle(
+        isSelected ? PinshiftDesign.primary : PinshiftDesign.textPrimary
+      )
+      .padding(.horizontal, 14)
+      .frame(minHeight: 44)
+      .background(
+        isSelected ? PinshiftDesign.primarySoft : PinshiftDesign.surfaceSecondary,
+        in: Capsule()
+      )
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel(
+      Text(
+        localizedFormat(
+          "Choose Saved Location %@ at %@",
+          savedLocation.name,
+          savedLocationCoordinateDescription(savedLocation.coordinate)
+        )
+      )
+    )
+    .accessibilityHint(
+      Text(localized("Replaces Selected Location without applying a simulation."))
+    )
+    .accessibilityValue(
+      Text(localized(isSelected ? "Current Selected Location" : "Choose"))
+    )
+    .accessibilityAddTraits(isSelected ? .isSelected : [])
+    .accessibilityIdentifier("saved-location-select-\(savedLocation.id.uuidString)")
+  }
+
+  private var homeCleanupPromise: some View {
+    HStack(alignment: .top, spacing: PinshiftDesign.spaceM) {
+      Image(systemName: homeCleanupIcon)
+        .font(.title3.weight(.semibold))
+        .foregroundStyle(homeCleanupColor)
+        .frame(width: 28, height: 28)
+        .background(homeCleanupBackground, in: Circle())
+        .accessibilityHidden(true)
+
+      VStack(alignment: .leading, spacing: PinshiftDesign.spaceXS) {
+        Text(homeCleanupTitle)
+          .font(.subheadline.weight(.semibold))
+          .foregroundStyle(PinshiftDesign.textPrimary)
+        Text(homeCleanupDetail)
+          .font(.footnote)
+          .foregroundStyle(PinshiftDesign.textSecondary)
+          .fixedSize(horizontal: false, vertical: true)
+      }
+    }
+    .padding(.vertical, PinshiftDesign.spaceM)
+    .overlay(alignment: .top) {
+      Divider().foregroundStyle(PinshiftDesign.divider)
+    }
+    .overlay(alignment: .bottom) {
+      Divider().foregroundStyle(PinshiftDesign.divider)
+    }
+    .accessibilityElement(children: .combine)
+    .accessibilityIdentifier("cleanup-promise")
+  }
+
+  private var homeSettingsLink: some View {
+    NavigationLink {
+      settingsView
+    } label: {
+      HStack(spacing: PinshiftDesign.spaceM) {
+        Image(systemName: "gearshape")
+          .font(.body.weight(.semibold))
+          .foregroundStyle(PinshiftDesign.primary)
+          .frame(width: 36, height: 36)
+          .background(PinshiftDesign.primarySoft, in: Circle())
+
+        VStack(alignment: .leading, spacing: PinshiftDesign.spaceXS) {
+          Text(localized("Settings"))
+            .font(.body.weight(.semibold))
+            .foregroundStyle(PinshiftDesign.textPrimary)
+          Text(localized("Controller, permissions, diagnostics, and saved locations"))
+            .font(.caption)
+            .foregroundStyle(PinshiftDesign.textSecondary)
+        }
+
+        Spacer(minLength: PinshiftDesign.spaceS)
+
+        Image(systemName: "chevron.right")
+          .font(.caption.weight(.semibold))
+          .foregroundStyle(PinshiftDesign.textSecondary)
+      }
+      .frame(minHeight: 52)
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .accessibilityIdentifier("settings-summary-row")
+  }
+
+  private var settingsView: some View {
+    List {
+      appearanceSection
+      controllerLinkSection
+      selectionSection
+      savedLocationsSection
+      observationSection
+      diagnosticsSection
+      baselineSection
+      limitationsSection
+    }
+    .listStyle(.insetGrouped)
+    .scrollContentBackground(.hidden)
+    .background(PinshiftDesign.background)
+    .navigationTitle(localized("Settings"))
+    .navigationBarTitleDisplayMode(.large)
+    .accessibilityIdentifier("settings-list")
+  }
+
+  private var appearanceSection: some View {
+    Section(localized("Appearance")) {
+      Button {
+        language = language.alternate
+      } label: {
+        HStack(spacing: PinshiftDesign.spaceM) {
+          Label(localized("Language"), systemImage: "globe")
+            .foregroundStyle(PinshiftDesign.textPrimary)
+
+          Spacer()
+
+          Text(language == .english ? "English" : "简体中文")
+            .foregroundStyle(PinshiftDesign.textSecondary)
+
+          Image(systemName: "arrow.left.arrow.right")
+            .font(.caption)
+            .foregroundStyle(PinshiftDesign.textSecondary)
+        }
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel(Text(languageSwitchAccessibilityLabel))
+      .accessibilityIdentifier("language-toggle")
+    }
+  }
+
+  private var selectedLocationDisplayName: String {
+    guard let selected = model.selection.selected else {
+      return localized("No location selected")
+    }
+    if let savedName = model.savedLocationName(for: selected) {
+      return savedName
+    }
+    switch model.selection.source {
+    case .manual:
+      return localized("Coordinates")
+    case .map:
+      return localized("Map Selection")
+    case .search:
+      return localized("Search Result")
+    case .saved:
+      return localized("Saved Location")
+    case nil:
+      return localized("Selected Location")
+    }
+  }
+
+  private var homeMapPosition: MapCameraPosition {
+    let center: CLLocationCoordinate2D
+    if let location = homeMapFocusLocation {
+      center = coordinate(for: location)
+    } else {
+      center = CLLocationCoordinate2D(latitude: 31.2304, longitude: 121.4737)
+    }
+
+    return .region(
+      MKCoordinateRegion(
+        center: center,
+        span: MKCoordinateSpan(latitudeDelta: 0.045, longitudeDelta: 0.045)
+      )
+    )
+  }
+
+  private var homeMapFocusLocation: SelectedLocation? {
+    model.selection.selected
+      ?? model.manualSession.activeAppliedRequest?.location
+      ?? model.session.latestObservation?.coordinate
+  }
+
+  private var homeMapIdentity: String {
+    let selected = model.selection.selected.map(savedLocationCoordinateDescription) ?? "none"
+    let active =
+      model.manualSession.activeAppliedRequest.map {
+        savedLocationCoordinateDescription($0.location)
+      } ?? "none"
+    return "\(selected)|\(active)"
+  }
+
+  private func coordinate(for location: SelectedLocation) -> CLLocationCoordinate2D {
+    CLLocationCoordinate2D(
+      latitude: location.latitude,
+      longitude: location.longitude
+    )
+  }
+
+  private var homeReadinessTitle: String {
+    if case .connected = controllerLink.state,
+      controllerLink.backendReadiness == .ready,
+      controllerLink.lifecycleStatus?.cleanupReadiness == .ready
+    {
+      return localized("Ready")
+    }
+
+    switch controllerLink.state {
+    case .notDiscovered:
+      return localized("Finding Mac")
+    case .awaitingPairing:
+      return localized("Pairing Required")
+    case .connected:
+      return localized("Needs Attention")
+    case .unavailable, .localNetworkDenied:
+      return localized("Mac Unavailable")
+    }
+  }
+
+  private var homeReadinessIcon: String {
+    if case .connected = controllerLink.state,
+      controllerLink.backendReadiness == .ready,
+      controllerLink.lifecycleStatus?.cleanupReadiness == .ready
+    {
+      return "checkmark.circle.fill"
+    }
+
+    switch controllerLink.state {
+    case .notDiscovered:
+      return "antenna.radiowaves.left.and.right"
+    case .awaitingPairing:
+      return "link.badge.plus"
+    case .connected:
+      return "exclamationmark.circle.fill"
+    case .unavailable, .localNetworkDenied:
+      return "xmark.circle.fill"
+    }
+  }
+
+  private var homeReadinessColor: Color {
+    if case .connected = controllerLink.state,
+      controllerLink.backendReadiness == .ready,
+      controllerLink.lifecycleStatus?.cleanupReadiness == .ready
+    {
+      return PinshiftDesign.positive
+    }
+
+    switch controllerLink.state {
+    case .notDiscovered, .awaitingPairing:
+      return PinshiftDesign.primary
+    case .connected, .unavailable, .localNetworkDenied:
+      return PinshiftDesign.destructive
+    }
+  }
+
+  private var homeCleanupTitle: String {
+    switch controllerLink.lifecycleStatus?.cleanupReadiness {
+    case .ready:
+      return localized("Automatic cleanup is protected")
+    case .unavailable, .unsupportedController:
+      return localized("Automatic cleanup needs attention")
+    case nil:
+      return localized("Automatic cleanup")
+    }
+  }
+
+  private var homeCleanupDetail: String {
+    switch controllerLink.lifecycleStatus?.cleanupReadiness {
+    case .ready:
+      return localized(
+        "Cleanup stays pending until the Mac acknowledges a successful devicectl clear."
+      )
+    case .unavailable(let reason):
+      return controllerFailureDescription(reason)
+    case .unsupportedController:
+      return localized("Update the Mac controller before starting a protected simulation.")
+    case nil:
+      return localized("Connect to the Mac to confirm Cleanup Guardian readiness.")
+    }
+  }
+
+  private var homeCleanupIcon: String {
+    controllerLink.lifecycleStatus?.cleanupReadiness == .ready
+      ? "checkmark.shield.fill"
+      : "shield.lefthalf.filled.badge.checkmark"
+  }
+
+  private var homeCleanupColor: Color {
+    switch controllerLink.lifecycleStatus?.cleanupReadiness {
+    case .ready:
+      PinshiftDesign.positive
+    case .unavailable, .unsupportedController:
+      PinshiftDesign.destructive
+    case nil:
+      PinshiftDesign.primary
+    }
+  }
+
+  private var homeCleanupBackground: Color {
+    switch controllerLink.lifecycleStatus?.cleanupReadiness {
+    case .ready:
+      PinshiftDesign.positiveSoft
+    case .unavailable, .unsupportedController:
+      PinshiftDesign.destructiveSoft
+    case nil:
+      PinshiftDesign.primarySoft
+    }
   }
 
   private var controllerLinkSection: some View {
@@ -417,7 +897,7 @@ struct ContentView: View {
 
       if let inputError = model.inputError {
         Text(localized(inputError))
-          .foregroundStyle(.red)
+          .foregroundStyle(PinshiftDesign.destructive)
           .accessibilityIdentifier("selection-error")
       }
     }
@@ -474,13 +954,13 @@ struct ContentView: View {
         )
       }
       .buttonStyle(.bordered)
-      .tint(.red)
+      .tint(PinshiftDesign.destructive)
       .disabled(diagnostics.isExporting)
       .accessibilityIdentifier("diagnostics-clear")
 
       if let actionError = diagnostics.actionError {
         Text(localized(actionError))
-          .foregroundStyle(.red)
+          .foregroundStyle(PinshiftDesign.destructive)
           .accessibilityIdentifier("diagnostics-error")
       }
 
@@ -529,7 +1009,7 @@ struct ContentView: View {
           localized(savedLocationError),
           systemImage: "exclamationmark.triangle"
         )
-        .foregroundStyle(.red)
+        .foregroundStyle(PinshiftDesign.destructive)
         .accessibilityIdentifier(
           model.savedLocationPersistenceError
             ? "saved-location-persistence-error"
@@ -620,9 +1100,9 @@ struct ContentView: View {
         showingDeleteSavedLocationConfirmation = true
       } label: {
         Image(systemName: "trash")
-          .foregroundStyle(.red)
+          .foregroundStyle(PinshiftDesign.destructive)
           .frame(width: 44, height: 44)
-          .background(Color.red.opacity(0.1), in: Circle())
+          .background(PinshiftDesign.destructiveSoft, in: Circle())
       }
       .buttonStyle(.borderless)
       .frame(width: 44, height: 44)
@@ -664,7 +1144,11 @@ struct ContentView: View {
   }
 
   private var simulationSection: some View {
-    Section("Time-Bounded Simulation") {
+    VStack(alignment: .leading, spacing: PinshiftDesign.spaceM) {
+      Text(localized("Time-Bounded Simulation"))
+        .font(.title3.weight(.semibold))
+        .foregroundStyle(PinshiftDesign.textPrimary)
+
       if let activeRequest = model.manualSession.activeAppliedRequest {
         activeSimulationCard(activeRequest)
       } else {
@@ -672,7 +1156,7 @@ struct ContentView: View {
           "Choose how long this simulation may remain active. After Apply succeeds, automatic cleanup no longer depends on remembering Stop."
         )
         .font(.footnote)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(PinshiftDesign.textSecondary)
 
         Picker("Duration", selection: $model.selectedLeaseDuration) {
           ForEach(SimulationLeaseDuration.allCases) { duration in
@@ -689,7 +1173,7 @@ struct ContentView: View {
         {
           Label(localized(protectionMessage), systemImage: "exclamationmark.shield")
             .font(.footnote)
-            .foregroundStyle(.orange)
+            .foregroundStyle(PinshiftDesign.destructive)
             .accessibilityIdentifier("cleanup-protection-guidance")
         }
 
@@ -708,7 +1192,7 @@ struct ContentView: View {
             isBusy: model.isApplying
           )
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(PinshiftFilledButtonStyle())
         .disabled(
           model.selection.selected == nil
             || model.isApplying
@@ -755,7 +1239,7 @@ struct ContentView: View {
               systemImage: "clock.badge.exclamationmark"
             )
             .font(.headline)
-            .foregroundStyle(.orange)
+            .foregroundStyle(PinshiftDesign.destructive)
             .accessibilityIdentifier("simulation-cleanup-due")
           }
         }
@@ -766,7 +1250,7 @@ struct ContentView: View {
         systemImage: "checkmark.shield.fill"
       )
       .font(.footnote)
-      .foregroundStyle(.green)
+      .foregroundStyle(PinshiftDesign.positive)
       .accessibilityIdentifier("cleanup-protection-receipt")
 
       activeVerificationSummary
@@ -788,6 +1272,7 @@ struct ContentView: View {
           )
         }
         .buttonStyle(.bordered)
+        .tint(PinshiftDesign.primary)
         .disabled(model.isExtendingLease || model.pendingStopIntent != nil)
         .accessibilityIdentifier("extend-simulation-lease")
 
@@ -804,13 +1289,24 @@ struct ContentView: View {
             isBusy: model.isStopping
           )
         }
-        .buttonStyle(.borderedProminent)
-        .tint(.red)
+        .buttonStyle(
+          PinshiftFilledButtonStyle(
+            color: PinshiftDesign.destructive,
+            foreground: .white
+          )
+        )
         .disabled(model.isStopping)
         .accessibilityIdentifier("stop-simulation")
       }
     }
-    .padding(.vertical, 4)
+    .padding(PinshiftDesign.spaceM)
+    .background(PinshiftDesign.surfaceSecondary)
+    .clipShape(
+      RoundedRectangle(
+        cornerRadius: PinshiftDesign.radiusM,
+        style: .continuous
+      )
+    )
     .accessibilityElement(children: .contain)
     .accessibilityIdentifier("active-simulation-card")
   }
@@ -821,17 +1317,17 @@ struct ContentView: View {
     case .inactive, .protected:
       Label("Simulation active", systemImage: "location.fill")
         .font(.headline)
-        .foregroundStyle(.blue)
+        .foregroundStyle(PinshiftDesign.primary)
         .accessibilityIdentifier("applied-acknowledgement")
     case .restoreRequested:
       Label("Restore requested", systemImage: "arrow.uturn.backward.circle")
         .font(.headline)
-        .foregroundStyle(.orange)
+        .foregroundStyle(PinshiftDesign.primary)
         .accessibilityIdentifier("active-simulation-status")
     case .pending:
       Label("Cleanup pending — waiting for Mac confirmation", systemImage: "clock.arrow.circlepath")
         .font(.headline)
-        .foregroundStyle(.orange)
+        .foregroundStyle(PinshiftDesign.destructive)
         .accessibilityIdentifier("active-simulation-status")
     case .cleared:
       EmptyView()
@@ -844,7 +1340,7 @@ struct ContentView: View {
     case .verified:
       Label("Verified by a fresh observation in this app", systemImage: "checkmark.seal.fill")
         .font(.footnote)
-        .foregroundStyle(.green)
+        .foregroundStyle(PinshiftDesign.positive)
         .accessibilityIdentifier("simulation-status")
     case .appliedNotVerified:
       Label("Applied; latest observation is not yet verified", systemImage: "scope")
@@ -870,26 +1366,26 @@ struct ContentView: View {
         .accessibilityIdentifier("simulation-status")
     case .selected:
       Label("Selected — waiting to apply", systemImage: "location.circle")
-        .foregroundStyle(.blue)
+        .foregroundStyle(PinshiftDesign.primary)
         .accessibilityIdentifier("simulation-status")
     case .applying:
       Label("Applying to the Injection Backend…", systemImage: "arrow.up.circle")
-        .foregroundStyle(.orange)
+        .foregroundStyle(PinshiftDesign.primary)
         .accessibilityIdentifier("simulation-status")
     case .applied:
       Label("Applied Simulation — waiting for a fresh observation", systemImage: "checkmark.circle")
-        .foregroundStyle(.blue)
+        .foregroundStyle(PinshiftDesign.primary)
         .accessibilityIdentifier("simulation-status")
     case .appliedNotVerified(_, let issue):
       Label("Applied, but not verified", systemImage: "exclamationmark.circle")
-        .foregroundStyle(.orange)
+        .foregroundStyle(PinshiftDesign.destructive)
         .accessibilityIdentifier("simulation-status")
       Text(verificationIssueDescription(issue))
         .font(.footnote)
         .accessibilityIdentifier("simulation-diagnostic")
     case .verified(_, let evidence):
       Label("Verified Simulation in Pinshift", systemImage: "checkmark.seal.fill")
-        .foregroundStyle(.green)
+        .foregroundStyle(PinshiftDesign.positive)
         .accessibilityIdentifier("simulation-status")
       LabeledContent("Elapsed") {
         Text("\(evidence.elapsedSeconds.formatted(.number.precision(.fractionLength(2)))) s")
@@ -901,7 +1397,7 @@ struct ContentView: View {
       }
     case .failed(_, let failure):
       Label("Simulation request failed", systemImage: "xmark.circle")
-        .foregroundStyle(.red)
+        .foregroundStyle(PinshiftDesign.destructive)
         .accessibilityIdentifier("simulation-status")
       Text(manualFailureDescription(failure))
         .font(.footnote)
@@ -920,11 +1416,11 @@ struct ContentView: View {
       EmptyView()
     case .stopping:
       Label("Restore requested — retrying automatically…", systemImage: "stop.circle")
-        .foregroundStyle(.orange)
+        .foregroundStyle(PinshiftDesign.primary)
         .accessibilityIdentifier("stop-status")
     case .stopped:
       Label("Simulated Location cleared", systemImage: "stop.circle.fill")
-        .foregroundStyle(.green)
+        .foregroundStyle(PinshiftDesign.positive)
         .accessibilityIdentifier("stop-status")
       Text(
         "The simulation proxy is inactive. A fresh physical-location callback is separate and may not arrive immediately."
@@ -933,7 +1429,7 @@ struct ContentView: View {
       .foregroundStyle(.secondary)
     case .failed(_, let failure):
       Label("Cleanup is still pending", systemImage: "exclamationmark.triangle")
-        .foregroundStyle(.red)
+        .foregroundStyle(PinshiftDesign.destructive)
         .accessibilityIdentifier("stop-status")
       Text(manualFailureDescription(failure))
         .font(.footnote)
@@ -1053,7 +1549,7 @@ struct ContentView: View {
 
       if let errorMessage = observer.errorMessage {
         Text(localized(errorMessage))
-          .foregroundStyle(.red)
+          .foregroundStyle(PinshiftDesign.destructive)
           .accessibilityIdentifier("location-error")
       }
     }
@@ -1092,7 +1588,7 @@ struct ContentView: View {
     switch model.session.match {
     case .matched(let evidence):
       Label("GPX baseline matched", systemImage: "checkmark.circle.fill")
-        .foregroundStyle(.green)
+        .foregroundStyle(PinshiftDesign.positive)
         .accessibilityIdentifier("match-status")
       LabeledContent("Elapsed") {
         Text("\(evidence.elapsedSeconds.formatted(.number.precision(.fractionLength(2)))) s")

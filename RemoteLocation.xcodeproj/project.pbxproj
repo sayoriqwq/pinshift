@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		0181E4496368AC026ED04F50 /* LocationDomain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95CD0A0C359DAC0C72552BCF /* LocationDomain.swift */; };
 		01FF4B2E96C68800373C9922 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 8B7FDC8186DDB1CE4AD254C3 /* Localizable.strings */; };
+		1946CC56BDCA1F54EC683749 /* PinshiftDesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AE6FBA81F407191C50F27C /* PinshiftDesignSystem.swift */; };
 		1F3E8B8ABE484A3CC9FB4CC9 /* PinshiftControllerLinkUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1558AFDC7504C2A6214FA74 /* PinshiftControllerLinkUITests.swift */; };
 		25C640C50A389970BEDB9DEB /* Pairing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85E9B5F7C500D71F989B5E56 /* Pairing.swift */; };
 		282844D692846F68C7F783DA /* TLSControllerServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF94DD13B7AE6AC2A17959A0 /* TLSControllerServer.swift */; };
@@ -82,6 +83,7 @@
 		BF1040220CDFCF2BF2D63AE7 /* ActionButtonLabel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionButtonLabel.swift; sourceTree = "<group>"; };
 		C1A510E5270754E988E724FF /* TrustedControllerLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrustedControllerLink.swift; sourceTree = "<group>"; };
 		C70085091723FA515C299CE6 /* LocationSelectionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationSelectionState.swift; sourceTree = "<group>"; };
+		C8AE6FBA81F407191C50F27C /* PinshiftDesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinshiftDesignSystem.swift; sourceTree = "<group>"; };
 		CA4971E6986AC5E4D1A1C9F8 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		DA8739B4A2BD9144A4754C4C /* ControllerLinkViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerLinkViewModel.swift; sourceTree = "<group>"; };
 		ECC21F0D2D4600F40A328F3E /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
@@ -158,6 +160,7 @@
 				684624D5D39DBB2BF5B5241C /* LocationPickerView.swift */,
 				9BC397A60889A8628C817645 /* LocationPickerViewModel.swift */,
 				52A2509E0668D96B963150FB /* PinshiftApp.swift */,
+				C8AE6FBA81F407191C50F27C /* PinshiftDesignSystem.swift */,
 				AD15D03E1892DCB2665B33D6 /* SavedLocationStore.swift */,
 				9FB68D3C145392450ACCDC35 /* SimulationDiagnosticPipeline.swift */,
 				2B5953299B034AD5EF3F392B /* SimulationDiagnosticsViewModel.swift */,
@@ -330,6 +333,7 @@
 				A22835DAEA5C86A65DEEB65E /* NetworkControllerLinkTransport.swift in Sources */,
 				25C640C50A389970BEDB9DEB /* Pairing.swift in Sources */,
 				CB02467A64E838BAF5C321FE /* PinshiftApp.swift in Sources */,
+				1946CC56BDCA1F54EC683749 /* PinshiftDesignSystem.swift in Sources */,
 				C30588071B0D4659385BC4E3 /* SavedLocation.swift in Sources */,
 				A879B9A46F0312B8E0B34EA7 /* SavedLocationStore.swift in Sources */,
 				8D8F9EAEB746880711D79499 /* SimulationDiagnosticPipeline.swift in Sources */,

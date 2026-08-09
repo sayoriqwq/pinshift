@@ -50,6 +50,7 @@ final class PinshiftUITests: XCTestCase {
     let app = pinshiftApp()
     app.launch()
     app.tap()
+    openSettings(in: app)
 
     let latitude = app.textFields["latitude-input"]
     scrollUp(until: latitude, in: app)
@@ -78,10 +79,46 @@ final class PinshiftUITests: XCTestCase {
     XCTAssertTrue(matchStatus.waitForExistence(timeout: 5))
   }
 
+  func testSpatialCalmHomeKeepsMapPrimaryAndSecondaryToolsInSettings() {
+    let app = selectedLocationFixtureApp()
+    app.launchEnvironment["REMOTE_LOCATION_E2E_LOCATION_PERMISSION"] = "allowed"
+    app.launchEnvironment["REMOTE_LOCATION_E2E_LOCAL_NETWORK_PERMISSION"] = "allowed"
+    app.launch()
+    app.tap()
+
+    XCTAssertTrue(
+      app.descendants(matching: .any)["home-map"].waitForExistence(timeout: 5)
+    )
+    XCTAssertTrue(app.buttons["open-location-picker"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.buttons["open-settings"].waitForExistence(timeout: 5))
+
+    let homeScreenshot = XCTAttachment(screenshot: app.screenshot())
+    homeScreenshot.name = "Spatial Calm home"
+    homeScreenshot.lifetime = .keepAlways
+    add(homeScreenshot)
+
+    let duration = app.descendants(matching: .any)["simulation-duration-picker"]
+    scrollUp(until: duration, in: app)
+    XCTAssertTrue(duration.waitForExistence(timeout: 5))
+    let primaryAction = app.buttons["apply-selected-location"]
+    scrollUp(until: primaryAction, in: app)
+    XCTAssertTrue(primaryAction.waitForExistence(timeout: 5))
+
+    openSettings(in: app)
+    XCTAssertTrue(app.staticTexts["controller-link-status"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.buttons["language-toggle"].waitForExistence(timeout: 5))
+
+    let settingsScreenshot = XCTAttachment(screenshot: app.screenshot())
+    settingsScreenshot.name = "Spatial Calm settings"
+    settingsScreenshot.lifetime = .keepAlways
+    add(settingsScreenshot)
+  }
+
   func testLocalDiagnosticsAreaSupportsExportAndClearWithoutChangingSimulationState() {
     let app = permissionFixtureApp(location: "allowed", localNetwork: "allowed")
     app.launch()
     app.tap()
+    openSettings(in: app)
 
     let status = app.staticTexts["diagnostics-status"]
     scrollUp(until: status, in: app)
@@ -106,12 +143,14 @@ final class PinshiftUITests: XCTestCase {
       )
     )
 
+    returnHome(in: app)
     let simulationStatus = app.staticTexts.matching(identifier: "simulation-status").firstMatch
     scrollToTop(in: app)
     scrollUp(until: simulationStatus, in: app)
     XCTAssertTrue(simulationStatus.waitForExistence(timeout: 5))
     XCTAssertEqual(simulationStatus.label, "Save a Selected Location to begin.")
 
+    openSettings(in: app)
     scrollToTop(in: app)
     let export = app.buttons["diagnostics-export"]
     scrollUp(until: export, in: app)
@@ -238,6 +277,7 @@ final class PinshiftUITests: XCTestCase {
     XCTAssertTrue(simulationStatus.waitForExistence(timeout: 5))
     XCTAssertEqual(simulationStatus.label, "Verified by a fresh observation in this app")
 
+    openSettings(in: app)
     scrollToTop(in: app)
     let controllerStatus = app.staticTexts["controller-link-status"]
     XCTAssertTrue(controllerStatus.waitForExistence(timeout: 5))
@@ -288,6 +328,7 @@ final class PinshiftUITests: XCTestCase {
     let app = permissionFixtureApp(location: "allowed", localNetwork: "allowed")
     app.launchEnvironment["REMOTE_LOCATION_E2E_APP_LANGUAGE"] = "en"
     app.launch()
+    openSettings(in: app)
 
     let toggle = app.buttons["language-toggle"]
     XCTAssertTrue(toggle.waitForExistence(timeout: 5))
@@ -309,6 +350,7 @@ final class PinshiftUITests: XCTestCase {
     app.terminate()
     app.launchEnvironment.removeValue(forKey: "REMOTE_LOCATION_E2E_APP_LANGUAGE")
     app.launch()
+    openSettings(in: app)
 
     let persistedToggle = app.buttons["language-toggle"]
     XCTAssertTrue(persistedToggle.waitForExistence(timeout: 5))
@@ -395,9 +437,11 @@ final class PinshiftUITests: XCTestCase {
     XCTAssertTrue(renameField.waitForExistence(timeout: 5))
     replaceRenameText(in: renameField, with: "Shanghai QA", in: renameAlert)
     app.buttons["saved-location-confirm-rename"].firstMatch.tap()
-    XCTAssertTrue(
-      app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Shanghai QA"))
-        .firstMatch.waitForExistence(timeout: 5))
+    let renamedLocation = app.buttons
+      .matching(NSPredicate(format: "label CONTAINS %@", "Shanghai QA"))
+      .firstMatch
+    scrollUp(until: renamedLocation, in: app)
+    XCTAssertTrue(renamedLocation.waitForExistence(timeout: 5))
     assertSelectedCoordinate(coordinateB, source: "Saved Location", in: app)
     assertSavedLocationSelectionIsInactive(in: app)
 
@@ -507,6 +551,7 @@ final class PinshiftUITests: XCTestCase {
       .matching(NSPredicate(format: "label == %@", "No Applied Simulation is active."))
       .firstMatch
     XCTAssertTrue(inactive.waitForExistence(timeout: 5))
+    openSettings(in: app)
     scrollToTop(in: app)
     let inactiveAppliedStatus = app.staticTexts["applied-simulation-status"]
     XCTAssertTrue(inactiveAppliedStatus.waitForExistence(timeout: 5))
@@ -586,11 +631,13 @@ final class PinshiftUITests: XCTestCase {
     XCTAssertEqual(secondAfterFailure.label, secondLabelBeforeFailure)
     assertSelectedCoordinate(coordinateB, source: "已保存地点", in: app)
     assertAppliedSimulationRemainsActive(in: app, acknowledgedLabelSuffix: "已确认")
+    stopFixtureSimulation(in: app)
   }
 
   func testPermissionFixturesKeepDeniedAndRestrictedRecoveryDistinct() {
     let denied = permissionFixtureApp(location: "denied", localNetwork: "denied")
     denied.launch()
+    openSettings(in: denied)
 
     let localNetworkStatus = denied.staticTexts["local-network-permission-status"]
     XCTAssertTrue(localNetworkStatus.waitForExistence(timeout: 5))
@@ -610,6 +657,7 @@ final class PinshiftUITests: XCTestCase {
 
     let restricted = permissionFixtureApp(location: "restricted", localNetwork: "allowed")
     restricted.launch()
+    openSettings(in: restricted)
 
     let allowedLocalNetwork = restricted.staticTexts["local-network-permission-status"]
     XCTAssertTrue(allowedLocalNetwork.waitForExistence(timeout: 5))
@@ -667,7 +715,7 @@ final class PinshiftUITests: XCTestCase {
       .matching(NSPredicate(format: "label == %@", "Selected — waiting to apply"))
       .firstMatch
     for _ in 0..<4 where !selectedStatus.exists {
-      app.collectionViews.firstMatch.swipeUp()
+      primaryScrollContainer(in: app).swipeUp()
     }
     XCTAssertTrue(selectedStatus.waitForExistence(timeout: 5))
 
@@ -682,6 +730,7 @@ final class PinshiftUITests: XCTestCase {
     XCTAssertTrue(selectedLatitude.label.hasSuffix("31.230400"))
     XCTAssertTrue(selectedLongitude.label.hasSuffix("121.473700"))
     applyAndVerifySimulation(of: coordinate, in: app)
+    stopFixtureSimulation(in: app)
   }
 
   func testLocationPickerKeepsMapActionsVisibleAndRequiresExplicitDismissal() {
@@ -879,6 +928,7 @@ final class PinshiftUITests: XCTestCase {
     scrollUp(until: stop, in: app)
     XCTAssertTrue(stop.waitForExistence(timeout: 5))
     XCTAssertTrue(stop.isEnabled)
+    stopFixtureSimulation(in: app)
   }
 
   func testTimeBoundedSimulationShowsDurationProtectionCountdownAndActions() {
@@ -1076,6 +1126,7 @@ final class PinshiftUITests: XCTestCase {
     of coordinate: CLLocationCoordinate2D,
     in app: XCUIApplication
   ) {
+    openSettings(in: app)
     let start = app.buttons["start-observation-window"]
     for _ in 0..<10 where !start.exists {
       app.collectionViews.firstMatch.swipeUp()
@@ -1120,6 +1171,7 @@ final class PinshiftUITests: XCTestCase {
     of coordinate: CLLocationCoordinate2D,
     in app: XCUIApplication
   ) {
+    returnHome(in: app)
     let apply = app.buttons["apply-selected-location"]
     scrollUp(until: apply, in: app)
     XCTAssertTrue(apply.waitForExistence(timeout: 5))
@@ -1158,6 +1210,7 @@ final class PinshiftUITests: XCTestCase {
       "The public XCUIDevice location getter still reports an active proxy after clear."
     )
 
+    openSettings(in: app)
     let recencyNote = app.staticTexts["observation-recency-note"]
     for _ in 0..<4 where !recencyNote.exists {
       app.collectionViews.firstMatch.swipeDown()
@@ -1176,6 +1229,7 @@ final class PinshiftUITests: XCTestCase {
     of coordinate: CLLocationCoordinate2D,
     in app: XCUIApplication
   ) {
+    openSettings(in: app)
     scrollToTop(in: app)
     let latitude = app.textFields["latitude-input"]
     scrollUp(until: latitude, in: app)
@@ -1198,6 +1252,7 @@ final class PinshiftUITests: XCTestCase {
     _ coordinate: CLLocationCoordinate2D,
     in app: XCUIApplication
   ) {
+    openSettings(in: app)
     let observedLatitude = app.staticTexts["observed-latitude"]
     scrollUp(until: observedLatitude, in: app)
     let expectedSuffix = String(format: "%.6f", coordinate.latitude)
@@ -1230,9 +1285,10 @@ final class PinshiftUITests: XCTestCase {
   }
 
   private func openLocationPicker(in app: XCUIApplication) {
+    returnHome(in: app)
     let button = app.buttons["open-location-picker"]
     for _ in 0..<5 where !button.exists {
-      app.collectionViews.firstMatch.swipeUp()
+      primaryScrollContainer(in: app).swipeUp()
     }
     XCTAssertTrue(button.waitForExistence(timeout: 5))
     button.tap()
@@ -1350,6 +1406,7 @@ final class PinshiftUITests: XCTestCase {
   }
 
   private func waitForDiagnostics(in app: XCUIApplication) {
+    openSettings(in: app)
     scrollToTop(in: app)
     let status = app.staticTexts["diagnostics-status"]
     scrollUp(until: status, in: app)
@@ -1360,6 +1417,7 @@ final class PinshiftUITests: XCTestCase {
   }
 
   private func clearDiagnostics(in app: XCUIApplication) {
+    openSettings(in: app)
     scrollToTop(in: app)
     let clear = app.buttons["diagnostics-clear"]
     scrollUp(until: clear, in: app)
@@ -1372,6 +1430,7 @@ final class PinshiftUITests: XCTestCase {
   private func exportDiagnosticsArtifact(
     in app: XCUIApplication
   ) -> ExportedDiagnosticArtifact? {
+    openSettings(in: app)
     scrollToTop(in: app)
     let export = app.buttons["diagnostics-export"]
     scrollUp(until: export, in: app)
@@ -1511,6 +1570,7 @@ final class PinshiftUITests: XCTestCase {
     coordinate: CLLocationCoordinate2D,
     in app: XCUIApplication
   ) {
+    openSettings(in: app)
     scrollToTop(in: app)
     let latitude = app.textFields["latitude-input"]
     scrollUp(until: latitude, in: app)
@@ -1535,22 +1595,25 @@ final class PinshiftUITests: XCTestCase {
     nameField.tap()
     nameField.typeText(name)
     app.buttons["saved-location-confirm-save"].firstMatch.tap()
-    XCTAssertTrue(
-      app.buttons.matching(NSPredicate(format: "label CONTAINS %@", name))
-        .firstMatch.waitForExistence(timeout: 5)
-    )
+    let savedLocation = app.buttons
+      .matching(NSPredicate(format: "label CONTAINS %@", name))
+      .firstMatch
+    scrollUp(until: savedLocation, in: app)
+    XCTAssertTrue(savedLocation.waitForExistence(timeout: 5))
   }
 
   private func applyAndAcknowledgeSimulation(
     in app: XCUIApplication,
     acknowledgedLabelSuffix: String = "Acknowledged"
   ) {
+    returnHome(in: app)
     let apply = app.buttons["apply-selected-location"]
     scrollUp(until: apply, in: app)
     XCTAssertTrue(apply.waitForExistence(timeout: 5))
     XCTAssertTrue(apply.isEnabled)
     apply.tap()
 
+    openSettings(in: app)
     let appliedStatus = app.staticTexts["applied-simulation-status"]
     scrollToTop(in: app)
     XCTAssertTrue(appliedStatus.waitForExistence(timeout: 5))
@@ -1561,15 +1624,35 @@ final class PinshiftUITests: XCTestCase {
     in app: XCUIApplication,
     acknowledgedLabelSuffix: String = "Acknowledged"
   ) {
+    openSettings(in: app)
     let appliedStatus = app.staticTexts["applied-simulation-status"]
     scrollToTop(in: app)
     XCTAssertTrue(appliedStatus.waitForExistence(timeout: 5))
     XCTAssertTrue(appliedStatus.label.hasSuffix(acknowledgedLabelSuffix))
 
+    returnHome(in: app)
     let stop = app.buttons["stop-simulation"]
     scrollUp(until: stop, in: app)
     XCTAssertTrue(stop.waitForExistence(timeout: 5))
     XCTAssertTrue(stop.isEnabled)
+  }
+
+  private func stopFixtureSimulation(in app: XCUIApplication) {
+    returnHome(in: app)
+    let stop = app.buttons["stop-simulation"]
+    scrollUp(until: stop, in: app)
+    XCTAssertTrue(stop.waitForExistence(timeout: 5))
+    stop.tap()
+    let cleared = app.staticTexts.matching(identifier: "stop-status")
+      .matching(
+        NSPredicate(
+          format: "label == %@ OR label == %@",
+          "Simulated Location cleared",
+          "已清除模拟位置"
+        )
+      )
+      .firstMatch
+    XCTAssertTrue(cleared.waitForExistence(timeout: 5))
   }
 
   private func savedLocationButton(
@@ -1577,19 +1660,33 @@ final class PinshiftUITests: XCTestCase {
     in app: XCUIApplication,
     index: Int
   ) -> XCUIElement {
+    openSettings(in: app)
     scrollToTop(in: app)
     let savedLocationsAction = app.buttons["save-current-location"]
     scrollUp(until: savedLocationsAction, in: app)
-    return app.buttons
+    let savedLocation = app.buttons
       .matching(NSPredicate(format: "identifier BEGINSWITH %@", prefix))
       .element(boundBy: index)
+    scrollUp(until: savedLocation, in: app)
+    return savedLocation
   }
 
   private func assertSavedLocationSelectionIsInactive(in app: XCUIApplication) {
+    openSettings(in: app)
     let appliedStatus = app.staticTexts["applied-simulation-status"]
     scrollToTop(in: app)
     XCTAssertTrue(appliedStatus.waitForExistence(timeout: 5))
-    XCTAssertTrue(appliedStatus.label.hasSuffix("Inactive"))
+    XCTAssertTrue(
+      appliedStatus.label.hasSuffix("Inactive")
+        || appliedStatus.label.hasSuffix("Unknown until Controller Link reconnects")
+    )
+
+    returnHome(in: app)
+    let selected = app.staticTexts.matching(identifier: "simulation-status")
+      .matching(NSPredicate(format: "label == %@", "Selected — waiting to apply"))
+      .firstMatch
+    scrollUp(until: selected, in: app)
+    XCTAssertTrue(selected.waitForExistence(timeout: 5))
   }
 
   private func assertSelectedCoordinate(
@@ -1619,6 +1716,34 @@ final class PinshiftUITests: XCTestCase {
     let app = XCUIApplication()
     app.launchEnvironment["REMOTE_LOCATION_E2E_APP_LANGUAGE"] = "en"
     return app
+  }
+
+  private func openSettings(in app: XCUIApplication) {
+    if app.navigationBars["Settings"].exists || app.navigationBars["设置"].exists {
+      return
+    }
+
+    let settings = app.buttons["open-settings"]
+    XCTAssertTrue(settings.waitForExistence(timeout: 5))
+    settings.tap()
+    XCTAssertTrue(
+      app.descendants(matching: .any)["settings-list"].waitForExistence(timeout: 5)
+    )
+  }
+
+  private func returnHome(in app: XCUIApplication) {
+    if app.descendants(matching: .any)["pinshift-home"].exists {
+      return
+    }
+
+    let back = app.navigationBars.buttons
+      .matching(NSPredicate(format: "label == %@", "Pinshift"))
+      .firstMatch
+    XCTAssertTrue(back.waitForExistence(timeout: 5))
+    back.tap()
+    XCTAssertTrue(
+      app.descendants(matching: .any)["pinshift-home"].waitForExistence(timeout: 5)
+    )
   }
 
   private func selectedLocationFixtureApp() -> XCUIApplication {
@@ -1652,24 +1777,43 @@ final class PinshiftUITests: XCTestCase {
   }
 
   private func scrollUp(until element: XCUIElement, in app: XCUIApplication) {
+    let scrollContainer = primaryScrollContainer(in: app)
     for _ in 0..<8 where !element.exists || !element.isHittable {
-      app.collectionViews.firstMatch.swipeUp()
+      scrollContainer.swipeUp()
     }
   }
 
   private func scrollToTop(in app: XCUIApplication) {
+    let scrollContainer = primaryScrollContainer(in: app)
     for _ in 0..<6 {
-      app.collectionViews.firstMatch.swipeDown()
+      scrollContainer.swipeDown()
     }
   }
 
   private func scrollUpInSmallSteps(until element: XCUIElement, in app: XCUIApplication) {
-    let collectionView = app.collectionViews.firstMatch
+    let collectionView = primaryScrollContainer(in: app)
     for _ in 0..<6 where !element.exists || !element.isHittable {
       let start = collectionView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.75))
       let finish = collectionView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.55))
       start.press(forDuration: 0.05, thenDragTo: finish)
     }
+  }
+
+  private func primaryScrollContainer(in app: XCUIApplication) -> XCUIElement {
+    let settings = app.collectionViews["settings-list"]
+    if settings.exists {
+      return settings
+    }
+
+    let home = app.scrollViews["pinshift-home"]
+    if home.exists {
+      return home
+    }
+
+    if app.collectionViews.firstMatch.exists {
+      return app.collectionViews.firstMatch
+    }
+    return app.scrollViews.firstMatch
   }
 }
 

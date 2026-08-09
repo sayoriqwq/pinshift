@@ -91,22 +91,23 @@ struct LocationPickerView: View {
 
           if let selectionConfirmation {
             Label(selectionConfirmation, systemImage: "checkmark.circle.fill")
-              .foregroundStyle(.green)
+              .foregroundStyle(PinshiftDesign.positive)
               .accessibilityIdentifier("location-selection-confirmation")
           }
           if let selectionFailure {
             Label(selectionFailure, systemImage: "exclamationmark.triangle")
-              .foregroundStyle(.red)
+              .foregroundStyle(PinshiftDesign.destructive)
               .accessibilityIdentifier("location-selection-failure")
           }
           if let restorationConfirmation {
             Label(restorationConfirmation, systemImage: "arrow.uturn.backward.circle.fill")
-              .foregroundStyle(.blue)
+              .foregroundStyle(PinshiftDesign.primary)
               .accessibilityIdentifier("location-restoration-confirmation")
           }
         }
         .padding()
       }
+      .background(PinshiftDesign.background)
       .navigationTitle("Choose Location")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
@@ -116,6 +117,7 @@ struct LocationPickerView: View {
         }
       }
     }
+    .tint(PinshiftDesign.primary)
     .interactiveDismissDisabled()
     .accessibilityElement(children: .contain)
     .accessibilityIdentifier("location-picker")
@@ -142,7 +144,7 @@ struct LocationPickerView: View {
           .overlay {
             Image(systemName: "scope")
               .font(.title2.weight(.semibold))
-              .foregroundStyle(.blue)
+              .foregroundStyle(PinshiftDesign.primary)
               .padding(8)
               .background(.thinMaterial, in: Circle())
               .allowsHitTesting(false)
@@ -159,7 +161,12 @@ struct LocationPickerView: View {
 
         }
         .frame(height: 300)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .clipShape(
+          RoundedRectangle(
+            cornerRadius: PinshiftDesign.radiusM,
+            style: .continuous
+          )
+        )
         .accessibilityElement(children: .contain)
 
         Button {
@@ -269,7 +276,7 @@ struct LocationPickerView: View {
         "Place search is unavailable. Check your network connection and try again; your previous selection is unchanged.",
         systemImage: "wifi.exclamationmark"
       )
-      .foregroundStyle(.red)
+      .foregroundStyle(PinshiftDesign.destructive)
       .accessibilityIdentifier("place-search-status")
     case .results(let results):
       ForEach(results) { result in
@@ -302,8 +309,11 @@ struct LocationPickerView: View {
           }
           .padding(12)
           .background(
-            Color.secondary.opacity(0.08),
-            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+            PinshiftDesign.surfaceSecondary,
+            in: RoundedRectangle(
+              cornerRadius: PinshiftDesign.radiusS,
+              style: .continuous
+            )
           )
           .contentShape(Rectangle())
         }
