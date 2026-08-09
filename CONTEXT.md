@@ -1,19 +1,23 @@
-# Location Simulation Learning
+# Pinshift Location Simulation
 
-This context covers learning and experimenting with location-aware iOS behavior through Apple-supported development and testing workflows.
+This context covers bounded iOS test-location sessions controlled from a paired Mac for one developer-owned iPhone.
 
 ## Language
+
+**Pinshift app**:
+The iOS product surface used to select locations, request bounded simulations, display authoritative controller state, and record local observations.
+_Avoid_: Prototype App, Simulation Controller, Injection Backend
 
 **Simulated Location（模拟位置）**:
 A location supplied to an app under test through Apple's development environment. It is distinct from the device owner's real location and does not imply changing location system-wide for other apps.
 _Avoid_: Virtual Location, Fake GPS, Location Spoofing
 
 **Selected Location（待应用位置）**:
-A single coordinate chosen inside the learning app and awaiting application through the Simulation Controller. Selection alone never represents a Simulated Location or an Observed Location.
+A single coordinate chosen inside the Pinshift app and awaiting application through the Simulation Controller. Selection alone never represents a Simulated Location or an Observed Location.
 _Avoid_: Scenario Location, Simulated Location
 
 **Saved Location（已保存地点）**:
-A user-named coordinate stored locally on the Learning App's current device for later selection. Choosing one replaces the Selected Location and never applies a simulation automatically.
+A user-named coordinate stored locally by the Pinshift app for later selection. Choosing one replaces the Selected Location and never applies a simulation automatically.
 _Avoid_: Recent Location, Location History, Applied Simulation
 
 **Fine Adjustment（位置微调）**:
@@ -21,11 +25,11 @@ A map-based refinement that starts around the current Selected Location at a clo
 _Avoid_: Route Movement, Automatic Apply, Manual Coordinate Editing
 
 **Simulation Controller（模拟控制器）**:
-The developer-side participant that applies a selected location to the Active Test Device through the current Xcode development environment.
-_Avoid_: iPhone App, GPS Spoofer
+The Mac-side participant that applies a Selected Location to the Active Test Device through the current Xcode development environment.
+_Avoid_: Pinshift app, GPS Spoofer
 
 **Cleanup Guardian（清理守护者）**:
-A per-user macOS LaunchAgent that owns lease-expiry and retry execution independently of the foreground Simulation Controller and Controller Link. It survives server termination and Mac login-session restarts, but still requires the Mac and matching Active Test Device to become reachable before `devicectl clear` can succeed.
+The Mac-side authority that keeps a Cleanup Obligation active and retries it independently of the foreground Simulation Controller. It still requires the matching Active Test Device to become reachable before clear can succeed.
 _Avoid_: Controller Link, iOS Stop Handler, Diagnostic Watcher
 
 **Injection Backend（注入后端）**:
@@ -33,11 +37,11 @@ The replaceable part of the Simulation Controller that translates generic simula
 _Avoid_: Simulation Controller, Permanent XCUITest Dependency
 
 **Controller Link（控制器连接）**:
-The trusted local connection that carries simulation requests and execution status between the learning app and its Simulation Controller.
+The trusted local connection that carries simulation requests and execution status between the Pinshift app and its Simulation Controller.
 _Avoid_: Cloud Service, USB Tunnel
 
 **Trusted Controller（可信控制器）**:
-A Simulation Controller whose identity the learning app accepted through explicit one-time pairing and remembers for future Controller Links.
+A Simulation Controller whose identity the Pinshift app accepted through explicit one-time pairing and remembers for future Controller Links.
 _Avoid_: Discovered Controller, User Account
 
 **Active Test Device（活动测试设备）**:
@@ -57,7 +61,7 @@ The identity of one Static Simulation created by an Apply request. A replacement
 _Avoid_: Request Attempt, Coordinate Version
 
 **Simulation Lease（模拟租约）**:
-The bounded maximum lifetime granted to one Applied Simulation before cleanup becomes mandatory. The Learning App offers exactly 15, 30, and 60 minutes, defaults to 15 minutes, and allows acknowledged 15-minute extensions capped at one hour from acknowledgement. The lease is independent of Controller Link duration. It is a safety deadline, not a promise that cleanup can run while the Mac host or Active Test Device is unreachable.
+The bounded maximum lifetime granted to one Applied Simulation before cleanup becomes mandatory. Pinshift offers exactly 15, 30, and 60 minutes and acknowledged 15-minute extensions; the lease is independent of Controller Link duration, but cleanup execution still requires a reachable Mac and Active Test Device.
 _Avoid_: Network Timeout, Server Duration
 
 **Cleanup Obligation（清理义务）**:
@@ -69,7 +73,7 @@ A Simulation Generation whose cleanup is required but has not yet received a suc
 _Avoid_: Stopped Simulation, Clear Failure
 
 **Stop Intent（停止意图）**:
-A tester's correlated request to end one Simulation Generation. The Learning App retains it until authoritative controller reconciliation proves the generation is stopped.
+A tester's correlated request to end one Simulation Generation. The Pinshift app retains it until authoritative controller reconciliation proves the generation is stopped.
 _Avoid_: Stop Tap, Transport Attempt
 
 **Stopped Simulation（已停止模拟）**:
@@ -81,7 +85,7 @@ A persistent local chronology used to correlate selection, apply, stop, backend-
 _Avoid_: Automatic Recovery, Simulation State, Telemetry
 
 **Observed Location（观测位置）**:
-The most recent Core Location value the learning app receives while in use. It can verify the app's own result but is not evidence of Cross-App Propagation.
+The most recent Core Location value the Pinshift app receives while in use. It can verify Pinshift's own result but is not evidence of Cross-App Propagation.
 _Avoid_: Applied Location, Device Truth
 
 **Applied Simulation（已应用模拟）**:
@@ -89,9 +93,9 @@ A Static Simulation that the active Injection Backend reports it has set for the
 _Avoid_: Verified Simulation, Cross-App Success
 
 **Verified Simulation（已验证模拟）**:
-An Applied Simulation whose selected coordinate is subsequently matched by a fresh Observed Location in the learning app. This is the required first-round success outcome and is not evidence of Cross-App Propagation.
+An Applied Simulation whose selected coordinate is subsequently matched by a fresh Observed Location in the Pinshift app. It is not evidence of Cross-App Propagation.
 _Avoid_: Backend Success, Cross-App Propagation
 
 **Cross-App Propagation（跨 App 传播）**:
-An observed condition where an app other than the learning app reports a location consistent with the active Simulated Location. It is measured independently for each app rather than assumed to be device-wide.
+An observed condition where an app other than Pinshift reports a location consistent with the active Simulated Location. It is measured independently for each app rather than assumed to be device-wide.
 _Avoid_: Cross-App Control, Guaranteed System Override

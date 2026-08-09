@@ -14,7 +14,7 @@ final class ControllerCLIRunnerTests: XCTestCase {
     XCTAssertEqual(result.exitCode, 0)
     XCTAssertEqual(
       result.output,
-      "The Active Test Device and Xcode/devicectl Injection Backend are ready. Applied and Verified state is reported by the active Controller Link and Learning App."
+      "The Active Test Device and Xcode/devicectl Injection Backend are ready. Applied and Verified state is reported by the active Controller Link and Pinshift app."
     )
     XCTAssertFalse(result.output.localizedCaseInsensitiveContains("test session"))
   }
@@ -35,7 +35,7 @@ final class ControllerCLIRunnerTests: XCTestCase {
     XCTAssertEqual(result.exitCode, 0)
     XCTAssertEqual(
       result.output,
-      "Applied Simulation acknowledged for request 00000000-0000-0000-0000-000000000002 at 31.230400, 121.473700. Learning App verification is still required."
+      "Applied Simulation acknowledged for request 00000000-0000-0000-0000-000000000002 at 31.230400, 121.473700. Pinshift app verification is still required."
     )
   }
 

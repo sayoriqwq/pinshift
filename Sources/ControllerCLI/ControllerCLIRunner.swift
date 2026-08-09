@@ -108,13 +108,13 @@ public struct ControllerCLIRunner: Sendable {
       return ControllerCLIResult(
         exitCode: 0,
         output:
-          "The Active Test Device and Xcode/devicectl Injection Backend are ready. Applied and Verified state is reported by the active Controller Link and Learning App."
+          "The Active Test Device and Xcode/devicectl Injection Backend are ready. Applied and Verified state is reported by the active Controller Link and Pinshift app."
       )
     case .applied(let requestID, let location):
       return ControllerCLIResult(
         exitCode: 0,
         output:
-          "Applied Simulation is active for request \(requestID.uuidString) at \(format(location)). Learning App verification is separate."
+          "Applied Simulation is active for request \(requestID.uuidString) at \(format(location)). Pinshift app verification is separate."
       )
     case .stopped:
       return ControllerCLIResult(exitCode: 0, output: "No Applied Simulation is active.")
@@ -145,7 +145,7 @@ public struct ControllerCLIRunner: Sendable {
       return ControllerCLIResult(
         exitCode: 0,
         output:
-          "Applied Simulation acknowledged for request \(responseID.uuidString) at \(format(appliedLocation)). Learning App verification is still required."
+          "Applied Simulation acknowledged for request \(responseID.uuidString) at \(format(appliedLocation)). Pinshift app verification is still required."
       )
     case .cleared:
       return ControllerCLIResult(
@@ -209,7 +209,7 @@ public struct ControllerCLIRunner: Sendable {
       message = "The Injection Backend timed out before acknowledging the request."
     case .authenticationFailed:
       message =
-        "The controller rejected the request. Re-pair the Learning App with the active Controller Link and retry."
+        "The controller rejected the request. Re-pair the Pinshift app with the active Controller Link and retry."
     case .clearFailed:
       message =
         "The Injection Backend could not clear the active simulation. Run reset after checking the device connection."

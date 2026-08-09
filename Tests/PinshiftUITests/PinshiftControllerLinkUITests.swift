@@ -1,7 +1,7 @@
 import XCTest
 
 @MainActor
-final class RemoteLocationControllerLinkUITests: XCTestCase {
+final class PinshiftControllerLinkUITests: XCTestCase {
   override func setUp() {
     super.setUp()
     continueAfterFailure = false
@@ -28,7 +28,7 @@ final class RemoteLocationControllerLinkUITests: XCTestCase {
       throw XCTSkip("A short-lived Mac pairing code is required for this smoke test.")
     }
 
-    let app = learningApp()
+    let app = pinshiftApp()
     app.launch()
     app.tap()
 
@@ -55,7 +55,7 @@ final class RemoteLocationControllerLinkUITests: XCTestCase {
       throw XCTSkip("A short-lived Mac pairing code is required for this smoke test.")
     }
 
-    let app = learningApp()
+    let app = pinshiftApp()
     app.launchEnvironment["REMOTE_LOCATION_E2E_SEARCH_FIXTURE"] = "1"
     app.launch()
     app.tap()
@@ -111,7 +111,7 @@ final class RemoteLocationControllerLinkUITests: XCTestCase {
     XCTAssertTrue(connected.waitForExistence(timeout: 20))
   }
 
-  private func learningApp() -> XCUIApplication {
+  private func pinshiftApp() -> XCUIApplication {
     let app = XCUIApplication()
     app.launchEnvironment["REMOTE_LOCATION_E2E_APP_LANGUAGE"] = "en"
     return app

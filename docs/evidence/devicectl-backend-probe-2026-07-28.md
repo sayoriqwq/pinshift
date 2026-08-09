@@ -8,7 +8,7 @@ This record contains only redacted physical-device evidence supporting ADR-0009.
 - Xcode: 27.0 beta 4
 - Connection: wired
 - Developer Mode and developer services: available
-- Learning App: signed, installed, and launched on the Active Test Device
+- Pinshift app: signed, installed, and launched on the Active Test Device
 
 ## Public command audit
 
@@ -20,10 +20,10 @@ This record contains only redacted physical-device evidence supporting ADR-0009.
 
 ## Physical result
 
-- Apply coordinate A: command exit 0; the Learning App produced a fresh observation matching A.
-- Replace with coordinate B: command exit 0; the Learning App produced a fresh observation matching B.
+- Apply coordinate A: command exit 0; the Pinshift app produced a fresh observation matching A.
+- Replace with coordinate B: command exit 0; the Pinshift app produced a fresh observation matching B.
 - Clear: command exit 0.
-- The evidence distinguishes backend acknowledgement from Learning App verification and makes no Cross-App Propagation claim.
+- The evidence distinguishes backend acknowledgement from Pinshift app verification and makes no Cross-App Propagation claim.
 
 ## Rejected production route
 

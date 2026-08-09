@@ -127,7 +127,7 @@ public enum ControllerDoctor {
       }
       return result
     }
-    let output = (["Remote Location Doctor (read-only)"] + lines + ["No settings were changed."])
+    let output = (["Pinshift Doctor (read-only)"] + lines + ["No settings were changed."])
       .joined(separator: "\n")
 
     return ControllerDoctorReport(exitCode: exitCode, output: output, checks: checks)

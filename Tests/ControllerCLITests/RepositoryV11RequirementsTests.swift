@@ -219,9 +219,9 @@ final class RepositoryV11RequirementsTests: XCTestCase {
     XCTAssertFalse(contents.contains("SecKeychainItemDelete"))
   }
 
-  func testLearningAppDeclaresALaunchScreen() throws {
+  func testPinshiftAppDeclaresALaunchScreen() throws {
     let infoURL = repositoryRoot.appending(
-      path: "Config/RemoteLocationLearning-Info.plist"
+      path: "Config/Pinshift-Info.plist"
     )
     let data = try Data(contentsOf: infoURL)
     let value = try PropertyListSerialization.propertyList(from: data, format: nil)
@@ -232,7 +232,7 @@ final class RepositoryV11RequirementsTests: XCTestCase {
     )
   }
 
-  func testLearningAppBuildConfigurationCompilesTheBrandedAppIcon() throws {
+  func testPinshiftAppBuildConfigurationCompilesTheBrandedAppIcon() throws {
     let specification = try String(
       contentsOf: repositoryRoot.appending(path: "project.yml"),
       encoding: .utf8
@@ -252,7 +252,7 @@ final class RepositoryV11RequirementsTests: XCTestCase {
       project.components(separatedBy: "ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;")
         .count - 1,
       2,
-      "Both generated Learning App build configurations must select AppIcon"
+      "Both generated Pinshift app build configurations must select AppIcon"
     )
 
     let catalogData = try Data(

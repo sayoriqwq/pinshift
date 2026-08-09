@@ -4,7 +4,7 @@ Status: PASS
 
 ## Scope and baseline
 
-This record covers the first-round personal learning workflow under ADR-0007 and ADR-0009. The approved baseline is macOS 27.0, Xcode 27.0 beta 4 (27A5228h), Swift 6.4, one wired physical iPhone with Developer Mode and developer services available, and the public `devicectl device simulate location` production backend.
+This record covers the personal validation workflow under ADR-0007 and ADR-0009. The approved baseline is macOS 27.0, Xcode 27.0 beta 4 (27A5228h), Swift 6.4, one wired physical iPhone with Developer Mode and developer services available, and the public `devicectl device simulate location` production backend.
 
 Device identifiers, signing identities, hostnames, pairing material, raw `devicectl` output, and exact selected coordinates are intentionally omitted. Raw local logs remained in an owner-only temporary directory.
 
@@ -17,7 +17,7 @@ Device identifiers, signing identities, hostnames, pairing material, raw `device
 | Manual selection | PASS | Existing domain, UI, and physical backend evidence covers the manual Selected → Applied → Observed → Verified seam. |
 | Map selection | PASS | On the physical iPhone, the user selected the map center with the blue `+`, closed the picker, explicitly applied it, and observed both Applied and Verified states. |
 | Place search | PASS | The deterministic search fixture selected the result, explicitly applied it through a DEBUG-only correlated Controller Link fixture, observed Applied, and reached Verified through a fresh public location observation. |
-| Replace and verify | PASS | Public backend evidence covers A → B replacement with fresh matching Learning App observations; the full simulator regression also passed public A → B observation. |
+| Replace and verify | PASS | Public backend evidence covers A → B replacement with fresh matching Pinshift app observations; the full simulator regression also passed public A → B observation. |
 | Stop and reset | PASS | Two consecutive public `devicectl ... location clear` operations exited 0, proving final cleanup and idempotency. Normal Controller-exit cleanup has a controlled fake-backend regression. |
 | Failure and recovery states | PASS | Automated coverage includes permission denied/restricted, search empty/failure preservation, request correlation, unavailable backend/session, disconnect, stop failure, and clear failure. |
 | Public API and privacy | PASS | No private injection API, cloud service, account, telemetry, location history, or persistent device-identifier log was found. |
@@ -35,7 +35,7 @@ Device identifiers, signing identities, hostnames, pairing material, raw `device
 ## Physical journey
 
 1. The Active Test Device and Xcode beta developer directory passed the read-only preflight.
-2. The controller started with owner-only pairing-code material, and the already trusted Learning App connected without another pairing operation.
+2. The controller started with owner-only pairing-code material, and the already trusted Pinshift app connected without another pairing operation.
 3. The user confirmed all four readiness states in the physical app.
 4. The user selected the map center with the blue `+`, explicitly applied the selection, and confirmed Applied and Verified.
 5. As supplementary, non-gating evidence, the user reported that QQ displayed the simulated address. This is one app-specific observation on this recorded environment, not a system-wide or Cross-App guarantee.

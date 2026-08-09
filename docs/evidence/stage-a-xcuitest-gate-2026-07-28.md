@@ -22,19 +22,19 @@ This record contains only redacted evidence from the full physical-device run of
 
 ## Physical gate
 
-- Test: `RemoteLocationLearningUITests.testPublicLocationBackendRemainsStableForTenMinutes`
+- Test: `PinshiftUITests.testPublicLocationBackendRemainsStableForTenMinutes`
 - Result-bundle run timestamp: 2026-07-28 11:51:52 +08:00
 - Final recorded gate activity: 2026-07-28 12:03:02 +08:00
 - Stable duration: 618.1 seconds
 - XCTest case duration including setup/teardown: 635.7638479471207 seconds
 - Completed A/B/clear rounds: 10
-- Coordinate A observations matched within 15 seconds / 25 meters: yes; 10 fresh Learning App activity records
-- Coordinate B observations matched within 15 seconds / 25 meters: yes; 10 fresh Learning App activity records
+- Coordinate A observations matched within 15 seconds / 25 meters: yes; 10 fresh Pinshift app activity records
+- Coordinate B observations matched within 15 seconds / 25 meters: yes; 10 fresh Pinshift app activity records
 - Recorded observation elapsed range: 0.47–0.50 seconds
 - Recorded observation distance: 0.00 meters for all 20 A/B observations
-- Every replacement required a fresh Learning App match: yes
+- Every replacement required a fresh Pinshift app match: yes
 - Every clear read `XCUIDevice.shared.location` back as nil: yes; each of the 10 round-completion activities occurs only after the nil-getter assertion
-- Learning App identified any retained coordinate as the last observation rather than an active simulation: yes
+- Pinshift app identified any retained coordinate as the last observation rather than an active simulation: yes
 - Fresh physical observation after clear (best-effort diagnostic only): not evaluated by the revised gate
 - Test result: PASS
 - Failure stage and redacted diagnostic, if any: none
@@ -42,6 +42,6 @@ This record contains only redacted evidence from the full physical-device run of
 ## Redaction check
 
 - [x] No UDID, serial, ECID, tunnel address, hostname, certificate hash, private key, pairing secret, team/account identifier, or physical coordinate is present.
-- [x] Evidence distinguishes setter acknowledgement from Learning App observation.
+- [x] Evidence distinguishes setter acknowledgement from Pinshift app observation.
 - [x] Evidence distinguishes public proxy clear from physical Core Location recovery.
 - [x] Evidence makes no Cross-App Propagation claim.

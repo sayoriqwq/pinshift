@@ -2,7 +2,8 @@ import Foundation
 
 /// The two local processes intentionally keep separate diagnostic records.
 public enum SimulationDiagnosticSide: String, Codable, Equatable, Sendable {
-  case learningApp = "learning-app"
+  // Keep the persisted raw value so existing on-device records remain exportable.
+  case pinshiftApp = "learning-app"
   case macController = "mac-controller"
 
   public var fileName: String {

@@ -6,16 +6,16 @@ Status: the foreground-server-independent eventual-clear invariant passed on the
 
 - `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer swift test`: passed every Swift package suite, including deterministic Simulation Lifecycle integration coverage for leases, extensions, owner-heartbeat loss, Guardian readiness, relaunch reconciliation, and idempotency.
 - The high-level lifecycle harness now includes the exact ownership regression: Apply, release the foreground server owner, prove no early clear, advance the lease, and require an independent Cleanup Guardian to clear the durable generation. It also asserts that Guardian reconciliation schedules no secondary maintenance tasks.
-- Existing coverage still includes controller restart, pre-apply acknowledgement loss, lost Stop response, offline Stop plus Learning App relaunch, bounded retry, failed shutdown recovery, replacement generations, Stop during an in-flight Apply, persisted device mismatch, legacy pre-journal recovery, and the one-hour hard maximum.
-- `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer xcodebuild -project RemoteLocation.xcodeproj -scheme RemoteLocationLearning -destination generic/platform=iOS CODE_SIGNING_ALLOWED=NO build`: `BUILD SUCCEEDED`; both localization files compiled.
+- Existing coverage still includes controller restart, pre-apply acknowledgement loss, lost Stop response, offline Stop plus Pinshift app relaunch, bounded retry, failed shutdown recovery, replacement generations, Stop during an in-flight Apply, persisted device mismatch, legacy pre-journal recovery, and the one-hour hard maximum.
+- `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer xcodebuild -project RemoteLocation.xcodeproj -scheme Pinshift -destination generic/platform=iOS CODE_SIGNING_ALLOWED=NO build`: `BUILD SUCCEEDED`; both localization files compiled.
 - `swift format lint --recursive Sources Tests App`: completed successfully. Existing repository warnings remain advisory.
 
 ## Physical iPhone evidence
 
 - `bin/rl-install`: built, signed, verified, and transactionally installed the changed controller plus `dev.sayori.remotelocation.cleanup-guardian` while preserving the existing Controller Link identity. `launchctl print` reported the Guardian `state = running` in a process group independent of `rl-start`.
 - `bin/rl-doctor`: passed the full Xcode toolchain, paired physical iPhone, Developer Mode, device support image, signing identity, and Keychain Controller Link identity checks.
-- The Learning App selected and applied `31.2304, 121.4737`; the public Xcode 27 `devicectl` backend acknowledged Apply and the App received a fresh matching simulated observation.
-- Normal Learning App Stop returned a production clear acknowledgement; the journal recorded the matching generation as `stopped` and `active: null`.
+- The Pinshift app selected and applied `31.2304, 121.4737`; the public Xcode 27 `devicectl` backend acknowledged Apply and the App received a fresh matching simulated observation.
+- Normal Pinshift app Stop returned a production clear acknowledgement; the journal recorded the matching generation as `stopped` and `active: null`.
 - `bin/rl-reset`: returned a successful clear acknowledgement. The durable journal reported `activeCleared: true` afterward.
 - Production restart recovery: a standalone Apply of `52.5200, 13.4050` succeeded and its process exited. A fresh controller `status` process then reconciled the persisted lifecycle state before answering and returned `No Applied Simulation is active.`
 - Foreground-server-independent lease-expiry test: production Apply request `1C71D399-3D6F-40FD-B05E-1A57CCF94A2D` established a 30-second lease ending `2026-08-09T08:26:54Z`. The complete `rl-start` process group was then killed with `SIGKILL`; no Controller Link server remained, while Cleanup Guardian PID `23612` remained alive under launchd.
@@ -31,7 +31,7 @@ Status: the foreground-server-independent eventual-clear invariant passed on the
 
 ## Remaining boundary and non-core UI coverage
 
-The physical run also observed stale/error-prone Learning App feedback after an offline Stop until controller rediscovery or App relaunch. This no longer owns the safety outcome: the independent Guardian clears at the lease deadline even if the iOS Stop request is never delivered. The UI reconciliation path should not be described as fully certified by this record.
+The physical run also observed stale/error-prone Pinshift app feedback after an offline Stop until controller rediscovery or App relaunch. This no longer owns the safety outcome: the independent Guardian clears at the lease deadline even if the iOS Stop request is never delivered. The UI reconciliation path should not be described as fully certified by this record.
 
 Apple exposes the production clear through the Mac developer service, not a public iOS API. Therefore no implementation can execute clear while the whole Mac-side guardian is powered off/unavailable or the matching iPhone is unreachable. The durable obligation remains and the launchd Guardian retries after reachability returns; this is the remaining physical boundary.
 

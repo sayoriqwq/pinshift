@@ -44,7 +44,8 @@ public struct MacKeychainControllerIdentityAccessManager:
 {
   private static let controllerAuthorizationService =
     "dev.sayori.remotelocation.controller-server-authorization"
-  private static let controllerAuthorizationAccount = "paired-learning-app"
+  private static let controllerAuthorizationAccount =
+    ControllerAuthorization.pairedAppKeychainAccount
 
   public init() {}
 

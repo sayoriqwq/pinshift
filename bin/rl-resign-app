@@ -29,7 +29,7 @@ or exit $status
 
 set --local bundle_identifier dev.sayori.remotelocation.learning
 set --local project RemoteLocation.xcodeproj
-set --local scheme RemoteLocationLearning
+set --local scheme Pinshift
 set --local renewal_threshold_seconds (math '24 * 60 * 60')
 
 set --local work_root (path resolve .build)
@@ -68,7 +68,7 @@ set --erase _rl_resign_moved_backups
 set --erase _rl_resign_backup_directory
 
 if set --query _flag_launch_only
-    rl_launch_learning_app "$REMOTE_LOCATION_DEVICE" "$bundle_identifier" "$staging_root"
+    rl_launch_pinshift_app "$REMOTE_LOCATION_DEVICE" "$bundle_identifier" "$staging_root"
     exit $status
 end
 
@@ -217,7 +217,7 @@ if test $build_status -ne 0
 end
 
 set --local candidate \
-    "$derived_data/Build/Products/Debug-iphoneos/RemoteLocationLearning.app"
+    "$derived_data/Build/Products/Debug-iphoneos/Pinshift.app"
 set --local embedded_profile "$candidate/embedded.mobileprovision"
 set --local info_plist "$candidate/Info.plist"
 if not test -d "$candidate"; or not test -f "$embedded_profile"; or not test -f "$info_plist"
@@ -304,7 +304,7 @@ set --global _rl_resign_preserve_staging 0
 echo "The renewed Pinshift app was installed without uninstalling the existing app."
 
 if not set --query _flag_no_launch
-    rl_launch_learning_app "$REMOTE_LOCATION_DEVICE" "$bundle_identifier" "$staging_root"
+    rl_launch_pinshift_app "$REMOTE_LOCATION_DEVICE" "$bundle_identifier" "$staging_root"
     or exit $status
 end
 

@@ -30,7 +30,7 @@ The configured background research route was unavailable, so the Lead performed 
 
 ## Comparison with local evidence
 
-The current device produced both outcomes under the same implementation: several clears yielded a non-simulated observation, while other clears retained B. In every instrumented failure the public getter read back nil, the Learning App retained B's exact prior timestamp and simulated-source diagnostic, and no Core Location error appeared. Disabling automatic pause did not change the failure.
+The current device produced both outcomes under the same implementation: several clears yielded a non-simulated observation, while other clears retained B. In every instrumented failure the public getter read back nil, the Pinshift app retained B's exact prior timestamp and simulated-source diagnostic, and no Core Location error appeared. Disabling automatic pause did not change the failure.
 
 This is consistent with an absent proxy plus nondeterministic physical update delivery. It does not show that the proxy remained active.
 

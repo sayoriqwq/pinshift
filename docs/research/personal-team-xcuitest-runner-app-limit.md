@@ -8,11 +8,11 @@ Can the Issue #3 physical gate run without removing SideStore or LiveContainer w
 
 ## Conclusion
 
-Not with the currently approved topology and a free Personal Team. The gate needs both the foreground Learning App and a UI-test process. Combining the three test methods into one method or one UI-test bundle does not combine those two processes or remove the UI-test runner installation.
+Not with the currently approved topology and a free Personal Team. The gate needs both the foreground Pinshift app and a UI-test process. Combining the three test methods into one method or one UI-test bundle does not combine those two processes or remove the UI-test runner installation.
 
 Apple documents that UI-test code runs in a process separate from the app under test. Apple also distinguishes UI automation from ordinary unit tests: a unit test can pass constructed locations into code under test, while a UI-automation test sets the device proxy location with `XCUIDevice.shared.location`. Moving the assertions into a hosted unit test would therefore stop testing the public device-level XCUITest backend required by Issue #3.
 
-The current free-profile device already uses its three active app slots for SideStore, LiveContainer, and RemoteLocationLearning. Installing the UI-test runner requires a fourth slot. The project must not ask the user to remove either retained app.
+The current free-profile device already uses its three active app slots for SideStore, LiveContainer, and Pinshift. Installing the UI-test runner requires a fourth slot. The project must not ask the user to remove either retained app.
 
 ## Supported options
 
@@ -23,12 +23,12 @@ The current free-profile device already uses its three active app slots for Side
 ## Rejected or non-equivalent approaches
 
 - **Merge the three test cases:** they already share one UI-test target and one runner; method count does not affect installed-app count.
-- **Run a hosted unit test in the Learning App:** it can validate injected values or app logic, but it is not the public `XCUIDevice.shared.location` physical backend and does not satisfy Issue #3.
-- **Run only the UI-test runner:** it removes the independently observed foreground Learning App and therefore cannot produce the required fresh Learning App observation evidence.
+- **Run a hosted unit test in the Pinshift app:** it can validate injected values or app logic, but it is not the public `XCUIDevice.shared.location` physical backend and does not satisfy Issue #3.
+- **Run only the UI-test runner:** it removes the independently observed foreground Pinshift app and therefore cannot produce the required fresh Pinshift app observation evidence.
 - **Use GPX or Simulator evidence:** useful for Issue #2 and development feedback, but neither substitutes for the physical Issue #3 gate.
 - **Use another free Apple Account:** Apple describes the free allowance as up to three apps per device, so a second free account is not an evidenced way around the device limit.
 - **Offload an app:** Apple documents that offloading preserves documents and data, but does not document that it releases a free-profile active-app slot or that a sideloaded app will be restored safely. It is not an evidence-backed solution for this gate.
-- **Run the Learning App or runner inside LiveContainer:** LiveContainer avoids installing ordinary contained apps separately, but Xcode UI automation requires its own test process and Xcode-managed runner. No supported path was found for making a LiveContainer guest serve as that runner or as the independently launched app under test.
+- **Run the Pinshift app or runner inside LiveContainer:** LiveContainer avoids installing ordinary contained apps separately, but Xcode UI automation requires its own test process and Xcode-managed runner. No supported path was found for making a LiveContainer guest serve as that runner or as the independently launched app under test.
 - **Use a SideStore three-app-limit bypass:** SideStore documents version-specific exploit paths, including Lara for some iOS releases. This changes the security and environment boundary, is not an Apple-supported development workflow, and is not authorized by the current ADRs or execution protocol. It may only be reconsidered after an explicit new technical decision; the Lead must not execute or recommend it as the default gate setup.
 
 ## Primary sources
@@ -43,4 +43,4 @@ The current free-profile device already uses its three active app slots for Side
 
 ## Lead disposition
 
-No implementation changes follow from this research. Issue #3 remains the only frontier and is blocked on an environment choice that can install both the Learning App and its UI-test runner. Issues #4–#10 remain blocked.
+No implementation changes follow from this research. Issue #3 remains the only frontier and is blocked on an environment choice that can install both the Pinshift app and its UI-test runner. Issues #4–#10 remain blocked.

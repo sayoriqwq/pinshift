@@ -50,10 +50,10 @@ Preflight，只执行当前 frontier。保持本协议中的模型分配，不�
 ## 第一轮硬边界
 
 - 只服务开发者自己的、ADR 记录的 Mac/Xcode/iPhone 环境。
-- 只构建一个前台 Learning App、一个 Mac Simulation Controller CLI、一个 Trusted Controller Link 和一个可替换 Injection Backend。
+- 只构建一个前台 Pinshift app、一个 Mac Simulation Controller CLI、一个 Trusted Controller Link 和一个可替换 Injection Backend。
 - 只模拟一个静态坐标；不实现路线、速度、轨迹、后台模式、历史、收藏或云同步。
 - 公开 XCUITest gate 未通过时不得继续产品实现，也不得静默切换 backend。
-- Verified Simulation 只证明 Learning App 收到结果，不证明 system-wide 或 Cross-App Propagation。
+- Verified Simulation 只证明 Pinshift app 收到结果，不证明 system-wide 或 Cross-App Propagation。
 - 不使用越狱、private header/selector、未文档化 DVT/RSD 注入、无认证 listener、遥测或设备唯一标识日志。
 
 ## Ticket 依赖图
@@ -137,11 +137,11 @@ flowchart LR
 
 ## Stage A：真机可行性
 
-1. 串行完成 #2；建立最小 Learning App、观察 seam、验证逻辑和真机 GPX 证据。
+1. 串行完成 #2；建立最小 Pinshift app、观察 seam、验证逻辑和真机 GPX 证据。
 2. Lead 将 #2 核对为 integrated 后才开始 #3；#2 要到 Stage A 审查通过后才成为 accepted。
 3. #3 必须在同一 session 完成 A set、B replace、nil clear、多轮重复和至少 10 分钟稳定性。
-4. Setter 无错误返回不是通过；每次 set/replace 都需要 Learning App 的 fresh observation 证据。
-5. Clear 只有在公开 `XCUIDevice.shared.location` getter 读回 `nil` 时通过。Learning App 必须把仍显示的坐标明确描述为最后一次 observation，而不是活动模拟或已恢复的物理位置；新的物理 Core Location callback 只记为 best-effort 诊断，不设 gate 时限。
+4. Setter 无错误返回不是通过；每次 set/replace 都需要 Pinshift app 的 fresh observation 证据。
+5. Clear 只有在公开 `XCUIDevice.shared.location` getter 读回 `nil` 时通过。Pinshift app 必须把仍显示的坐标明确描述为最后一次 observation，而不是活动模拟或已恢复的物理位置；新的物理 Core Location callback 只记为 best-effort 诊断，不设 gate 时限。
 6. #3 的 A/B fresh observation、nil getter、重复操作、600 秒稳定性或公开 API 审计失败时：保留脱敏证据、保持 #3 open、所有下游保持 blocked，并向用户请求新的 backend 决策。不得进入 Stage B。
 
 ## Stage B：控制基础

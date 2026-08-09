@@ -397,7 +397,7 @@ public struct RemoteLocationControllerCommand: AsyncParsableCommand {
           pairingAuthority: authority,
           authorizationStore: KeychainControllerAuthorizationStore(
             service: "dev.sayori.remotelocation.controller-server-authorization",
-            account: "paired-learning-app"
+            account: ControllerAuthorization.pairedAppKeychainAccount
           ),
           commandHandler: SimulationControllerCommandHandler(
             controller: simulationController,

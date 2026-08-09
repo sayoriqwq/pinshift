@@ -3,7 +3,7 @@ import Foundation
 import XCTest
 
 @MainActor
-final class RemoteLocationLearningUITests: XCTestCase {
+final class PinshiftUITests: XCTestCase {
   override func setUp() {
     super.setUp()
     continueAfterFailure = false
@@ -46,8 +46,8 @@ final class RemoteLocationLearningUITests: XCTestCase {
     super.tearDown()
   }
 
-  func testLearningAppExposesPublicGateObservationSeam() {
-    let app = learningApp()
+  func testPinshiftAppExposesPublicGateObservationSeam() {
+    let app = pinshiftApp()
     app.launch()
     app.tap()
 
@@ -120,7 +120,7 @@ final class RemoteLocationLearningUITests: XCTestCase {
   }
 
   func testDiagnosticsSurviveFixtureApplyObservationStopAndAppRelaunch() {
-    let app = learningApp()
+    let app = pinshiftApp()
     app.launchEnvironment["REMOTE_LOCATION_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
     app.launchEnvironment["REMOTE_LOCATION_E2E_DIAGNOSTICS_ARTIFACT_FIXTURE"] = "1"
     app.launch()
@@ -203,7 +203,7 @@ final class RemoteLocationLearningUITests: XCTestCase {
   }
 
   func testDiagnosticsRecordUnavailableControllerAndFailedStopWithoutClaimingStopped() {
-    let app = learningApp()
+    let app = pinshiftApp()
     app.launchEnvironment["REMOTE_LOCATION_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
     app.launchEnvironment["REMOTE_LOCATION_E2E_CONTROLLER_LINK_FAILURE_FIXTURE"] = "failed-stop"
     app.launchEnvironment["REMOTE_LOCATION_E2E_DIAGNOSTICS_ARTIFACT_FIXTURE"] = "1"
@@ -621,8 +621,8 @@ final class RemoteLocationLearningUITests: XCTestCase {
     XCTAssertFalse(restricted.buttons["open-location-settings"].exists)
   }
 
-  func testPublicLocationSetAndReplaceAreVerifiedByLearningApp() {
-    let app = learningApp()
+  func testPublicLocationSetAndReplaceAreVerifiedByPinshiftApp() {
+    let app = pinshiftApp()
     if ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"] != nil {
       app.resetAuthorizationStatus(for: .location)
     }
@@ -644,7 +644,7 @@ final class RemoteLocationLearningUITests: XCTestCase {
   }
 
   func testMapSelectionReachesTheFreshObservationVerificationSeam() {
-    let app = learningApp()
+    let app = pinshiftApp()
     app.launchEnvironment["REMOTE_LOCATION_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
     app.launch()
     app.tap()
@@ -685,7 +685,7 @@ final class RemoteLocationLearningUITests: XCTestCase {
   }
 
   func testLocationPickerKeepsMapActionsVisibleAndRequiresExplicitDismissal() {
-    let app = learningApp()
+    let app = pinshiftApp()
     app.launchEnvironment["REMOTE_LOCATION_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
     app.launch()
     app.tap()
@@ -943,7 +943,7 @@ final class RemoteLocationLearningUITests: XCTestCase {
   }
 
   func testSearchResultReachesTheFreshObservationVerificationSeam() {
-    let app = learningApp()
+    let app = pinshiftApp()
     app.launchEnvironment["REMOTE_LOCATION_E2E_SEARCH_FIXTURE"] = "1"
     app.launchEnvironment["REMOTE_LOCATION_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
     app.launch()
@@ -982,7 +982,7 @@ final class RemoteLocationLearningUITests: XCTestCase {
   }
 
   func testSearchEmptyAndFailureStatesPreserveThePreviousSelection() {
-    let app = learningApp()
+    let app = pinshiftApp()
     app.launchEnvironment["REMOTE_LOCATION_E2E_SEARCH_FIXTURE"] = "1"
     app.launch()
     app.tap()
@@ -1035,7 +1035,7 @@ final class RemoteLocationLearningUITests: XCTestCase {
       throw XCTSkip("The ten-minute backend gate is recorded only on a physical device.")
     }
 
-    let app = learningApp()
+    let app = pinshiftApp()
     app.launch()
     app.tap()
     defer { XCUIDevice.shared.location = nil }
@@ -1112,7 +1112,7 @@ final class RemoteLocationLearningUITests: XCTestCase {
     XCTAssertTrue(distance.waitForExistence(timeout: 5))
     XCTContext.runActivity(
       named:
-        "Learning App verified fresh observation (\(observedTimestampLabel); \(elapsed.label); \(distance.label))"
+        "Pinshift app verified fresh observation (\(observedTimestampLabel); \(elapsed.label); \(distance.label))"
     ) { _ in }
   }
 
@@ -1168,7 +1168,7 @@ final class RemoteLocationLearningUITests: XCTestCase {
       "This is the last successful Core Location observation. It may remain after a simulation stops and does not indicate an active simulation."
     )
     XCTContext.runActivity(
-      named: "Public location proxy cleared; Learning App retains only last-observation evidence"
+      named: "Public location proxy cleared; Pinshift app retains only last-observation evidence"
     ) { _ in }
   }
 
@@ -1343,7 +1343,7 @@ final class RemoteLocationLearningUITests: XCTestCase {
     location: String,
     localNetwork: String
   ) -> XCUIApplication {
-    let app = learningApp()
+    let app = pinshiftApp()
     app.launchEnvironment["REMOTE_LOCATION_E2E_LOCATION_PERMISSION"] = location
     app.launchEnvironment["REMOTE_LOCATION_E2E_LOCAL_NETWORK_PERMISSION"] = localNetwork
     return app
@@ -1615,14 +1615,14 @@ final class RemoteLocationLearningUITests: XCTestCase {
     XCTAssertTrue(selectionSource.label.hasSuffix(source))
   }
 
-  private func learningApp() -> XCUIApplication {
+  private func pinshiftApp() -> XCUIApplication {
     let app = XCUIApplication()
     app.launchEnvironment["REMOTE_LOCATION_E2E_APP_LANGUAGE"] = "en"
     return app
   }
 
   private func selectedLocationFixtureApp() -> XCUIApplication {
-    let app = learningApp()
+    let app = pinshiftApp()
     app.launchEnvironment["REMOTE_LOCATION_E2E_SELECTED_LOCATION"] = "31.230400,121.473700"
     return app
   }

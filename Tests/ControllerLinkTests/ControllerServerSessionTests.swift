@@ -10,7 +10,7 @@ final class ControllerServerSessionTests: XCTestCase {
     let authorization = try ControllerAuthorization(bytes: Data(repeating: 0x53, count: 32))
     let store = KeychainControllerAuthorizationStore(
       service: "dev.sayori.remotelocation.tests.\(UUID().uuidString)",
-      account: "paired-learning-app"
+      account: ControllerAuthorization.pairedAppKeychainAccount
     )
     let session = ControllerServerSession(
       identity: identity,

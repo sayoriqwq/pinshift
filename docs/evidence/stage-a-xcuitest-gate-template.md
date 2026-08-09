@@ -22,16 +22,16 @@ This record is completed only from a full physical-device run of GitHub Issue #3
 
 ## Physical gate
 
-- Test: `RemoteLocationLearningUITests.testPublicLocationBackendRemainsStableForTenMinutes`
+- Test: `PinshiftUITests.testPublicLocationBackendRemainsStableForTenMinutes`
 - Session start:
 - Session end:
 - Stable duration seconds:
 - Completed A/B/clear rounds:
 - Coordinate A observations matched within 15 seconds / 25 meters: yes / no
 - Coordinate B observations matched within 15 seconds / 25 meters: yes / no
-- Every replacement required a fresh Learning App match: yes / no
+- Every replacement required a fresh Pinshift app match: yes / no
 - Every clear read `XCUIDevice.shared.location` back as nil: yes / no
-- Learning App identified any retained coordinate as the last observation rather than an active simulation: yes / no
+- Pinshift app identified any retained coordinate as the last observation rather than an active simulation: yes / no
 - Fresh physical observation after clear (best-effort diagnostic only): observed / not observed / mixed / not evaluated
 - Test result: PASS / BLOCKED
 - Failure stage and redacted diagnostic, if any:
@@ -39,6 +39,6 @@ This record is completed only from a full physical-device run of GitHub Issue #3
 ## Redaction check
 
 - [ ] No UDID, serial, ECID, tunnel address, hostname, certificate hash, private key, pairing secret, team/account identifier, or physical coordinate is present.
-- [ ] Evidence distinguishes setter acknowledgement from Learning App observation.
+- [ ] Evidence distinguishes setter acknowledgement from Pinshift app observation.
 - [ ] Evidence distinguishes public proxy clear from physical Core Location recovery.
 - [ ] Evidence makes no Cross-App Propagation claim.

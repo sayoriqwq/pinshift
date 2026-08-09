@@ -8,7 +8,7 @@ final class SimulationDiagnosticRecorderTests: XCTestCase {
     defer { try? FileManager.default.removeItem(at: directory) }
     let sessionID = UUID(uuidString: "00000000-0000-0000-0000-000000000301")!
     let recorder = SimulationDiagnosticRecorder(
-      side: .learningApp,
+      side: .pinshiftApp,
       directory: directory,
       sessionID: sessionID
     )
@@ -38,7 +38,7 @@ final class SimulationDiagnosticRecorderTests: XCTestCase {
       from: firstExport
     )
     XCTAssertEqual(decoded.schemaVersion, SimulationDiagnosticRecorder.currentSchemaVersion)
-    XCTAssertEqual(decoded.side, .learningApp)
+    XCTAssertEqual(decoded.side, .pinshiftApp)
     XCTAssertEqual(decoded.events.count, 1)
     XCTAssertLessThan(
       abs(decoded.events[0].timestamp.timeIntervalSince(timestamp)),
@@ -48,7 +48,7 @@ final class SimulationDiagnosticRecorderTests: XCTestCase {
     XCTAssertEqual(decoded.events[0].fields["longitude"], .number(121.4737))
 
     let reloaded = SimulationDiagnosticRecorder(
-      side: .learningApp,
+      side: .pinshiftApp,
       directory: directory,
       sessionID: UUID()
     )
@@ -98,7 +98,7 @@ final class SimulationDiagnosticRecorderTests: XCTestCase {
     let directory = temporaryDirectory()
     defer { try? FileManager.default.removeItem(at: directory) }
     let recorder = SimulationDiagnosticRecorder(
-      side: .learningApp,
+      side: .pinshiftApp,
       directory: directory
     )
 
@@ -175,7 +175,7 @@ final class SimulationDiagnosticRecorderTests: XCTestCase {
     defer { try? FileManager.default.removeItem(at: directory) }
     let sessionID = UUID(uuidString: "00000000-0000-0000-0000-000000000303")!
     let first = SimulationDiagnosticRecorder(
-      side: .learningApp,
+      side: .pinshiftApp,
       directory: directory,
       sessionID: sessionID
     )
@@ -188,7 +188,7 @@ final class SimulationDiagnosticRecorderTests: XCTestCase {
     try tornData.write(to: fileURL, options: .atomic)
 
     let second = SimulationDiagnosticRecorder(
-      side: .learningApp,
+      side: .pinshiftApp,
       directory: directory,
       sessionID: sessionID
     )
@@ -205,7 +205,7 @@ final class SimulationDiagnosticRecorderTests: XCTestCase {
   func testClearStartsANewGenerationWithoutChangingSimulationSemantics() async throws {
     let directory = temporaryDirectory()
     defer { try? FileManager.default.removeItem(at: directory) }
-    let recorder = SimulationDiagnosticRecorder(side: .learningApp, directory: directory)
+    let recorder = SimulationDiagnosticRecorder(side: .pinshiftApp, directory: directory)
     await recorder.record(kind: "app.lifecycle.launched")
     let before = await recorder.status()
 

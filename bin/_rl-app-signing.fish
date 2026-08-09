@@ -161,7 +161,7 @@ function rl_resign_terminate --on-signal TERM
     exit 143
 end
 
-function rl_launch_learning_app --argument-names device bundle_identifier output_root
+function rl_launch_pinshift_app --argument-names device bundle_identifier output_root
     set --local launch_json "$output_root/launch.json"
     set --local launch_log "$output_root/launch.log"
 

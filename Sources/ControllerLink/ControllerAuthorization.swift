@@ -7,6 +7,9 @@ public enum ControllerAuthorizationError: Error, Equatable, Sendable {
 }
 
 public struct ControllerAuthorization: Codable, Equatable, Sendable, CustomStringConvertible {
+  /// Persisted Mac Keychain account retained so existing pairings reconnect.
+  public static let pairedAppKeychainAccount = "paired-learning-app"
+
   private let bytes: Data
 
   public init(bytes: Data) throws {
@@ -113,7 +116,7 @@ public actor KeychainControllerAuthorizationStore: ControllerAuthorizationStore 
 
   public func save(_ authorization: ControllerAuthorization) throws {
     var attributes: [CFString: Any] = [
-      kSecValueData: authorization.keychainData,
+      kSecValueData: authorization.keychainData
     ]
     #if !os(macOS)
       attributes[kSecAttrAccessible] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly

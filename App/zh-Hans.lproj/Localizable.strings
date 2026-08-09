@@ -140,7 +140,7 @@
 "Applying to the Injection Backend…" = "正在应用到注入后端…";
 "Applied Simulation — waiting for a fresh observation" = "已应用模拟 — 等待新的观测";
 "Applied, but not verified" = "已应用，但尚未验证";
-"Verified Simulation in this Learning App" = "已在此学习 App 中验证模拟";
+"Verified Simulation in Pinshift" = "已在 Pinshift 中验证模拟";
 "Elapsed" = "耗时";
 "Distance" = "距离";
 "Simulation request failed" = "模拟请求失败";
@@ -197,7 +197,7 @@
 "Observation is %@ m away" = "观测相距 %@ 米";
 "No baseline result yet" = "尚无基线结果";
 "Scope" = "范围";
-"A match only proves that this Learning App observed the selected coordinate. It does not prove cross-app propagation." = "匹配结果只能证明此学习 App 观测到了所选坐标，并不能证明跨 App 传播。";
+"A match only proves that Pinshift observed the selected coordinate. It does not prove cross-app propagation." = "匹配结果只能证明 Pinshift 观测到了所选坐标，并不能证明跨 App 传播。";
 
 /* Location picker */
 "Choosing here only replaces the current Selected Location. It never applies a simulation until you use Apply Selected Location." = "在此选择只会替换当前待应用位置。只有点击“应用待应用位置”后才会应用模拟。";

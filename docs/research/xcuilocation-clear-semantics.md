@@ -18,11 +18,11 @@ After a physical-device UI test assigns `XCUIDevice.shared.location = nil`, what
 
 - Reading `XCUIDevice.shared.location` immediately after assigning `nil` is the public-API acceptance signal for whether XCTest still reports an active proxy. A `nil` readback satisfies backend clear but does not claim that Core Location has already delivered a newer physical observation.
 - The former 60-second clear window was not an Apple-documented guarantee and is removed from the gate. A physical callback after clear remains useful diagnostic evidence only.
-- If the getter reads back `nil` while the Learning App retains the last simulated observation, the remaining ambiguity is between delayed/no physical Core Location delivery and temporary physical-location unavailability. Capturing the latest observation timestamp and any `locationUnknown` diagnostic is the smallest public probe that distinguishes those states.
+- If the getter reads back `nil` while the Pinshift app retains the last simulated observation, the remaining ambiguity is between delayed/no physical Core Location delivery and temporary physical-location unavailability. Capturing the latest observation timestamp and any `locationUnknown` diagnostic is the smallest public probe that distinguishes those states.
 - If the getter remains non-`nil`, that is direct evidence of a public XCTest clear failure on the approved baseline and should keep Issue #3 open pending the protocol’s backend decision path.
 - Disabling automatic pausing was tested as a hypothesis but did not explain `A-PHYS-001`. Under the current observer configuration, the revised 10-round/618.1-second gate passed; this is empirical evidence for that configuration, not an Apple-documented continuous-location requirement.
 - The combined evidence now identifies a contract mismatch rather than a remaining app-side timing defect: proxy state can be cleared deterministically, but a fresh physical observation is owned by Core Location and is not promised as a consequence of that clear. Repeating the run, extending the timeout, or restarting observation may change empirical delivery, but none turns the fresh-callback requirement into an Apple-documented guarantee.
 
 ## Project decision
 
-The user approved continuing with the public XCUITest backend under ADR-0008. Issue #3 now treats public proxy removal, Learning App observation retention, and later physical recovery as separate observable facts; only the first is the deterministic clear gate.
+The user approved continuing with the public XCUITest backend under ADR-0008. Issue #3 now treats public proxy removal, Pinshift app observation retention, and later physical recovery as separate observable facts; only the first is the deterministic clear gate.

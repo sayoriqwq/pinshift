@@ -14,7 +14,7 @@ fileGroups:
   - Fixtures
 
 targets:
-  RemoteLocationLearning:
+  Pinshift:
     type: application
     platform: iOS
     configFiles:
@@ -31,32 +31,34 @@ targets:
         CODE_SIGN_STYLE: Automatic
         CURRENT_PROJECT_VERSION: 1
         GENERATE_INFOPLIST_FILE: false
-        INFOPLIST_FILE: Config/RemoteLocationLearning-Info.plist
+        INFOPLIST_FILE: Config/Pinshift-Info.plist
         MARKETING_VERSION: 1.0
+        # Compatibility identifier: changing it would install a second app and
+        # lose access to the current sandbox and default Keychain access group.
         PRODUCT_BUNDLE_IDENTIFIER: dev.sayori.remotelocation.learning
         SUPPORTS_MACCATALYST: false
         TARGETED_DEVICE_FAMILY: 1
     scheme:
       gatherCoverageData: false
       testTargets:
-        - RemoteLocationLearningUITests
+        - PinshiftUITests
 
-  RemoteLocationLearningUITests:
+  PinshiftUITests:
     type: bundle.ui-testing
     platform: iOS
     configFiles:
       Debug: Config/Signing.xcconfig
       Release: Config/Signing.xcconfig
     sources:
-      - path: Tests/RemoteLocationLearningUITests
+      - path: Tests/PinshiftUITests
     dependencies:
-      - target: RemoteLocationLearning
+      - target: Pinshift
     settings:
       base:
         CODE_SIGN_STYLE: Automatic
         GENERATE_INFOPLIST_FILE: true
         INFOPLIST_KEY_NSLocalNetworkUsageDescription: >-
           UI tests use local-network access only when explicitly exercising Controller Link behavior.
-        PRODUCT_BUNDLE_IDENTIFIER: dev.sayori.remotelocation.learning-uitests
+        PRODUCT_BUNDLE_IDENTIFIER: dev.sayori.remotelocation.uitests
         SUPPORTS_MACCATALYST: false
         TARGETED_DEVICE_FAMILY: 1

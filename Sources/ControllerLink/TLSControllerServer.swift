@@ -18,7 +18,7 @@ public final class TLSControllerServer: @unchecked Sendable {
   public init(
     identity: SecIdentity,
     session: ControllerServerSession,
-    serviceName: String = "Remote Location Controller"
+    serviceName: String = "Pinshift Controller"
   ) {
     self.identity = identity
     self.session = session

@@ -15,9 +15,9 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "4F76A436D1D407E2828FEA49"
-               BuildableName = "RemoteLocationLearning.app"
-               BlueprintName = "RemoteLocationLearning"
+               BlueprintIdentifier = "95CBA304701F4478C159A087"
+               BuildableName = "Pinshift.app"
+               BlueprintName = "Pinshift"
                ReferencedContainer = "container:RemoteLocation.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -32,9 +32,9 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "4F76A436D1D407E2828FEA49"
-            BuildableName = "RemoteLocationLearning.app"
-            BlueprintName = "RemoteLocationLearning"
+            BlueprintIdentifier = "95CBA304701F4478C159A087"
+            BuildableName = "Pinshift.app"
+            BlueprintName = "Pinshift"
             ReferencedContainer = "container:RemoteLocation.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
@@ -44,9 +44,9 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "36CE415BF8C46C398B672919"
-               BuildableName = "RemoteLocationLearningUITests.xctest"
-               BlueprintName = "RemoteLocationLearningUITests"
+               BlueprintIdentifier = "682B4497AAB05CDE2C6A5723"
+               BuildableName = "PinshiftUITests.xctest"
+               BlueprintName = "PinshiftUITests"
                ReferencedContainer = "container:RemoteLocation.xcodeproj">
             </BuildableReference>
          </TestableReference>
@@ -68,9 +68,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "4F76A436D1D407E2828FEA49"
-            BuildableName = "RemoteLocationLearning.app"
-            BlueprintName = "RemoteLocationLearning"
+            BlueprintIdentifier = "95CBA304701F4478C159A087"
+            BuildableName = "Pinshift.app"
+            BlueprintName = "Pinshift"
             ReferencedContainer = "container:RemoteLocation.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -87,9 +87,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "4F76A436D1D407E2828FEA49"
-            BuildableName = "RemoteLocationLearning.app"
-            BlueprintName = "RemoteLocationLearning"
+            BlueprintIdentifier = "95CBA304701F4478C159A087"
+            BuildableName = "Pinshift.app"
+            BlueprintName = "Pinshift"
             ReferencedContainer = "container:RemoteLocation.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

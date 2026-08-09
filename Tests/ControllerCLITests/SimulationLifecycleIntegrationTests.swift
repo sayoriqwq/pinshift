@@ -421,7 +421,7 @@ final class SimulationLifecycleIntegrationTests: XCTestCase {
     XCTAssertEqual(applyCount, 1)
   }
 
-  func testPendingLeaseExtensionSurvivesLearningAppRelaunch() throws {
+  func testPendingLeaseExtensionSurvivesPinshiftAppRelaunch() throws {
     let directory = FileManager.default.temporaryDirectory
       .appendingPathComponent("pinshift-extension-session-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: directory) }

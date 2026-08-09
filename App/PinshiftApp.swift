@@ -66,7 +66,7 @@ enum AppLocalization {
 }
 
 @main
-struct RemoteLocationLearningApp: App {
+struct PinshiftApp: App {
   @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.english
 
   var body: some Scene {

@@ -33,12 +33,12 @@ The simulated-source flag is diagnostic only. A passing result requires a fresh 
 - Time GPX simulation stopped: after the matching run; exact timestamp was not retained
 - Time a non-target location was next observed: after opening a location consumer and allowing Core Location to recover; exact timestamp was not retained
 - Target coordinate no longer observed: yes
-- Notes: Core Location briefly reported `locationUnknown` after GPX stopped. The Learning App retained the last successful observation, then received a non-simulated update and displayed the simulated-source diagnostic as `No`.
+- Notes: Core Location briefly reported `locationUnknown` after GPX stopped. The Pinshift app retained the last successful observation, then received a non-simulated update and displayed the simulated-source diagnostic as `No`.
 
 ## Redaction check
 
 - [x] No UDID, serial, ECID, tunnel address, hostname, certificate hash, private key, pairing secret, or account identifier is present.
-- [x] The evidence only claims that the Learning App observed the result; it makes no Cross-App Propagation claim.
+- [x] The evidence only claims that the Pinshift app observed the result; it makes no Cross-App Propagation claim.
 
 ## Evidence limitations
 

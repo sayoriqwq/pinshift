@@ -1,6 +1,6 @@
 # Support only the current personal environment
 
-The first round will support only the developer's current Mac, installed Xcode toolchain, and single personal iPhone, using either a Personal Team or an existing paid team for signing. The project deliberately trades portability and backward-compatibility work for a smaller learning-focused implementation, and it will not claim support for other macOS, Xcode, iOS, device, account, or distribution environments.
+The first round will support only the developer's current Mac, installed Xcode toolchain, and single personal iPhone, using either a Personal Team or an existing paid team for signing. The project deliberately trades portability and backward-compatibility work for a smaller focused implementation, and it will not claim support for other macOS, Xcode, iOS, device, account, or distribution environments.
 
 ## Recorded baseline
 

@@ -1,2 +1,2 @@
-"NSLocalNetworkUsageDescription" = "此 App 会连接到可信的 Mac 模拟控制器，以发送明确的应用和停止请求。";
-"NSLocationWhenInUseUsageDescription" = "此学习 App 会在打开时观测你的位置，以便验证通过 Xcode devicectl 工作流应用的坐标。";
+"NSLocalNetworkUsageDescription" = "Pinshift 会连接到可信的 Mac 模拟控制器，以发送明确的应用和停止请求。";
+"NSLocationWhenInUseUsageDescription" = "Pinshift 会在打开时观测你的位置，以便验证通过 Xcode devicectl 工作流应用的坐标。";

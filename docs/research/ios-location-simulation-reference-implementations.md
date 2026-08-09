@@ -8,9 +8,9 @@
 
 ## 研究边界
 
-本研究服务于个人学习和自己设备上的开发测试：一台 Mac、一台自己的物理 iPhone、Developer Mode、Xcode 管理的测试会话，以及一个静态坐标。它不研究越狱、私有 iOS App API、规避第三方 App 的模拟位置检测、绕过服务规则或面向他人发布。
+本研究服务于个人设备上的开发测试：一台 Mac、一台自己的物理 iPhone、Developer Mode、Xcode 管理的测试会话，以及一个静态坐标。它不研究越狱、私有 iOS App API、规避第三方 App 的模拟位置检测、绕过服务规则或面向他人发布。
 
-本文沿用项目领域语言：第一轮目标是实现 **Simulation Capability（模拟能力）**，并在学习 App 内得到 **Verified Simulation（已验证模拟）**。**Cross-App Propagation（跨 App 传播）** 是后续按 App 实测的结果，不是第一轮验收条件，也不能从“设备接受了模拟命令”直接推导出来。
+本文沿用项目领域语言：第一轮目标是实现 **Simulation Capability（模拟能力）**，并在 Pinshift 中得到 **Verified Simulation（已验证模拟）**。**Cross-App Propagation（跨 App 传播）** 是后续按 App 实测的结果，不是第一轮验收条件，也不能从“设备接受了模拟命令”直接推导出来。
 
 ## 结论
 
@@ -18,11 +18,11 @@
 
 建议的技术路线是：
 
-1. 先以 Apple 的 Xcode GPX 调试器作为基线，确认自己的学习 App 能收到可识别的模拟位置。
+1. 先以 Apple 的 Xcode GPX 调试器作为基线，确认 Pinshift 能收到可识别的模拟位置。
 2. 再做最小物理设备 XCUITest probe，验证静态坐标能反复 `set → replace → clear`，并维持足够长的测试会话。
 3. probe 通过后，才把它接到 Mac Simulation Controller 和 iPhone Controller Link。
 4. 保留 `InjectionBackend` 边界，但第一轮不实现第二个后端。
-5. 只有公开 XCUITest 路径失败时，才把 DVT/Instruments 社区工具作为独立的学习实验；不应先复制其逆向协议，也不应把它描述成 Apple 支持的公共 API。
+5. 只有公开 XCUITest 路径失败时，才把 DVT/Instruments 社区工具作为独立的可行性实验；不应先复制其逆向协议，也不应把它描述成 Apple 支持的公共 API。
 
 当前没有证据足以承诺微信、高德地图或任意其他 App 会采用该坐标。Apple 只承诺 UI 自动化测试可以给设备设置 proxy location；社区的 DVT 测试能看到 `locationd` 的 Simulation 日志，但两者都不是某个第三方 App 的结果验证。
 
@@ -45,10 +45,10 @@ Apple 明确说明 Xcode debugger 加载 GPX 可以产生软件模拟位置；Co
 
 这带来两个结论：
 
-- GPX 是建立“当前设备和学习 App 的 Apple 路径确实工作”的最好基线。
+- GPX 是建立“当前设备和 Pinshift 的 Apple 路径确实工作”的最好基线。
 - `isSimulatedBySoftware` 只是诊断信号，不能替代坐标、时间戳和精度验证，也不能保证第三方 App 会接受输入。
 
-### Developer Mode 和个人签名足够学习，但有维护成本
+### Developer Mode 和个人签名足够个人开发，但有维护成本
 
 Apple 的 [Developer Mode 文档](https://developer.apple.com/documentation/xcode/enabling-developer-mode-on-a-device)说明它用于允许通过 Xcode 构建、运行和调试开发签名软件；它不是赋予普通 iOS App 修改系统位置的 entitlement。Apple 也允许使用个人 Apple Account 在自己的设备上测试；[Personal Team 的 App ID、设备注册和 provisioning profile 会在 7 天后过期](https://developer.apple.com/support/compare-memberships/)，因此要接受周期性重新构建和安装。
 
@@ -60,7 +60,7 @@ Apple 的 [Developer Mode 文档](https://developer.apple.com/documentation/xcod
 
 Apple 的 [Network framework peer-to-peer 示例](https://developer.apple.com/documentation/network/building-a-custom-peer-to-peer-protocol)直接组合 Bonjour 与 TLS，适合作为 Controller Link 的协议参考。[TN3179](https://developer.apple.com/documentation/technotes/tn3179-understanding-local-network-privacy)要求 iOS App 提供 `NSLocalNetworkUsageDescription`，浏览或注册 Bonjour 服务时声明 `NSBonjourServices`，并正确处理授权尚未决定、被拒绝和等待连接等状态。
 
-这条链路与 Xcode 到设备的测试连接是两件事：iPhone 学习 App 通过 Bonjour/TLS 请求 Mac Simulation Controller；Mac 再驱动当前 Injection Backend。
+这条链路与 Xcode 到设备的测试连接是两件事：iPhone Pinshift 通过 Bonjour/TLS 请求 Mac Simulation Controller；Mac 再驱动当前 Injection Backend。
 
 ## 社区参考实现源码审计
 
@@ -74,7 +74,7 @@ Apple 的 [Network framework peer-to-peer 示例](https://developer.apple.com/do
 - `nil` 是公开 API 的明确清理动作，不需要私有 selector。
 - 其物理设备文档提醒：失败后的诊断收集可能令 `xcodebuild` 卡住，doctor 和运行器应有超时、日志和明确的中断路径。
 
-它没有证明：当前个人签名环境一定能稳定运行、我们的学习 App 会收到每次更新，或任何第三方 App 会采用该坐标。
+它没有证明：当前个人签名环境一定能稳定运行、Pinshift 会收到每次更新，或任何第三方 App 会采用该坐标。
 
 ### 2. simpilot：与目标拓扑最接近，但只能研究、不能复制
 
@@ -112,7 +112,7 @@ Apple 的 [Network framework peer-to-peer 示例](https://developer.apple.com/do
 
 [go-ios](https://github.com/danielpaulus/go-ios) 是活跃的 [MIT 项目](https://github.com/danielpaulus/go-ios/blob/274bc438a05e938ee55130dabf7f535408473387/LICENSE)。其 CLI 对支持 RSD 的设备选择 Instruments location service，否则使用旧服务，[版本分支在命令入口可见](https://github.com/danielpaulus/go-ios/blob/274bc438a05e938ee55130dabf7f535408473387/cmd_device_location.go#L11-L24)；DVT 实现使用与 pymobiledevice3 相同的 [channel 与 set/stop selector](https://github.com/danielpaulus/go-ios/blob/274bc438a05e938ee55130dabf7f535408473387/ios/instruments/location_simulation.go#L8-L49)。
 
-最有价值的是它的真机 e2e 思路：由于没有 get-location 命令，测试通过观察设备自身 `com.apple.locationd.Core` / `Simulation` 日志来确认模拟活动，并在 SIGINT 时停止和恢复，[源码明确记录了这个验证边界](https://github.com/danielpaulus/go-ios/blob/274bc438a05e938ee55130dabf7f535408473387/test/e2e/tunnel/setlocation_test.go#L12-L35)。这可以作为 backend 诊断信号，但仍不能替代学习 App 的 Observed Location，更不能替代 Cross-App 测试。
+最有价值的是它的真机 e2e 思路：由于没有 get-location 命令，测试通过观察设备自身 `com.apple.locationd.Core` / `Simulation` 日志来确认模拟活动，并在 SIGINT 时停止和恢复，[源码明确记录了这个验证边界](https://github.com/danielpaulus/go-ios/blob/274bc438a05e938ee55130dabf7f535408473387/test/e2e/tunnel/setlocation_test.go#L12-L35)。这可以作为 backend 诊断信号，但仍不能替代 Pinshift 的 Observed Location，更不能替代 Cross-App 测试。
 
 ### 6. idb：后端抽象值得借鉴，物理设备实现已偏旧
 
@@ -156,35 +156,35 @@ Apple 的 [Network framework peer-to-peer 示例](https://developer.apple.com/do
 
 ### Spike 1：Xcode GPX 基线
 
-在自己的学习 App 内请求 When In Use location，手工用 Xcode 设置一个静态 GPX 点。通过条件：15 秒内收到与 Selected Location 相距不超过 25 米的新 `CLLocation`；同时记录 timestamp、horizontalAccuracy 和 `sourceInformation?.isSimulatedBySoftware`，但模拟标志不参与唯一通过判定。停止模拟后确认真实位置更新能够恢复。
+在 Pinshift 中请求 When In Use location，手工用 Xcode 设置一个静态 GPX 点。通过条件：15 秒内收到与 Selected Location 相距不超过 25 米的新 `CLLocation`；同时记录 timestamp、horizontalAccuracy 和 `sourceInformation?.isSimulatedBySoftware`，但模拟标志不参与唯一通过判定。停止模拟后确认真实位置更新能够恢复。
 
 ### Spike 2：公开 XCUITest 最小 runner
 
 只实现一个 UI test target 和极小命令循环，不先接地图、Bonjour 或配对。验证顺序：
 
-1. 设置坐标 A，学习 App 得到 Verified Simulation。
+1. 设置坐标 A，Pinshift 得到 Verified Simulation。
 2. 不重启会话，替换为坐标 B，再次得到 Verified Simulation。
 3. 设置 `XCUIDevice.shared.location = nil`，确认模拟停止。
 4. 重复以上循环，保持会话至少 10 分钟，记录 runner/xcodebuild 的退出和超时行为。
 5. 全程只导入公开 XCTest/XCUIAutomation/CoreLocation API；构建产物不得包含 WebDriverAgent 的 private headers 或 DVT selector。
 
-这个 spike 的通过只能证明自己的学习 App 和当前设备组合可行。
+这个 spike 的通过只能证明 Pinshift 和当前设备组合可行。
 
 ### Spike 3：最小 Controller 串接
 
 probe 通过后再加入：
 
-- iPhone 学习 App 使用 MapKit 选择一个静态坐标。
+- iPhone Pinshift 使用 MapKit 选择一个静态坐标。
 - App 通过 Bonjour/TLS 向 Mac Simulation Controller 发送 request。
 - Mac Controller 通过每会话认证的内部通道把 request 交给 Test Runner。
-- Controller 返回 Applied Simulation；学习 App 的 Core Location 观察再将它提升为 Verified Simulation。
+- Controller 返回 Applied Simulation；Pinshift 的 Core Location 观察再将它提升为 Verified Simulation。
 - 正常退出和显式 `reset` 都调用 clear；断线自动恢复不作为第一轮能力。
 
-不要直接照搬 simpilot 的明文全接口 listener。内部 runner 通道可以从其 session-token 思路学习，但是否采用 device listener、runner 主动连接 Mac，或 Xcode 现有 transport，需要在 spike 中以最小暴露面决定。
+不要直接照搬 simpilot 的明文全接口 listener。内部 runner 通道可以从其 session-token 思路借鉴，但是否采用 device listener、runner 主动连接 Mac，或 Xcode 现有 transport，需要在 spike 中以最小暴露面决定。
 
 ### Spike 4：仅在公开 API 失败时进行 DVT 对照
 
-先用未改动的 `go-ios` 或 `pymobiledevice3` 可执行工具在自己的设备上做一次 set/stop 对照，记录：当前 iOS/Xcode 版本、tunnel/DDI 前置条件、是否出现 `locationd` Simulation 日志、学习 App 是否达到相同 Verified Simulation，以及退出后是否可靠恢复。这个实验不复制协议源码，也不自动升级为项目依赖。
+先用未改动的 `go-ios` 或 `pymobiledevice3` 可执行工具在自己的设备上做一次 set/stop 对照，记录：当前 iOS/Xcode 版本、tunnel/DDI 前置条件、是否出现 `locationd` Simulation 日志、Pinshift 是否达到相同 Verified Simulation，以及退出后是否可靠恢复。这个实验不复制协议源码，也不自动升级为项目依赖。
 
 ## 生态组件建议
 
@@ -214,7 +214,7 @@ probe 通过后再加入：
 ## 仍待实测的问题
 
 1. 公开 `XCUIDevice.location` 在当前 Personal Team + 物理 iPhone 上能否稳定 set/replace/clear。
-2. Test Runner 是否能在学习 App 前台交互期间持续至少 10 分钟，并被 Mac 安全地投递新坐标。
+2. Test Runner 是否能在 Pinshift 前台交互期间持续至少 10 分钟，并被 Mac 安全地投递新坐标。
 3. `nil` clear、runner 正常退出、runner 异常退出三种路径的真实恢复行为是否一致。
 4. App 收到的位置 timestamp/accuracy 更新是否稳定满足 15 秒与 25 米阈值。
 5. runner 内部通道的最简安全形式，以及是否需要 `swift-certificates`。
@@ -222,6 +222,6 @@ probe 通过后再加入：
 
 ## 对后续需求文档的输入
 
-后续文档可以锁定这些内容：Mac-hosted Simulation Controller、Bonjour/TLS Controller Link、公开 XCUITest 作为第一个 probe、backend-neutral request/response、静态坐标、显式 clear/reset、自己的学习 App 完成 Verified Simulation，以及 Cross-App Propagation 不进入第一轮验收。
+后续文档可以锁定这些内容：Mac-hosted Simulation Controller、Bonjour/TLS Controller Link、公开 XCUITest 作为第一个 probe、backend-neutral request/response、静态坐标、显式 clear/reset、Pinshift 完成 Verified Simulation，以及 Cross-App Propagation 不进入第一轮验收。
 
 后续文档不应锁定这些未经验证的内容：XCUITest 已经通过真机验证、任意第三方 App 都会收到坐标、测试会话永不掉线、`devicectl` 可直接设置物理位置，或 DVT 逆向协议是 Apple 公共支持面。

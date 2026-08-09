@@ -7,66 +7,66 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0141CFE02E6DCC49FE26DC35 /* BaselineViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2946B4BB60FF2EB9EE86F9C0 /* BaselineViewModel.swift */; };
-		0424120E78793B82A9C0EEFC /* TLSControllerServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF94DD13B7AE6AC2A17959A0 /* TLSControllerServer.swift */; };
-		0860134A04D283931ACEC1EA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4E852213CC84B0F2669B6561 /* Assets.xcassets */; };
-		0A31B5075461853BDC513685 /* LocationPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 684624D5D39DBB2BF5B5241C /* LocationPickerView.swift */; };
-		1114504CBF27299C210FA602 /* ActionButtonLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF1040220CDFCF2BF2D63AE7 /* ActionButtonLabel.swift */; };
-		12809ECEE10873926AFA3700 /* SimulationDiagnosticsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B5953299B034AD5EF3F392B /* SimulationDiagnosticsViewModel.swift */; };
-		169123AF82F73EDCE1764F36 /* ControllerCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFACA599FE341A79901ABFD2 /* ControllerCommand.swift */; };
-		170FE9E57A66954667B8B70A /* TrustedControllerLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A510E5270754E988E724FF /* TrustedControllerLink.swift */; };
-		262CE139F8FBA0FC7C5C6ED0 /* ControllerIdentitySecurity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43265D14CD58BCCB317F4B97 /* ControllerIdentitySecurity.swift */; };
-		2809B0FA93874D6C019A5EEC /* SimulationDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = B58E3D125202907D83021C13 /* SimulationDiagnostics.swift */; };
-		2B6B0502B961863B9D984F7A /* RemoteLocationLearningUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 197FED159197087E056EF221 /* RemoteLocationLearningUITests.swift */; };
-		32171308A1EFA700324D9D27 /* ControllerServerSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A85DD686C84AD18BD24E5A3 /* ControllerServerSession.swift */; };
-		4A3179EDCDE3AD836C6B78D6 /* RemoteLocationLearningApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F80C50201FFD0E312184A3B0 /* RemoteLocationLearningApp.swift */; };
-		5B628C6FFED5ED7D9D02C2DD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA4971E6986AC5E4D1A1C9F8 /* ContentView.swift */; };
-		5DC62CDA96B694F6627A452C /* Pairing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85E9B5F7C500D71F989B5E56 /* Pairing.swift */; };
-		7B9E245DAE2A540E53D4AB82 /* ManualSimulationSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57D51375A3CB3DE18FF8E61C /* ManualSimulationSession.swift */; };
-		86CE37803A3E141431AAE412 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 8BD8BE733CD1A04C9F08C354 /* InfoPlist.strings */; };
-		87CBDCEE4A1B98B261127A5B /* SimulationDiagnosticPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FB68D3C145392450ACCDC35 /* SimulationDiagnosticPipeline.swift */; };
-		91DF5D1DB1E4E7402B47AD52 /* ControllerLinkState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FBC4365BC86EB9D3D4AB863 /* ControllerLinkState.swift */; };
-		A486C38F99D371F613F6AF96 /* ControllerAuthorization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E5C50FBB1259E83FEE3E985 /* ControllerAuthorization.swift */; };
-		AAB946F25198A1BE77307C2F /* LocationObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A563353D69C294888044F5 /* LocationObserver.swift */; };
-		ACA268E1A51E73A40C7FB9B4 /* RemoteLocationControllerLinkUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 298C583811F0BAF517BA99C4 /* RemoteLocationControllerLinkUITests.swift */; };
-		AFDABC47C65E35DB76440064 /* BonjourControllerDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D01ADB65B3135833CB6B1EC /* BonjourControllerDiscovery.swift */; };
-		B5DA7DFDC30CE2A3FC82AE08 /* LocationSelectionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C70085091723FA515C299CE6 /* LocationSelectionState.swift */; };
-		CA7940E553250C41E4C9DD7E /* LocationDomain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95CD0A0C359DAC0C72552BCF /* LocationDomain.swift */; };
-		D21A656437608A901C7E3359 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 8B7FDC8186DDB1CE4AD254C3 /* Localizable.strings */; };
-		D52611A0DC8B95B20174F71F /* ControllerTrust.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FD5DF52927D1D5FE89694F1 /* ControllerTrust.swift */; };
-		DBA9472FBD63FC421A22C6F3 /* NetworkControllerLinkTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 243B501AE445B272F30524A7 /* NetworkControllerLinkTransport.swift */; };
-		E2634B64C10D7ACEE42B38D6 /* LocationPickerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BC397A60889A8628C817645 /* LocationPickerViewModel.swift */; };
-		E633774929757BF244D2C4EE /* SavedLocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4287C51343D226422AF32C69 /* SavedLocation.swift */; };
-		EB556E72E0BB86546C611EFB /* ControllerLinkViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA8739B4A2BD9144A4754C4C /* ControllerLinkViewModel.swift */; };
-		F84692E77EA6524D49745920 /* SavedLocationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD15D03E1892DCB2665B33D6 /* SavedLocationStore.swift */; };
+		0181E4496368AC026ED04F50 /* LocationDomain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95CD0A0C359DAC0C72552BCF /* LocationDomain.swift */; };
+		01FF4B2E96C68800373C9922 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 8B7FDC8186DDB1CE4AD254C3 /* Localizable.strings */; };
+		1F3E8B8ABE484A3CC9FB4CC9 /* PinshiftControllerLinkUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1558AFDC7504C2A6214FA74 /* PinshiftControllerLinkUITests.swift */; };
+		25C640C50A389970BEDB9DEB /* Pairing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85E9B5F7C500D71F989B5E56 /* Pairing.swift */; };
+		282844D692846F68C7F783DA /* TLSControllerServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF94DD13B7AE6AC2A17959A0 /* TLSControllerServer.swift */; };
+		40A2895763F0714B5122F4E0 /* ManualSimulationSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57D51375A3CB3DE18FF8E61C /* ManualSimulationSession.swift */; };
+		40D5C447F105453FE0461F2C /* SimulationDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = B58E3D125202907D83021C13 /* SimulationDiagnostics.swift */; };
+		426A646BFAFDDC5E6E1F2D9B /* PinshiftUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48F44E61639E318EBB8D59F7 /* PinshiftUITests.swift */; };
+		47C823039D50C28B812A1392 /* LocationSelectionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C70085091723FA515C299CE6 /* LocationSelectionState.swift */; };
+		52D77EDDFE862167FAF1923C /* SimulationDiagnosticsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B5953299B034AD5EF3F392B /* SimulationDiagnosticsViewModel.swift */; };
+		5517DABA6A87CDB514AC7DA2 /* BonjourControllerDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D01ADB65B3135833CB6B1EC /* BonjourControllerDiscovery.swift */; };
+		57F431331A4598FA49D9380E /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 8BD8BE733CD1A04C9F08C354 /* InfoPlist.strings */; };
+		5D64F0978AA66AEE239D5B79 /* LocationPickerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BC397A60889A8628C817645 /* LocationPickerViewModel.swift */; };
+		646C8018D0E7D92C5EC3FE86 /* LocationObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A563353D69C294888044F5 /* LocationObserver.swift */; };
+		7354845BD6CE42E33BC85AAC /* ActionButtonLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF1040220CDFCF2BF2D63AE7 /* ActionButtonLabel.swift */; };
+		8CA46471441710679B28B145 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA4971E6986AC5E4D1A1C9F8 /* ContentView.swift */; };
+		8D8F9EAEB746880711D79499 /* SimulationDiagnosticPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FB68D3C145392450ACCDC35 /* SimulationDiagnosticPipeline.swift */; };
+		949FE3B5B57A48AAE9D5F3BB /* ControllerLinkState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FBC4365BC86EB9D3D4AB863 /* ControllerLinkState.swift */; };
+		A22835DAEA5C86A65DEEB65E /* NetworkControllerLinkTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 243B501AE445B272F30524A7 /* NetworkControllerLinkTransport.swift */; };
+		A4512847991B108F60767123 /* TrustedControllerLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A510E5270754E988E724FF /* TrustedControllerLink.swift */; };
+		A879B9A46F0312B8E0B34EA7 /* SavedLocationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD15D03E1892DCB2665B33D6 /* SavedLocationStore.swift */; };
+		AC24F47B434A3CBB1A2B3403 /* ControllerIdentitySecurity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43265D14CD58BCCB317F4B97 /* ControllerIdentitySecurity.swift */; };
+		B7FF14B011706AE6DA0B8BA3 /* ControllerLinkViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA8739B4A2BD9144A4754C4C /* ControllerLinkViewModel.swift */; };
+		BCFEE3E93B742CB32BDC6809 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4E852213CC84B0F2669B6561 /* Assets.xcassets */; };
+		BD7E7F63116B4FE1B4709212 /* BaselineViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2946B4BB60FF2EB9EE86F9C0 /* BaselineViewModel.swift */; };
+		C30588071B0D4659385BC4E3 /* SavedLocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4287C51343D226422AF32C69 /* SavedLocation.swift */; };
+		CB02467A64E838BAF5C321FE /* PinshiftApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52A2509E0668D96B963150FB /* PinshiftApp.swift */; };
+		DA63D044379E28D90A892607 /* LocationPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 684624D5D39DBB2BF5B5241C /* LocationPickerView.swift */; };
+		DC2AF064E89CCDE9DF6754C2 /* ControllerAuthorization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E5C50FBB1259E83FEE3E985 /* ControllerAuthorization.swift */; };
+		EC45C855A79823A9D4143485 /* ControllerServerSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A85DD686C84AD18BD24E5A3 /* ControllerServerSession.swift */; };
+		F37F4F44DA24907605877EC9 /* ControllerCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFACA599FE341A79901ABFD2 /* ControllerCommand.swift */; };
+		FDC554DC226B179C52D54146 /* ControllerTrust.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FD5DF52927D1D5FE89694F1 /* ControllerTrust.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		E50B6607BE4007DEDA56C21D /* PBXContainerItemProxy */ = {
+		0B0CF7C2D518289E92A06AEA /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 7C484CABA92041C9C4428A43 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 4F76A436D1D407E2828FEA49;
-			remoteInfo = RemoteLocationLearning;
+			remoteGlobalIDString = 95CBA304701F4478C159A087;
+			remoteInfo = Pinshift;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		0E5C50FBB1259E83FEE3E985 /* ControllerAuthorization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerAuthorization.swift; sourceTree = "<group>"; };
-		197FED159197087E056EF221 /* RemoteLocationLearningUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteLocationLearningUITests.swift; sourceTree = "<group>"; };
 		243B501AE445B272F30524A7 /* NetworkControllerLinkTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkControllerLinkTransport.swift; sourceTree = "<group>"; };
 		2946B4BB60FF2EB9EE86F9C0 /* BaselineViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaselineViewModel.swift; sourceTree = "<group>"; };
-		298C583811F0BAF517BA99C4 /* RemoteLocationControllerLinkUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteLocationControllerLinkUITests.swift; sourceTree = "<group>"; };
 		2B5953299B034AD5EF3F392B /* SimulationDiagnosticsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationDiagnosticsViewModel.swift; sourceTree = "<group>"; };
 		2FBC4365BC86EB9D3D4AB863 /* ControllerLinkState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerLinkState.swift; sourceTree = "<group>"; };
+		3BE1FD9DE4A63D8866A2301B /* PinshiftUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PinshiftUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3F8D44EB528DB6F25B107FF7 /* ShanghaiBaseline.gpx */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = ShanghaiBaseline.gpx; sourceTree = "<group>"; };
 		4287C51343D226422AF32C69 /* SavedLocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedLocation.swift; sourceTree = "<group>"; };
 		43265D14CD58BCCB317F4B97 /* ControllerIdentitySecurity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerIdentitySecurity.swift; sourceTree = "<group>"; };
+		48F44E61639E318EBB8D59F7 /* PinshiftUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinshiftUITests.swift; sourceTree = "<group>"; };
 		492552E0E66D6D7BD046B2EF /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		4A85DD686C84AD18BD24E5A3 /* ControllerServerSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerServerSession.swift; sourceTree = "<group>"; };
 		4E852213CC84B0F2669B6561 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		52A2509E0668D96B963150FB /* PinshiftApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinshiftApp.swift; sourceTree = "<group>"; };
 		57D51375A3CB3DE18FF8E61C /* ManualSimulationSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualSimulationSession.swift; sourceTree = "<group>"; };
-		588F6D628E098CA7C9DBB436 /* RemoteLocationLearningUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = RemoteLocationLearningUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5D01ADB65B3135833CB6B1EC /* BonjourControllerDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BonjourControllerDiscovery.swift; sourceTree = "<group>"; };
 		684624D5D39DBB2BF5B5241C /* LocationPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationPickerView.swift; sourceTree = "<group>"; };
 		6FD5DF52927D1D5FE89694F1 /* ControllerTrust.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerTrust.swift; sourceTree = "<group>"; };
@@ -80,27 +80,18 @@
 		AD15D03E1892DCB2665B33D6 /* SavedLocationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedLocationStore.swift; sourceTree = "<group>"; };
 		B58E3D125202907D83021C13 /* SimulationDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationDiagnostics.swift; sourceTree = "<group>"; };
 		BF1040220CDFCF2BF2D63AE7 /* ActionButtonLabel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionButtonLabel.swift; sourceTree = "<group>"; };
-		C05D2783175B6663C53E3079 /* RemoteLocationLearning.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = RemoteLocationLearning.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C1A510E5270754E988E724FF /* TrustedControllerLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrustedControllerLink.swift; sourceTree = "<group>"; };
 		C70085091723FA515C299CE6 /* LocationSelectionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationSelectionState.swift; sourceTree = "<group>"; };
 		CA4971E6986AC5E4D1A1C9F8 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		DA8739B4A2BD9144A4754C4C /* ControllerLinkViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerLinkViewModel.swift; sourceTree = "<group>"; };
 		ECC21F0D2D4600F40A328F3E /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		EFACA599FE341A79901ABFD2 /* ControllerCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerCommand.swift; sourceTree = "<group>"; };
-		F80C50201FFD0E312184A3B0 /* RemoteLocationLearningApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteLocationLearningApp.swift; sourceTree = "<group>"; };
+		F1558AFDC7504C2A6214FA74 /* PinshiftControllerLinkUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinshiftControllerLinkUITests.swift; sourceTree = "<group>"; };
+		F655259DBD776A6E5BA30469 /* Pinshift.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Pinshift.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FF94DD13B7AE6AC2A17959A0 /* TLSControllerServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TLSControllerServer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
-		2008BB820255447732712279 /* RemoteLocationLearningUITests */ = {
-			isa = PBXGroup;
-			children = (
-				298C583811F0BAF517BA99C4 /* RemoteLocationControllerLinkUITests.swift */,
-				197FED159197087E056EF221 /* RemoteLocationLearningUITests.swift */,
-			);
-			path = RemoteLocationLearningUITests;
-			sourceTree = "<group>";
-		};
 		2053433383E3F2F46A18A872 /* ControllerLink */ = {
 			isa = PBXGroup;
 			children = (
@@ -166,7 +157,7 @@
 				81A563353D69C294888044F5 /* LocationObserver.swift */,
 				684624D5D39DBB2BF5B5241C /* LocationPickerView.swift */,
 				9BC397A60889A8628C817645 /* LocationPickerViewModel.swift */,
-				F80C50201FFD0E312184A3B0 /* RemoteLocationLearningApp.swift */,
+				52A2509E0668D96B963150FB /* PinshiftApp.swift */,
 				AD15D03E1892DCB2665B33D6 /* SavedLocationStore.swift */,
 				9FB68D3C145392450ACCDC35 /* SimulationDiagnosticPipeline.swift */,
 				2B5953299B034AD5EF3F392B /* SimulationDiagnosticsViewModel.swift */,
@@ -174,10 +165,19 @@
 			path = App;
 			sourceTree = "<group>";
 		};
+		98D95B3927AACCB0A8ED869A /* PinshiftUITests */ = {
+			isa = PBXGroup;
+			children = (
+				F1558AFDC7504C2A6214FA74 /* PinshiftControllerLinkUITests.swift */,
+				48F44E61639E318EBB8D59F7 /* PinshiftUITests.swift */,
+			);
+			path = PinshiftUITests;
+			sourceTree = "<group>";
+		};
 		9D36A6F8EC402D09BFC0EC84 /* Tests */ = {
 			isa = PBXGroup;
 			children = (
-				2008BB820255447732712279 /* RemoteLocationLearningUITests */,
+				98D95B3927AACCB0A8ED869A /* PinshiftUITests */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -208,8 +208,8 @@
 		C93EE8C4A52554FF74F12E1E /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				C05D2783175B6663C53E3079 /* RemoteLocationLearning.app */,
-				588F6D628E098CA7C9DBB436 /* RemoteLocationLearningUITests.xctest */,
+				F655259DBD776A6E5BA30469 /* Pinshift.app */,
+				3BE1FD9DE4A63D8866A2301B /* PinshiftUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -217,40 +217,40 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		36CE415BF8C46C398B672919 /* RemoteLocationLearningUITests */ = {
+		682B4497AAB05CDE2C6A5723 /* PinshiftUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 9213DE526D15930462C9F669 /* Build configuration list for PBXNativeTarget "RemoteLocationLearningUITests" */;
+			buildConfigurationList = F4CAAF8E9FB872D5F0BD4B18 /* Build configuration list for PBXNativeTarget "PinshiftUITests" */;
 			buildPhases = (
-				AB5F5BECC0F0C4B4B22CD826 /* Sources */,
+				DFD9CB8A1BA328CED570AA08 /* Sources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				B2F4AB19EA69A68ED65B4B46 /* PBXTargetDependency */,
+				D56270EE942C96140A5B8E3D /* PBXTargetDependency */,
 			);
-			name = RemoteLocationLearningUITests;
+			name = PinshiftUITests;
 			packageProductDependencies = (
 			);
-			productName = RemoteLocationLearningUITests;
-			productReference = 588F6D628E098CA7C9DBB436 /* RemoteLocationLearningUITests.xctest */;
+			productName = PinshiftUITests;
+			productReference = 3BE1FD9DE4A63D8866A2301B /* PinshiftUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
-		4F76A436D1D407E2828FEA49 /* RemoteLocationLearning */ = {
+		95CBA304701F4478C159A087 /* Pinshift */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 504176E5EA48A29FAE595603 /* Build configuration list for PBXNativeTarget "RemoteLocationLearning" */;
+			buildConfigurationList = CBDA77AF740DD8E1576CA9EE /* Build configuration list for PBXNativeTarget "Pinshift" */;
 			buildPhases = (
-				E4EAF5BA6468A410165E8F7F /* Sources */,
-				B3375E104031783EC8992D4E /* Resources */,
+				B8F3D580B340DBD33B1D50FB /* Sources */,
+				09A8CE3CF76637DCAB56F7FA /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
-			name = RemoteLocationLearning;
+			name = Pinshift;
 			packageProductDependencies = (
 			);
-			productName = RemoteLocationLearning;
-			productReference = C05D2783175B6663C53E3079 /* RemoteLocationLearning.app */;
+			productName = Pinshift;
+			productReference = F655259DBD776A6E5BA30469 /* Pinshift.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -262,11 +262,11 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 2700;
 				TargetAttributes = {
-					36CE415BF8C46C398B672919 = {
+					682B4497AAB05CDE2C6A5723 = {
 						ProvisioningStyle = Automatic;
-						TestTargetID = 4F76A436D1D407E2828FEA49;
+						TestTargetID = 95CBA304701F4478C159A087;
 					};
-					4F76A436D1D407E2828FEA49 = {
+					95CBA304701F4478C159A087 = {
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -286,76 +286,76 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				4F76A436D1D407E2828FEA49 /* RemoteLocationLearning */,
-				36CE415BF8C46C398B672919 /* RemoteLocationLearningUITests */,
+				95CBA304701F4478C159A087 /* Pinshift */,
+				682B4497AAB05CDE2C6A5723 /* PinshiftUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		B3375E104031783EC8992D4E /* Resources */ = {
+		09A8CE3CF76637DCAB56F7FA /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0860134A04D283931ACEC1EA /* Assets.xcassets in Resources */,
-				86CE37803A3E141431AAE412 /* InfoPlist.strings in Resources */,
-				D21A656437608A901C7E3359 /* Localizable.strings in Resources */,
+				BCFEE3E93B742CB32BDC6809 /* Assets.xcassets in Resources */,
+				57F431331A4598FA49D9380E /* InfoPlist.strings in Resources */,
+				01FF4B2E96C68800373C9922 /* Localizable.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		AB5F5BECC0F0C4B4B22CD826 /* Sources */ = {
+		B8F3D580B340DBD33B1D50FB /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				ACA268E1A51E73A40C7FB9B4 /* RemoteLocationControllerLinkUITests.swift in Sources */,
-				2B6B0502B961863B9D984F7A /* RemoteLocationLearningUITests.swift in Sources */,
+				7354845BD6CE42E33BC85AAC /* ActionButtonLabel.swift in Sources */,
+				BD7E7F63116B4FE1B4709212 /* BaselineViewModel.swift in Sources */,
+				5517DABA6A87CDB514AC7DA2 /* BonjourControllerDiscovery.swift in Sources */,
+				8CA46471441710679B28B145 /* ContentView.swift in Sources */,
+				DC2AF064E89CCDE9DF6754C2 /* ControllerAuthorization.swift in Sources */,
+				F37F4F44DA24907605877EC9 /* ControllerCommand.swift in Sources */,
+				AC24F47B434A3CBB1A2B3403 /* ControllerIdentitySecurity.swift in Sources */,
+				949FE3B5B57A48AAE9D5F3BB /* ControllerLinkState.swift in Sources */,
+				B7FF14B011706AE6DA0B8BA3 /* ControllerLinkViewModel.swift in Sources */,
+				EC45C855A79823A9D4143485 /* ControllerServerSession.swift in Sources */,
+				FDC554DC226B179C52D54146 /* ControllerTrust.swift in Sources */,
+				0181E4496368AC026ED04F50 /* LocationDomain.swift in Sources */,
+				646C8018D0E7D92C5EC3FE86 /* LocationObserver.swift in Sources */,
+				DA63D044379E28D90A892607 /* LocationPickerView.swift in Sources */,
+				5D64F0978AA66AEE239D5B79 /* LocationPickerViewModel.swift in Sources */,
+				47C823039D50C28B812A1392 /* LocationSelectionState.swift in Sources */,
+				40A2895763F0714B5122F4E0 /* ManualSimulationSession.swift in Sources */,
+				A22835DAEA5C86A65DEEB65E /* NetworkControllerLinkTransport.swift in Sources */,
+				25C640C50A389970BEDB9DEB /* Pairing.swift in Sources */,
+				CB02467A64E838BAF5C321FE /* PinshiftApp.swift in Sources */,
+				C30588071B0D4659385BC4E3 /* SavedLocation.swift in Sources */,
+				A879B9A46F0312B8E0B34EA7 /* SavedLocationStore.swift in Sources */,
+				8D8F9EAEB746880711D79499 /* SimulationDiagnosticPipeline.swift in Sources */,
+				40D5C447F105453FE0461F2C /* SimulationDiagnostics.swift in Sources */,
+				52D77EDDFE862167FAF1923C /* SimulationDiagnosticsViewModel.swift in Sources */,
+				282844D692846F68C7F783DA /* TLSControllerServer.swift in Sources */,
+				A4512847991B108F60767123 /* TrustedControllerLink.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		E4EAF5BA6468A410165E8F7F /* Sources */ = {
+		DFD9CB8A1BA328CED570AA08 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1114504CBF27299C210FA602 /* ActionButtonLabel.swift in Sources */,
-				0141CFE02E6DCC49FE26DC35 /* BaselineViewModel.swift in Sources */,
-				AFDABC47C65E35DB76440064 /* BonjourControllerDiscovery.swift in Sources */,
-				5B628C6FFED5ED7D9D02C2DD /* ContentView.swift in Sources */,
-				A486C38F99D371F613F6AF96 /* ControllerAuthorization.swift in Sources */,
-				169123AF82F73EDCE1764F36 /* ControllerCommand.swift in Sources */,
-				262CE139F8FBA0FC7C5C6ED0 /* ControllerIdentitySecurity.swift in Sources */,
-				91DF5D1DB1E4E7402B47AD52 /* ControllerLinkState.swift in Sources */,
-				EB556E72E0BB86546C611EFB /* ControllerLinkViewModel.swift in Sources */,
-				32171308A1EFA700324D9D27 /* ControllerServerSession.swift in Sources */,
-				D52611A0DC8B95B20174F71F /* ControllerTrust.swift in Sources */,
-				CA7940E553250C41E4C9DD7E /* LocationDomain.swift in Sources */,
-				AAB946F25198A1BE77307C2F /* LocationObserver.swift in Sources */,
-				0A31B5075461853BDC513685 /* LocationPickerView.swift in Sources */,
-				E2634B64C10D7ACEE42B38D6 /* LocationPickerViewModel.swift in Sources */,
-				B5DA7DFDC30CE2A3FC82AE08 /* LocationSelectionState.swift in Sources */,
-				7B9E245DAE2A540E53D4AB82 /* ManualSimulationSession.swift in Sources */,
-				DBA9472FBD63FC421A22C6F3 /* NetworkControllerLinkTransport.swift in Sources */,
-				5DC62CDA96B694F6627A452C /* Pairing.swift in Sources */,
-				4A3179EDCDE3AD836C6B78D6 /* RemoteLocationLearningApp.swift in Sources */,
-				E633774929757BF244D2C4EE /* SavedLocation.swift in Sources */,
-				F84692E77EA6524D49745920 /* SavedLocationStore.swift in Sources */,
-				87CBDCEE4A1B98B261127A5B /* SimulationDiagnosticPipeline.swift in Sources */,
-				2809B0FA93874D6C019A5EEC /* SimulationDiagnostics.swift in Sources */,
-				12809ECEE10873926AFA3700 /* SimulationDiagnosticsViewModel.swift in Sources */,
-				0424120E78793B82A9C0EEFC /* TLSControllerServer.swift in Sources */,
-				170FE9E57A66954667B8B70A /* TrustedControllerLink.swift in Sources */,
+				1F3E8B8ABE484A3CC9FB4CC9 /* PinshiftControllerLinkUITests.swift in Sources */,
+				426A646BFAFDDC5E6E1F2D9B /* PinshiftUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		B2F4AB19EA69A68ED65B4B46 /* PBXTargetDependency */ = {
+		D56270EE942C96140A5B8E3D /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 4F76A436D1D407E2828FEA49 /* RemoteLocationLearning */;
-			targetProxy = E50B6607BE4007DEDA56C21D /* PBXContainerItemProxy */;
+			target = 95CBA304701F4478C159A087 /* Pinshift */;
+			targetProxy = 0B0CF7C2D518289E92A06AEA /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -435,7 +435,7 @@
 			};
 			name = Debug;
 		};
-		2590E51C63F9BD91B978C91C /* Debug */ = {
+		63FD6B5C53888276FF654A24 /* Release */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 492552E0E66D6D7BD046B2EF /* Signing.xcconfig */;
 			buildSettings = {
@@ -448,15 +448,15 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "dev.sayori.remotelocation.learning-uitests";
+				PRODUCT_BUNDLE_IDENTIFIER = dev.sayori.remotelocation.uitests;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
 				TARGETED_DEVICE_FAMILY = 1;
-				TEST_TARGET_NAME = RemoteLocationLearning;
+				TEST_TARGET_NAME = Pinshift;
 			};
-			name = Debug;
+			name = Release;
 		};
-		86BC5A9A7291C4DADE2B3859 /* Debug */ = {
+		BF46B2D0A5CDE3B092060C74 /* Release */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 492552E0E66D6D7BD046B2EF /* Signing.xcconfig */;
 			buildSettings = {
@@ -465,29 +465,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = "Config/RemoteLocationLearning-Info.plist";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.sayori.remotelocation.learning;
-				SDKROOT = iphoneos;
-				SUPPORTS_MACCATALYST = NO;
-				TARGETED_DEVICE_FAMILY = 1;
-			};
-			name = Debug;
-		};
-		A45321D97878F70CD6FDC576 /* Release */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReference = 492552E0E66D6D7BD046B2EF /* Signing.xcconfig */;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = "Config/RemoteLocationLearning-Info.plist";
+				INFOPLIST_FILE = "Config/Pinshift-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -556,7 +534,29 @@
 			};
 			name = Release;
 		};
-		E35499CED30E7D57B272E508 /* Release */ = {
+		E6A74493E67876F3896B67B5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 492552E0E66D6D7BD046B2EF /* Signing.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Config/Pinshift-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.sayori.remotelocation.learning;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		E6E5E5A1EA0A30822A3D5F63 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 492552E0E66D6D7BD046B2EF /* Signing.xcconfig */;
 			buildSettings = {
@@ -569,13 +569,13 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "dev.sayori.remotelocation.learning-uitests";
+				PRODUCT_BUNDLE_IDENTIFIER = dev.sayori.remotelocation.uitests;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
 				TARGETED_DEVICE_FAMILY = 1;
-				TEST_TARGET_NAME = RemoteLocationLearning;
+				TEST_TARGET_NAME = Pinshift;
 			};
-			name = Release;
+			name = Debug;
 		};
 /* End XCBuildConfiguration section */
 
@@ -589,20 +589,20 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		504176E5EA48A29FAE595603 /* Build configuration list for PBXNativeTarget "RemoteLocationLearning" */ = {
+		CBDA77AF740DD8E1576CA9EE /* Build configuration list for PBXNativeTarget "Pinshift" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				86BC5A9A7291C4DADE2B3859 /* Debug */,
-				A45321D97878F70CD6FDC576 /* Release */,
+				E6A74493E67876F3896B67B5 /* Debug */,
+				BF46B2D0A5CDE3B092060C74 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		9213DE526D15930462C9F669 /* Build configuration list for PBXNativeTarget "RemoteLocationLearningUITests" */ = {
+		F4CAAF8E9FB872D5F0BD4B18 /* Build configuration list for PBXNativeTarget "PinshiftUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				2590E51C63F9BD91B978C91C /* Debug */,
-				E35499CED30E7D57B272E508 /* Release */,
+				E6E5E5A1EA0A30822A3D5F63 /* Debug */,
+				63FD6B5C53888276FF654A24 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

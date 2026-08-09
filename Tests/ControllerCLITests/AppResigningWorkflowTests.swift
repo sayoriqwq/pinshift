@@ -65,7 +65,7 @@ final class AppResigningWorkflowTests: XCTestCase {
     let uiTestProfile = try writeProfile(
       named: "ui-tests.mobileprovision",
       applicationIdentifier:
-        "\(teamIdentifier).dev.sayori.remotelocation.learning-uitests.xctrunner",
+        "\(teamIdentifier).dev.sayori.remotelocation.uitests.xctrunner",
       expiration: "2099-08-10T08:49:25Z"
     )
     try writeCandidate(expiration: "2099-08-17T08:49:25Z")
@@ -179,7 +179,7 @@ final class AppResigningWorkflowTests: XCTestCase {
     )
     XCTAssertTrue(
       try FileManager.default.subpathsOfDirectory(atPath: workRoot.path)
-        .contains { $0.hasSuffix("RemoteLocationLearning.app/embedded.mobileprovision") }
+        .contains { $0.hasSuffix("Pinshift.app/embedded.mobileprovision") }
     )
     let recordedEvents = try events()
     XCTAssertTrue(recordedEvents.contains("xcrun install"))
@@ -212,7 +212,7 @@ final class AppResigningWorkflowTests: XCTestCase {
           fi
           shift
         done
-        app="$derived_data/Build/Products/Debug-iphoneos/RemoteLocationLearning.app"
+        app="$derived_data/Build/Products/Debug-iphoneos/Pinshift.app"
         /bin/mkdir -p "$app"
         /bin/cp "$FAKE_CANDIDATE_PROFILE" "$app/embedded.mobileprovision"
         if [ -n "${FAKE_REGENERATED_PROFILE_PATH:-}" ]; then

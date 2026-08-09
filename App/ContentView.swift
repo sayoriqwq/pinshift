@@ -23,7 +23,7 @@ struct ContentView: View {
   init(language: Binding<AppLanguage>) {
     _language = language
     let diagnostics = SimulationDiagnosticPipeline(
-      recorder: SimulationDiagnosticRecorder(side: .learningApp)
+      recorder: SimulationDiagnosticRecorder(side: .pinshiftApp)
     )
     _observer = StateObject(
       wrappedValue: LocationObserver(diagnostics: diagnostics)
@@ -888,7 +888,7 @@ struct ContentView: View {
         .font(.footnote)
         .accessibilityIdentifier("simulation-diagnostic")
     case .verified(_, let evidence):
-      Label("Verified Simulation in this Learning App", systemImage: "checkmark.seal.fill")
+      Label("Verified Simulation in Pinshift", systemImage: "checkmark.seal.fill")
         .foregroundStyle(.green)
         .accessibilityIdentifier("simulation-status")
       LabeledContent("Elapsed") {
@@ -1137,7 +1137,7 @@ struct ContentView: View {
   private var limitationsSection: some View {
     Section("Scope") {
       Text(
-        "A match only proves that this Learning App observed the selected coordinate. It does not prove cross-app propagation."
+        "A match only proves that Pinshift observed the selected coordinate. It does not prove cross-app propagation."
       )
       .font(.footnote)
     }
