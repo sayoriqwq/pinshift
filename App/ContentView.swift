@@ -214,15 +214,6 @@ struct ContentView: View {
     )
   }
 
-  private var languageSwitchAccessibilityLabel: String {
-    AppLocalization.string(
-      language == .english
-        ? "Switch to Simplified Chinese"
-        : "Switch to English",
-      locale: language.locale
-    )
-  }
-
   private var homeView: some View {
     ScrollView {
       VStack(spacing: 0) {
@@ -298,7 +289,7 @@ struct ContentView: View {
   }
 
   private var homeControlPanel: some View {
-    VStack(alignment: .leading, spacing: PinshiftDesign.spaceL) {
+    VStack(alignment: .leading, spacing: 20) {
       homeSelectedLocation
       homeSavedLocations
       simulationSection
@@ -326,12 +317,12 @@ struct ContentView: View {
   private var homeSelectedLocation: some View {
     VStack(alignment: .leading, spacing: PinshiftDesign.spaceS) {
       Text(localized("Selected Location"))
-        .font(.caption.weight(.semibold))
+        .font(.footnote.weight(.semibold))
         .foregroundStyle(PinshiftDesign.textSecondary)
 
       if let selected = model.selection.selected {
         Text(selectedLocationDisplayName)
-          .font(.system(size: 28, weight: .semibold, design: .default))
+          .font(.title2.weight(.semibold))
           .foregroundStyle(PinshiftDesign.textPrimary)
           .lineLimit(2)
 
@@ -342,7 +333,7 @@ struct ContentView: View {
           Text(selected.longitude.formatted(.number.precision(.fractionLength(6))))
             .accessibilityIdentifier("selected-longitude")
         }
-        .font(.caption.monospacedDigit())
+        .font(.footnote.monospacedDigit())
         .foregroundStyle(PinshiftDesign.textSecondary)
 
         if let source = model.selection.source {
@@ -350,7 +341,7 @@ struct ContentView: View {
             localizedFormat("Selected via %@", selectionSourceDescription(source)),
             systemImage: "location"
           )
-          .font(.caption)
+          .font(.footnote)
           .foregroundStyle(PinshiftDesign.textSecondary)
           .accessibilityIdentifier("selection-source")
         }
@@ -377,7 +368,7 @@ struct ContentView: View {
     if !model.savedLocations.locations.isEmpty {
       VStack(alignment: .leading, spacing: PinshiftDesign.spaceS) {
         Text(localized("Saved Locations"))
-          .font(.caption.weight(.semibold))
+          .font(.footnote.weight(.semibold))
           .foregroundStyle(PinshiftDesign.textSecondary)
 
         ScrollView(.horizontal) {
@@ -403,18 +394,19 @@ struct ContentView: View {
         Text(savedLocation.name)
           .lineLimit(1)
       }
-      .font(.subheadline.weight(.medium))
+      .font(.footnote.weight(.semibold))
       .foregroundStyle(
         isSelected ? PinshiftDesign.primary : PinshiftDesign.textPrimary
       )
-      .padding(.horizontal, 14)
-      .frame(minHeight: 44)
+      .padding(.horizontal, 12)
+      .frame(height: 36)
       .background(
         isSelected ? PinshiftDesign.primarySoft : PinshiftDesign.surfaceSecondary,
         in: Capsule()
       )
     }
     .buttonStyle(.plain)
+    .frame(minHeight: 44)
     .accessibilityLabel(
       Text(
         localizedFormat(
@@ -453,13 +445,14 @@ struct ContentView: View {
           .fixedSize(horizontal: false, vertical: true)
       }
     }
-    .padding(.vertical, PinshiftDesign.spaceM)
-    .overlay(alignment: .top) {
-      Divider().foregroundStyle(PinshiftDesign.divider)
-    }
-    .overlay(alignment: .bottom) {
-      Divider().foregroundStyle(PinshiftDesign.divider)
-    }
+    .padding(PinshiftDesign.spaceM)
+    .background(PinshiftDesign.surfaceSecondary)
+    .clipShape(
+      RoundedRectangle(
+        cornerRadius: PinshiftDesign.radiusM,
+        style: .continuous
+      )
+    )
     .accessibilityElement(children: .combine)
     .accessibilityIdentifier("cleanup-promise")
   }
@@ -490,7 +483,15 @@ struct ContentView: View {
           .font(.caption.weight(.semibold))
           .foregroundStyle(PinshiftDesign.textSecondary)
       }
+      .padding(12)
       .frame(minHeight: 52)
+      .background(PinshiftDesign.surfaceSecondary)
+      .clipShape(
+        RoundedRectangle(
+          cornerRadius: PinshiftDesign.radiusM,
+          style: .continuous
+        )
+      )
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
@@ -500,46 +501,50 @@ struct ContentView: View {
   private var settingsView: some View {
     List {
       appearanceSection
+        .listRowSeparator(.hidden)
       controllerLinkSection
+        .listRowSeparator(.hidden)
       selectionSection
+        .listRowSeparator(.hidden)
       savedLocationsSection
+        .listRowSeparator(.hidden)
       observationSection
+        .listRowSeparator(.hidden)
       diagnosticsSection
+        .listRowSeparator(.hidden)
       baselineSection
+        .listRowSeparator(.hidden)
       limitationsSection
+        .listRowSeparator(.hidden)
     }
     .listStyle(.insetGrouped)
+    .listSectionSpacing(PinshiftDesign.spaceL)
+    .font(.subheadline)
     .scrollContentBackground(.hidden)
     .background(PinshiftDesign.background)
     .navigationTitle(localized("Settings"))
-    .navigationBarTitleDisplayMode(.large)
+    .navigationBarTitleDisplayMode(.inline)
     .accessibilityIdentifier("settings-list")
   }
 
   private var appearanceSection: some View {
     Section(localized("Appearance")) {
-      Button {
-        language = language.alternate
-      } label: {
-        HStack(spacing: PinshiftDesign.spaceM) {
-          Label(localized("Language"), systemImage: "globe")
-            .foregroundStyle(PinshiftDesign.textPrimary)
+      VStack(alignment: .leading, spacing: 12) {
+        Label(localized("Language"), systemImage: "globe")
+          .font(.subheadline.weight(.medium))
+          .foregroundStyle(PinshiftDesign.textPrimary)
 
-          Spacer()
-
-          Text(language == .english ? "English" : "简体中文")
-            .foregroundStyle(PinshiftDesign.textSecondary)
-
-          Image(systemName: "arrow.left.arrow.right")
-            .font(.caption)
-            .foregroundStyle(PinshiftDesign.textSecondary)
+        Picker(localized("Language"), selection: $language) {
+          Text(verbatim: "English")
+            .tag(AppLanguage.english)
+          Text(verbatim: "简体中文")
+            .tag(AppLanguage.simplifiedChinese)
         }
-        .frame(minHeight: 44)
-        .contentShape(Rectangle())
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .accessibilityIdentifier("language-selector")
       }
-      .buttonStyle(.plain)
-      .accessibilityLabel(Text(languageSwitchAccessibilityLabel))
-      .accessibilityIdentifier("language-toggle")
+      .padding(.vertical, PinshiftDesign.spaceXS)
     }
   }
 
@@ -762,7 +767,7 @@ struct ContentView: View {
             systemImage: "link.badge.plus"
           )
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(PinshiftFilledButtonStyle())
         .disabled(!controllerLink.canPair)
         .accessibilityIdentifier("pair-controller")
       }
@@ -780,7 +785,7 @@ struct ContentView: View {
             systemImage: "arrow.clockwise"
           )
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(PinshiftFilledButtonStyle())
         .disabled(!controllerLink.canPair)
         .accessibilityIdentifier("pair-controller")
       }
@@ -806,7 +811,7 @@ struct ContentView: View {
             systemImage: "gearshape"
           )
         }
-        .buttonStyle(.bordered)
+        .buttonStyle(PinshiftSoftButtonStyle())
         .accessibilityIdentifier("open-local-network-settings")
       }
 
@@ -819,7 +824,7 @@ struct ContentView: View {
             systemImage: "arrow.clockwise"
           )
         }
-        .buttonStyle(.bordered)
+        .buttonStyle(PinshiftSoftButtonStyle())
         .accessibilityIdentifier("retry-controller-discovery")
       }
 
@@ -835,7 +840,7 @@ struct ContentView: View {
             systemImage: "arrow.triangle.2.circlepath"
           )
         }
-        .buttonStyle(.bordered)
+        .buttonStyle(PinshiftSoftButtonStyle())
         .accessibilityIdentifier("refresh-controller-readiness")
       }
     }
@@ -861,7 +866,7 @@ struct ContentView: View {
           systemImage: "location.fill"
         )
       }
-      .buttonStyle(.borderedProminent)
+      .buttonStyle(PinshiftFilledButtonStyle())
       .accessibilityIdentifier("save-selection")
 
       Button {
@@ -872,7 +877,7 @@ struct ContentView: View {
           systemImage: "map"
         )
       }
-      .buttonStyle(.bordered)
+      .buttonStyle(PinshiftSoftButtonStyle())
       .accessibilityIdentifier("open-location-picker")
 
       if let selected = model.selection.selected {
@@ -941,7 +946,7 @@ struct ContentView: View {
           isBusy: diagnostics.isExporting
         )
       }
-      .buttonStyle(.bordered)
+      .buttonStyle(PinshiftSoftButtonStyle())
       .disabled(diagnostics.isExporting)
       .accessibilityIdentifier("diagnostics-export")
 
@@ -953,8 +958,12 @@ struct ContentView: View {
           systemImage: "trash"
         )
       }
-      .buttonStyle(.bordered)
-      .tint(PinshiftDesign.destructive)
+      .buttonStyle(
+        PinshiftSoftButtonStyle(
+          foreground: PinshiftDesign.destructive,
+          background: PinshiftDesign.destructiveSoft
+        )
+      )
       .disabled(diagnostics.isExporting)
       .accessibilityIdentifier("diagnostics-clear")
 
@@ -990,7 +999,7 @@ struct ContentView: View {
           systemImage: "plus.circle"
         )
       }
-      .buttonStyle(.bordered)
+      .buttonStyle(PinshiftSoftButtonStyle())
       .disabled(model.selection.selected == nil)
       .accessibilityIdentifier("save-current-location")
 
@@ -1144,9 +1153,9 @@ struct ContentView: View {
   }
 
   private var simulationSection: some View {
-    VStack(alignment: .leading, spacing: PinshiftDesign.spaceM) {
+    VStack(alignment: .leading, spacing: 12) {
       Text(localized("Time-Bounded Simulation"))
-        .font(.title3.weight(.semibold))
+        .font(.headline)
         .foregroundStyle(PinshiftDesign.textPrimary)
 
       if let activeRequest = model.manualSession.activeAppliedRequest {
@@ -1157,6 +1166,8 @@ struct ContentView: View {
         )
         .font(.footnote)
         .foregroundStyle(PinshiftDesign.textSecondary)
+        .lineSpacing(2)
+        .fixedSize(horizontal: false, vertical: true)
 
         Picker("Duration", selection: $model.selectedLeaseDuration) {
           ForEach(SimulationLeaseDuration.allCases) { duration in
@@ -1165,6 +1176,7 @@ struct ContentView: View {
           }
         }
         .pickerStyle(.segmented)
+        .controlSize(.small)
         .disabled(model.isApplying)
         .accessibilityIdentifier("simulation-duration-picker")
 
@@ -1206,6 +1218,15 @@ struct ContentView: View {
 
       manualStopStatus
     }
+    .font(.subheadline)
+    .padding(PinshiftDesign.spaceM)
+    .background(PinshiftDesign.surfaceSecondary)
+    .clipShape(
+      RoundedRectangle(
+        cornerRadius: PinshiftDesign.radiusM,
+        style: .continuous
+      )
+    )
   }
 
   private func activeSimulationCard(_ request: ManualSimulationRequest) -> some View {
@@ -1271,8 +1292,7 @@ struct ContentView: View {
             isBusy: model.isExtendingLease
           )
         }
-        .buttonStyle(.bordered)
-        .tint(PinshiftDesign.primary)
+        .buttonStyle(PinshiftSoftButtonStyle())
         .disabled(model.isExtendingLease || model.pendingStopIntent != nil)
         .accessibilityIdentifier("extend-simulation-lease")
 
@@ -1492,7 +1512,7 @@ struct ContentView: View {
             systemImage: "gearshape"
           )
         }
-        .buttonStyle(.bordered)
+        .buttonStyle(PinshiftSoftButtonStyle())
         .accessibilityIdentifier("open-location-settings")
       case .restricted:
         Text(
@@ -1571,7 +1591,7 @@ struct ContentView: View {
           systemImage: "timer"
         )
       }
-      .buttonStyle(.bordered)
+      .buttonStyle(PinshiftSoftButtonStyle())
       .disabled(model.session.selected == nil)
       .accessibilityIdentifier("start-observation-window")
 

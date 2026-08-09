@@ -177,7 +177,7 @@ struct LocationPickerView: View {
             systemImage: mapCenterIsSelected ? "checkmark.circle.fill" : "scope"
           )
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(PinshiftFilledButtonStyle())
         .accessibilityLabel("Use Map Center as Selected Location")
         .accessibilityHint("Commits the map center without applying a simulation.")
         .accessibilityAddTraits(mapCenterIsSelected ? .isSelected : [])
@@ -212,7 +212,7 @@ struct LocationPickerView: View {
               systemImage: "arrow.uturn.backward"
             )
           }
-          .buttonStyle(.bordered)
+          .buttonStyle(PinshiftSoftButtonStyle())
           .accessibilityIdentifier("restore-opening-location")
         }
 
@@ -244,7 +244,7 @@ struct LocationPickerView: View {
             isBusy: searchModel.status == .searching
           )
         }
-        .buttonStyle(.bordered)
+        .buttonStyle(PinshiftSoftButtonStyle())
         .disabled(!searchModel.canSearch)
         .accessibilityIdentifier("search-places")
 

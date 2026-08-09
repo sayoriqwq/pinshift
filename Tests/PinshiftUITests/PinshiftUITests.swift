@@ -106,7 +106,9 @@ final class PinshiftUITests: XCTestCase {
 
     openSettings(in: app)
     XCTAssertTrue(app.staticTexts["controller-link-status"].waitForExistence(timeout: 5))
-    XCTAssertTrue(app.buttons["language-toggle"].waitForExistence(timeout: 5))
+    XCTAssertTrue(
+      app.segmentedControls["language-selector"].waitForExistence(timeout: 5)
+    )
 
     let settingsScreenshot = XCTAttachment(screenshot: app.screenshot())
     settingsScreenshot.name = "Spatial Calm settings"
@@ -118,6 +120,14 @@ final class PinshiftUITests: XCTestCase {
     let app = permissionFixtureApp(location: "allowed", localNetwork: "allowed")
     app.launch()
     app.tap()
+
+    let initialSimulationStatus =
+      app.staticTexts.matching(identifier: "simulation-status").firstMatch
+    scrollUp(until: initialSimulationStatus, in: app)
+    XCTAssertTrue(initialSimulationStatus.waitForExistence(timeout: 5))
+    let initialSimulationStatusLabel = initialSimulationStatus.label
+    scrollToTop(in: app)
+
     openSettings(in: app)
 
     let status = app.staticTexts["diagnostics-status"]
@@ -148,7 +158,7 @@ final class PinshiftUITests: XCTestCase {
     scrollToTop(in: app)
     scrollUp(until: simulationStatus, in: app)
     XCTAssertTrue(simulationStatus.waitForExistence(timeout: 5))
-    XCTAssertEqual(simulationStatus.label, "Save a Selected Location to begin.")
+    XCTAssertEqual(simulationStatus.label, initialSimulationStatusLabel)
 
     openSettings(in: app)
     scrollToTop(in: app)
@@ -324,26 +334,24 @@ final class PinshiftUITests: XCTestCase {
     )
   }
 
-  func testLanguageToggleSwitchesImmediatelyAndPersistsTheChoice() {
+  func testLanguageSelectorSwitchesImmediatelyAndPersistsTheChoice() {
     let app = permissionFixtureApp(location: "allowed", localNetwork: "allowed")
     app.launchEnvironment["REMOTE_LOCATION_E2E_APP_LANGUAGE"] = "en"
     app.launch()
     openSettings(in: app)
 
-    let toggle = app.buttons["language-toggle"]
-    XCTAssertTrue(toggle.waitForExistence(timeout: 5))
-    XCTAssertTrue(
-      waitForLabel(toggle, equalTo: "Switch to Simplified Chinese")
-    )
+    let selector = app.segmentedControls["language-selector"]
+    XCTAssertTrue(selector.waitForExistence(timeout: 5))
+    XCTAssertTrue(selector.buttons["English"].isSelected)
     XCTAssertTrue(app.staticTexts["Mac Controller"].waitForExistence(timeout: 5))
 
     let localNetworkStatus = app.staticTexts["local-network-permission-status"]
     XCTAssertTrue(localNetworkStatus.waitForExistence(timeout: 5))
     XCTAssertTrue(waitForLabel(localNetworkStatus, endingWith: "Allowed"))
 
-    toggle.tap()
+    selector.buttons["简体中文"].tap()
 
-    XCTAssertTrue(waitForLabel(toggle, equalTo: "切换到英文"))
+    XCTAssertTrue(selector.buttons["简体中文"].isSelected)
     XCTAssertTrue(app.staticTexts["Mac 模拟控制器"].waitForExistence(timeout: 5))
     XCTAssertTrue(waitForLabel(localNetworkStatus, endingWith: "已允许"))
 
@@ -352,15 +360,13 @@ final class PinshiftUITests: XCTestCase {
     app.launch()
     openSettings(in: app)
 
-    let persistedToggle = app.buttons["language-toggle"]
-    XCTAssertTrue(persistedToggle.waitForExistence(timeout: 5))
-    XCTAssertTrue(waitForLabel(persistedToggle, equalTo: "切换到英文"))
+    let persistedSelector = app.segmentedControls["language-selector"]
+    XCTAssertTrue(persistedSelector.waitForExistence(timeout: 5))
+    XCTAssertTrue(persistedSelector.buttons["简体中文"].isSelected)
     XCTAssertTrue(app.staticTexts["Mac 模拟控制器"].waitForExistence(timeout: 5))
 
-    persistedToggle.tap()
-    XCTAssertTrue(
-      waitForLabel(persistedToggle, equalTo: "Switch to Simplified Chinese")
-    )
+    persistedSelector.buttons["English"].tap()
+    XCTAssertTrue(persistedSelector.buttons["English"].isSelected)
   }
 
   func testSavedLocationsPersistSelectionRenameAndDeleteWithoutApplying() {

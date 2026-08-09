@@ -16,7 +16,6 @@ enum PinshiftDesign {
   static let surfaceSecondary = Color(pinshiftLight: "EEF1F4", dark: "2C2C2E")
   static let textPrimary = Color(pinshiftLight: "17191C", dark: "F2F2F7")
   static let textSecondary = Color(pinshiftLight: "60656C", dark: "A7A7AC")
-  static let divider = Color(pinshiftLight: "DDE1E5", dark: "38383A")
 
   static let spaceXS: CGFloat = 4
   static let spaceS: CGFloat = 8
@@ -51,6 +50,36 @@ struct PinshiftFilledButtonStyle: ButtonStyle {
         color.opacity(isEnabled ? (configuration.isPressed ? 0.82 : 1) : 0.38),
         in: RoundedRectangle(
           cornerRadius: PinshiftDesign.radiusM,
+          style: .continuous
+        )
+      )
+      .scaleEffect(configuration.isPressed ? 0.985 : 1)
+      .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+  }
+}
+
+struct PinshiftSoftButtonStyle: ButtonStyle {
+  @Environment(\.isEnabled) private var isEnabled
+
+  let foreground: Color
+  let background: Color
+
+  init(
+    foreground: Color = PinshiftDesign.primary,
+    background: Color = PinshiftDesign.primarySoft
+  ) {
+    self.foreground = foreground
+    self.background = background
+  }
+
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .foregroundStyle(foreground.opacity(isEnabled ? 1 : 0.48))
+      .padding(.horizontal, PinshiftDesign.spaceM)
+      .background(
+        background.opacity(configuration.isPressed ? 0.72 : (isEnabled ? 1 : 0.5)),
+        in: RoundedRectangle(
+          cornerRadius: PinshiftDesign.radiusS,
           style: .continuous
         )
       )

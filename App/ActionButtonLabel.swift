@@ -6,7 +6,7 @@ struct ActionButtonLabel: View {
   var isBusy = false
 
   var body: some View {
-    HStack(spacing: 10) {
+    HStack(spacing: 8) {
       if isBusy {
         ProgressView()
           .controlSize(.small)
@@ -16,7 +16,7 @@ struct ActionButtonLabel: View {
 
       title
     }
-    .font(.body.weight(.semibold))
+    .font(.subheadline.weight(.semibold))
     .frame(maxWidth: .infinity, minHeight: 44)
     .contentShape(Rectangle())
   }
