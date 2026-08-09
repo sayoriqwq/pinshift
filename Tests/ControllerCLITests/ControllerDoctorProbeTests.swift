@@ -80,7 +80,7 @@ final class ControllerDoctorProbeTests: XCTestCase {
     let configuration = ControllerDoctorConfiguration(
       device: nil,
       developerDirectory: "/Applications/Xcode-beta.app/Contents/Developer",
-      identityLabel: "Remote Location Controller"
+      identityLabel: "Pinshift Controller"
     )
     let probe = FoundationControllerDoctorProbe(
       executor: executor,
@@ -115,9 +115,9 @@ final class ControllerDoctorProbeTests: XCTestCase {
       inherited: [
         "HOME": "/Users/developer",
         "PATH": "/usr/bin:/bin",
-        "REMOTE_LOCATION_DEVICE": "private-device",
-        "REMOTE_LOCATION_E2E_PAIRING_CODE": "123456",
-        "REMOTE_LOCATION_RUNNER_CREDENTIAL": "private-credential",
+        "PINSHIFT_DEVICE": "private-device",
+        "PINSHIFT_E2E_PAIRING_CODE": "123456",
+        "PINSHIFT_RUNNER_CREDENTIAL": "private-credential",
       ],
       overrides: [
         "DEVELOPER_DIR": "/Applications/Xcode-beta.app/Contents/Developer"
@@ -126,9 +126,9 @@ final class ControllerDoctorProbeTests: XCTestCase {
 
     XCTAssertEqual(environment["HOME"], "/Users/developer")
     XCTAssertEqual(environment["PATH"], "/usr/bin:/bin")
-    XCTAssertNil(environment["REMOTE_LOCATION_DEVICE"])
-    XCTAssertNil(environment["REMOTE_LOCATION_E2E_PAIRING_CODE"])
-    XCTAssertNil(environment["REMOTE_LOCATION_RUNNER_CREDENTIAL"])
+    XCTAssertNil(environment["PINSHIFT_DEVICE"])
+    XCTAssertNil(environment["PINSHIFT_E2E_PAIRING_CODE"])
+    XCTAssertNil(environment["PINSHIFT_RUNNER_CREDENTIAL"])
   }
 }
 

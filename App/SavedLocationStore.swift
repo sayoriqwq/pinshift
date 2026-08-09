@@ -36,13 +36,13 @@ final class FileSavedLocationStore: SavedLocationStore, ResettableSavedLocationS
     #if DEBUG
       saveAttemptCount += 1
       if ProcessInfo.processInfo.environment[
-        "REMOTE_LOCATION_E2E_SAVED_LOCATIONS_FAIL_SAVE"
+        "PINSHIFT_E2E_SAVED_LOCATIONS_FAIL_SAVE"
       ] == "1" {
         throw SavedLocationStoreError.forcedFailure
       }
       if let failOnSaveNumber = Int(
         ProcessInfo.processInfo.environment[
-          "REMOTE_LOCATION_E2E_SAVED_LOCATIONS_FAIL_ON_SAVE_NUMBER"
+          "PINSHIFT_E2E_SAVED_LOCATIONS_FAIL_ON_SAVE_NUMBER"
         ] ?? ""
       ), saveAttemptCount == failOnSaveNumber {
         throw SavedLocationStoreError.forcedFailure

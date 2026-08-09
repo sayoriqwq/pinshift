@@ -1,40 +1,40 @@
 #!/usr/bin/env fish
 
 set --local script_dir (path resolve (path dirname (status filename)))
-source $script_dir/_rl-common.fish
+source $script_dir/_pinshift-common.fish
 or exit 1
 
 # Keep the wrapper alive when the foreground controller receives Control-C so
 # the abnormal-exit reset below can run.
-function rl_keep_wrapper_for_cleanup --on-signal INT
+function pinshift_keep_wrapper_for_cleanup --on-signal INT
 end
 
 argparse 'h/help' 's/seconds=' 'l/lease-seconds=' -- $argv
 or exit 2
 
 if set --query _flag_help
-    echo "Usage: rl-start [--seconds 60...86400] [--lease-seconds 30...3600]"
+    echo "Usage: pinshift-start [--seconds 60...86400] [--lease-seconds 30...3600]"
     echo "Starts the trusted Controller Link and keeps it open. Stop with Ctrl+C."
     echo "The Pinshift app starts each Applied Simulation with 15 minutes by default."
     exit 0
 end
 
-rl_prepare_environment
+pinshift_prepare_environment
 or exit $status
-set --local controller (rl_controller_executable)
+set --local controller (pinshift_controller_executable)
 or exit $status
 
 set --local seconds 3600
-if set --query REMOTE_LOCATION_SECONDS
-    set seconds $REMOTE_LOCATION_SECONDS
+if set --query PINSHIFT_SECONDS
+    set seconds $PINSHIFT_SECONDS
 end
 if set --query _flag_seconds
     set seconds $_flag_seconds
 end
 
 set --local lease_seconds
-if set --query REMOTE_LOCATION_LEASE_SECONDS
-    set lease_seconds $REMOTE_LOCATION_LEASE_SECONDS
+if set --query PINSHIFT_LEASE_SECONDS
+    set lease_seconds $PINSHIFT_LEASE_SECONDS
 end
 if set --query _flag_lease_seconds
     set lease_seconds $_flag_lease_seconds

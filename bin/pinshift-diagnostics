@@ -1,8 +1,8 @@
 #!/usr/bin/env fish
 
 set --local diagnostics_directory
-if set --query REMOTE_LOCATION_DIAGNOSTICS_DIRECTORY
-    set diagnostics_directory $REMOTE_LOCATION_DIAGNOSTICS_DIRECTORY
+if set --query PINSHIFT_DIAGNOSTICS_DIRECTORY
+    set diagnostics_directory $PINSHIFT_DIAGNOSTICS_DIRECTORY
 else
     set --local user_home $HOME
     set diagnostics_directory "$user_home/Library/Application Support/Pinshift/SimulationDiagnostics"

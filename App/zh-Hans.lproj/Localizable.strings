@@ -256,9 +256,9 @@
 "Choose a 15-, 30-, or 60-minute duration" = "请选择 15、30 或 60 分钟";
 "Cleanup Guardian protection is unavailable" = "清理守护者保护不可用";
 "Update the Mac controller to use protected sessions" = "请更新 Mac 控制器以使用受保护的模拟会话";
-"Cleanup Guardian protection is unavailable. Run rl-install on the Mac, then retry." = "清理守护者保护不可用。请在 Mac 上运行 rl-install 后重试。";
+"Cleanup Guardian protection is unavailable. Run pinshift-install on the Mac, then retry." = "清理守护者保护不可用。请在 Mac 上运行 pinshift-install 后重试。";
 "Automatic cleanup protection is unavailable. Resolve the Mac controller check and retry." = "自动清理保护不可用。请解决 Mac 控制器检查项后重试。";
-"This Mac controller is too old for protected time-bounded sessions. Update it with rl-install." = "此 Mac 控制器版本过旧，无法使用受保护的限时模拟。请使用 rl-install 更新。";
+"This Mac controller is too old for protected time-bounded sessions. Update it with pinshift-install." = "此 Mac 控制器版本过旧，无法使用受保护的限时模拟。请使用 pinshift-install 更新。";
 "Waiting for the Mac to confirm automatic-cleanup protection." = "正在等待 Mac 确认自动清理保护。";
 
 /* Pinshift 主页与设置 */

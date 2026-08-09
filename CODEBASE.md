@@ -58,16 +58,16 @@ Apple 的位置测试接口；Guardian 负责在前台 server 不存在时继续
 | `Sources/ControllerLink/` | Bonjour 发现、TLS 传输、一次性配对、Keychain 信任、命令协议和 server session | `TrustedControllerLink.swift`、`ControllerCommand.swift` |
 | `Sources/SimulationController/` | 模拟生命周期状态机、持久 journal、lease、heartbeat、Guardian 和 `devicectl` backend | `SimulationController.swift`、`SimulationCleanupGuardian.swift` |
 | `Sources/SimulationDiagnostics/` | App/Mac 共用的结构化事件、滚动保留、脱敏和导出格式 | `SimulationDiagnostics.swift` |
-| `Sources/ControllerCLI/` | CLI 命令定义、依赖装配、doctor、教程、Controller Link 到模拟控制器的适配 | `RemoteLocationControllerCommand.swift`、`ControllerCLIRuntime.swift` |
-| `Sources/RemoteLocationController/` | `remote-location-controller` 可执行文件的最薄入口 | `main.swift` |
-| `bin/` | 面向日常操作的 Fish 包装器：安装、启动、重置、检查、续签和诊断导出 | `_rl-common.fish`、`rl-start`、`rl-install` |
-| `Support/` | launchd Cleanup Guardian 模板 | `dev.sayori.remotelocation.cleanup-guardian.plist` |
+| `Sources/ControllerCLI/` | CLI 命令定义、依赖装配、doctor、教程、Controller Link 到模拟控制器的适配 | `PinshiftControllerCommand.swift`、`ControllerCLIRuntime.swift` |
+| `Sources/PinshiftController/` | `pinshift-controller` 可执行文件的最薄入口 | `main.swift` |
+| `bin/` | 面向日常操作的 Fish 包装器：安装、启动、重置、检查、续签和诊断导出 | `_pinshift-common.fish`、`pinshift-start`、`pinshift-install` |
+| `Support/` | launchd Cleanup Guardian 模板 | `dev.sayori.pinshift.cleanup-guardian.plist` |
 | `Tests/` | 按 Swift 模块分层的单元/集成测试，以及真机 UI/可选 smoke 测试 | `SimulationLifecycleIntegrationTests.swift`、`PinshiftUITests/` |
 | `Config/`、`project.yml` | iOS target、签名、Info.plist 和 XcodeGen 配置 | `project.yml`、`Pinshift-Info.plist` |
 | `docs/` | 架构决策、需求、研究、历史验证证据和开发教程 | `docs/adr/`、`docs/evidence/` |
 
 `Package.swift` 是共享模块与 Mac CLI 的 SwiftPM 构建图；`project.yml` 是 iOS App 和 UI 测试工程的
-源配置。`RemoteLocation.xcodeproj` 由 XcodeGen 生成并提交，应该跟随 `project.yml` 一起更新，而不是
+源配置。`Pinshift.xcodeproj` 由 XcodeGen 生成并提交，应该跟随 `project.yml` 一起更新，而不是
 把手工修改 project file 当作唯一来源。
 
 ## iOS App 怎么组织
@@ -85,7 +85,7 @@ Pinshift 已收到匹配观测。UI 显式展示这几个阶段。
 
 ## Mac 控制器怎么组织
 
-`RemoteLocationControllerCommand` 定义 `serve`、`doctor`、`apply`、`stop`、`reset`、
+`PinshiftControllerCommand` 定义 `serve`、`doctor`、`apply`、`stop`、`reset`、
 `cleanup-guardian` 等命令。`ControllerCLIRuntime` 是 Mac 侧 composition root，负责把配置、诊断、
 `DevicectlInjectionBackend`、生命周期存储、heartbeat store 和 Guardian health store 装配起来。
 
@@ -124,7 +124,7 @@ clear 的记录，不会因为“客户端没收到成功”而遗忘可能生�
 ## 一次 Stop 或自动清理的路径
 
 手动 Stop、lease 到期、server 正常退出、server-owner heartbeat 连续丢失、Guardian 重启恢复和
-`rl-reset` 最终都会汇入同一个幂等 clear 路径：
+`pinshift-reset` 最终都会汇入同一个幂等 clear 路径：
 
 1. 目标 generation 被标记为 `cleanupPending`。
 2. controller 或 Guardian 调用 backend clear。
@@ -149,9 +149,9 @@ iOS App；App 负责保存并重投 Stop Intent，Guardian 负责独立执行。
 | Backend execution result | `devicectl` exit result | journal completion + Mac diagnostics |
 | Observed Location | Core Location callback | App state + iOS diagnostics |
 
-生产 App 的 bundle identifier、Keychain account 和既有诊断 raw value 是升级兼容标识。即使代码与
-界面已经统一为 Pinshift，也不能把这些值当作普通文案随意改名；否则会破坏原位升级、既有配对或
-历史诊断连续性。
+Pinshift 1.0 只保留 Pinshift 原生身份：App、CLI、Bonjour、launchd、Keychain、环境变量和诊断格式
+都不提供旧名称 alias 或迁移 fallback。今后若再次修改这些持久标识，应把它视为明确的数据与信任
+重置，而不是普通文案调整。
 
 ## 推荐阅读顺序
 
@@ -194,7 +194,7 @@ xcodegen generate --spec project.yml
 
 ```fish
 DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer \
-  xcodebuild -project RemoteLocation.xcodeproj \
+  xcodebuild -project Pinshift.xcodeproj \
   -scheme Pinshift \
   -destination 'generic/platform=iOS' \
   CODE_SIGNING_ALLOWED=NO build

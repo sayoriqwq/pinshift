@@ -24,7 +24,7 @@
 	<true/>
 	<key>NSBonjourServices</key>
 	<array>
-		<string>_remote-location._tcp</string>
+		<string>_pinshift._tcp</string>
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Pinshift connects to your trusted Mac controller to send explicit apply and stop requests.</string>

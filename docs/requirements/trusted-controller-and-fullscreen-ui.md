@@ -1,12 +1,14 @@
-# Pinshift v1.1 — durable controller trust and full-screen location picker
+# Durable controller trust and full-screen location picker
 
-Status: Approved for implementation
+Status: Implemented and accepted as a pre-1.0 milestone
 
 Date: 2026-07-28
 
+This is a historical implementation requirement, not a Pinshift product-version declaration.
+
 ## Motivation
 
-The first-round v1 journey works on the supported personal Mac, Xcode Beta, and iPhone, including Cross-App Propagation observed in QQ. Two usability defects remain:
+The first-round journey worked on the supported personal Mac, Xcode Beta, and iPhone, including Cross-App Propagation observed in QQ. Two usability defects remained:
 
 1. Starting the Mac controller can require repeated Keychain password approvals even though the iPhone and Mac were already paired.
 2. The Pinshift app is rendered inside a vertically letterboxed compatibility area. The location picker places its map-selection action below the visible map, and dragging to reach it can accidentally dismiss the picker.
@@ -26,7 +28,7 @@ The existing trust model remains in force:
 
 The daily controller commands must use a stable, fixed-identifier, code-signed controller executable instead of a changing `swift run` development product. Rebuilding the same controller with the same signing identity must preserve its macOS identity for Keychain access-control evaluation.
 
-The repository-local workflow must provide an explicit installation or update command for the signed controller. Daily `rl-start`, `rl-doctor`, and `rl-reset` commands must not compile or re-sign the controller.
+The repository-local workflow must provide an explicit installation or update command for the signed controller. Daily `pinshift-start`, `pinshift-doctor`, and `pinshift-reset` commands must not compile or re-sign the controller.
 
 Migration must preserve the existing TLS controller identity and iPhone trust whenever Apple-supported Keychain access-control APIs permit it. The implementation must never silently delete or replace the identity. If preservation is impossible, it must stop and require an explicit decision before any new pairing.
 
@@ -65,7 +67,7 @@ Automated checks must prove that:
 - all three daily helper commands resolve the installed controller and do not invoke `swift run`;
 - missing, unsigned, stale, or differently signed controller installations fail with actionable recovery rather than silently falling back.
 
-The final Mac checkpoint is two consecutive `rl-start` sessions after the one-time migration. Neither session may request a Keychain password, and the already-paired Pinshift app must reconnect without entering a new six-digit code.
+The final Mac checkpoint is two consecutive `pinshift-start` sessions after the one-time migration. Neither session may request a Keychain password, and the already-paired Pinshift app must reconnect without entering a new six-digit code.
 
 ### Full-screen UI
 
@@ -91,4 +93,4 @@ The final iPhone checkpoint is a fresh build and install followed by a screensho
 
 ## Acceptance
 
-v1.1 is accepted only when both sections pass. A working UI does not waive repeated Keychain prompts, and a durable controller identity does not waive the full-screen and map-interaction requirements.
+This milestone was accepted only after both sections passed. A working UI did not waive repeated Keychain prompts, and a durable controller identity did not waive the full-screen and map-interaction requirements.

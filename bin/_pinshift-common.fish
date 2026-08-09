@@ -1,20 +1,20 @@
-function rl_prepare_environment
+function pinshift_prepare_environment
     set --local repo_root (path resolve (path dirname (status filename))/..)
     cd $repo_root
     or return 1
 
-    if not set --query REMOTE_LOCATION_DEVELOPER_DIR
-        set --global --export REMOTE_LOCATION_DEVELOPER_DIR /Applications/Xcode-beta.app/Contents/Developer
+    if not set --query PINSHIFT_DEVELOPER_DIR
+        set --global --export PINSHIFT_DEVELOPER_DIR /Applications/Xcode-beta.app/Contents/Developer
     end
-    set --global --export DEVELOPER_DIR $REMOTE_LOCATION_DEVELOPER_DIR
+    set --global --export DEVELOPER_DIR $PINSHIFT_DEVELOPER_DIR
 
     if not test -d $DEVELOPER_DIR
         echo "Xcode developer directory does not exist: $DEVELOPER_DIR" >&2
-        echo "Install Xcode Beta or override REMOTE_LOCATION_DEVELOPER_DIR in .env.local." >&2
+        echo "Install Xcode Beta or override PINSHIFT_DEVELOPER_DIR in .env.local." >&2
         return 1
     end
 
-    if set --query REMOTE_LOCATION_DEVICE; and test -n "$REMOTE_LOCATION_DEVICE"
+    if set --query PINSHIFT_DEVICE; and test -n "$PINSHIFT_DEVICE"
         return 0
     end
 
@@ -23,7 +23,7 @@ function rl_prepare_environment
         return 1
     end
 
-    set --local device_json (mktemp -t remote-location-devices.XXXXXX)
+    set --local device_json (mktemp -t pinshift-devices.XXXXXX)
     or return 1
 
     xcrun devicectl list devices --quiet --json-output $device_json >/dev/null 2>&1
@@ -46,7 +46,7 @@ function rl_prepare_environment
     command rm -f -- $device_json
 
     if test (count $device_ids) -eq 1
-        set --global --export REMOTE_LOCATION_DEVICE $device_ids[1]
+        set --global --export PINSHIFT_DEVICE $device_ids[1]
         echo "Using the only paired physical iPhone." >&2
         return 0
     end
@@ -56,11 +56,11 @@ function rl_prepare_environment
     else
         echo "Multiple paired physical iPhones were found." >&2
     end
-    echo "Copy .env.example to .env.local and set REMOTE_LOCATION_DEVICE privately." >&2
+    echo "Copy .env.example to .env.local and set PINSHIFT_DEVICE privately." >&2
     return 1
 end
 
-function rl_controller_source_fingerprint
+function pinshift_controller_source_fingerprint
     set --local files Package.swift
     if test -f Package.resolved
         set --append files Package.resolved
@@ -75,27 +75,27 @@ function rl_controller_source_fingerprint
     end | shasum -a 256 | string split ' ' --fields 1
 end
 
-function rl_controller_executable
+function pinshift_controller_executable
     set --local install_root (path resolve .build/controller)
-    set --local executable $install_root/bin/remote-location-controller
+    set --local executable $install_root/bin/pinshift-controller
     set --local requirement_file $install_root/designated-requirement
     set --local source_file $install_root/source-fingerprint
 
     if not test -x $executable; or not test -f $requirement_file; or not test -f $source_file
-        echo "The stable controller is not installed. Run rl-install once." >&2
+        echo "The stable controller is not installed. Run pinshift-install once." >&2
         return 1
     end
     codesign --verify --strict $executable >/dev/null 2>&1
     or begin
-        echo "The installed controller signature is invalid. Run rl-install." >&2
+        echo "The installed controller signature is invalid. Run pinshift-install." >&2
         return 1
     end
 
     set --local actual_requirement (codesign -d -r- $executable 2>&1 | string match -r '^designated => .*')
     set --local expected_requirement (string collect < $requirement_file)
-    set --local required_identifier dev.sayori.remotelocation.controller
+    set --local required_identifier dev.sayori.pinshift.controller
     if test -z "$actual_requirement"; or not string match --quiet "*identifier \"$required_identifier\"*" $actual_requirement
-        echo "The installed controller does not have the required fixed identifier. Run rl-install." >&2
+        echo "The installed controller does not have the required fixed identifier. Run pinshift-install." >&2
         return 1
     end
     if test "$actual_requirement" != "$expected_requirement"
@@ -103,15 +103,15 @@ function rl_controller_executable
         return 1
     end
     if string match --quiet '*cdhash H*' $actual_requirement
-        echo "The installed controller has an unstable ad-hoc signature. Run rl-install." >&2
+        echo "The installed controller has an unstable ad-hoc signature. Run pinshift-install." >&2
         return 1
     end
 
     set --local installed_source (string trim < $source_file)
-    set --local current_source (rl_controller_source_fingerprint)
+    set --local current_source (pinshift_controller_source_fingerprint)
     or return 1
     if test "$installed_source" != "$current_source"
-        echo "The controller source changed after installation. Run rl-install to update it." >&2
+        echo "The controller source changed after installation. Run pinshift-install to update it." >&2
         return 1
     end
 

@@ -21,7 +21,7 @@ final class SimulationControllerTests: XCTestCase {
 
   func testFailedStopIsRecordedWithoutClaimingStoppedSimulation() async throws {
     let directory = FileManager.default.temporaryDirectory
-      .appendingPathComponent("remote-location-controller-events-(UUID().uuidString)")
+      .appendingPathComponent("pinshift-controller-events-(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: directory) }
     let diagnostics = SimulationDiagnosticRecorder(
       side: .macController,

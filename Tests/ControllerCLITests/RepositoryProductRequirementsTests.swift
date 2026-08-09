@@ -1,7 +1,7 @@
 import Foundation
 import XCTest
 
-final class RepositoryV11RequirementsTests: XCTestCase {
+final class RepositoryProductRequirementsTests: XCTestCase {
   private var repositoryRoot: URL {
     URL(fileURLWithPath: #filePath)
       .deletingLastPathComponent()
@@ -10,14 +10,14 @@ final class RepositoryV11RequirementsTests: XCTestCase {
   }
 
   func testDailyHelpersUseOnlyTheInstalledController() throws {
-    for helper in ["rl-start", "rl-doctor", "rl-reset"] {
+    for helper in ["pinshift-start", "pinshift-doctor", "pinshift-reset"] {
       let contents = try String(
         contentsOf: repositoryRoot.appending(path: "bin/\(helper)"),
         encoding: .utf8
       )
       XCTAssertFalse(contents.contains("swift run"), "\(helper) must not compile on daily use")
       XCTAssertTrue(
-        contents.contains("rl_controller_executable"),
+        contents.contains("pinshift_controller_executable"),
         "\(helper) must resolve the verified installed controller"
       )
     }
@@ -25,7 +25,7 @@ final class RepositoryV11RequirementsTests: XCTestCase {
 
   func testDailyStartDefersItsDefaultLeaseToTheControllerOwnedPolicy() throws {
     let contents = try String(
-      contentsOf: repositoryRoot.appending(path: "bin/rl-start"),
+      contentsOf: repositoryRoot.appending(path: "bin/pinshift-start"),
       encoding: .utf8
     )
 
@@ -36,14 +36,14 @@ final class RepositoryV11RequirementsTests: XCTestCase {
   }
 
   func testDiagnosticsHelperLocatesOrCopiesTheMacPackageWithoutRunningRecovery() throws {
-    let helperURL = repositoryRoot.appending(path: "bin/rl-diagnostics")
+    let helperURL = repositoryRoot.appending(path: "bin/pinshift-diagnostics")
     XCTAssertTrue(FileManager.default.isExecutableFile(atPath: helperURL.path))
     let contents = try String(contentsOf: helperURL, encoding: .utf8)
 
     XCTAssertTrue(contents.contains("mac-controller.jsonl"))
     XCTAssertTrue(contents.contains("mac-controller.metadata.json"))
     XCTAssertTrue(contents.contains("_flag_copy_to"))
-    XCTAssertFalse(contents.contains("rl-reset"))
+    XCTAssertFalse(contents.contains("pinshift-reset"))
     XCTAssertFalse(contents.contains("devicectl"))
     XCTAssertFalse(contents.contains("xcrun"))
   }
@@ -65,11 +65,11 @@ final class RepositoryV11RequirementsTests: XCTestCase {
     )
 
     let process = Process()
-    process.executableURL = repositoryRoot.appending(path: "bin/rl-diagnostics")
+    process.executableURL = repositoryRoot.appending(path: "bin/pinshift-diagnostics")
     process.arguments = ["--copy-to", destination.path]
     process.environment = [
       "PATH": "/etc/profiles/per-user/sayori/bin:/usr/bin:/bin",
-      "REMOTE_LOCATION_DIAGNOSTICS_DIRECTORY": source.path,
+      "PINSHIFT_DIAGNOSTICS_DIRECTORY": source.path,
     ]
     try process.run()
     process.waitUntilExit()
@@ -96,10 +96,10 @@ final class RepositoryV11RequirementsTests: XCTestCase {
   }
 
   func testInstallWorkflowIsExplicitAndNeverUsesAnAllowAllKeyACL() throws {
-    let installerURL = repositoryRoot.appending(path: "bin/rl-install")
+    let installerURL = repositoryRoot.appending(path: "bin/pinshift-install")
     XCTAssertTrue(
       FileManager.default.isExecutableFile(atPath: installerURL.path),
-      "The repository must provide an executable rl-install workflow"
+      "The repository must provide an executable pinshift-install workflow"
     )
     let contents = try String(contentsOf: installerURL, encoding: .utf8)
     XCTAssertFalse(contents.contains("create-keypair -A"))
@@ -109,12 +109,12 @@ final class RepositoryV11RequirementsTests: XCTestCase {
 
   func testInstallRegistersCleanupGuardianOutsideTheControllerLinkProcess() throws {
     let contents = try String(
-      contentsOf: repositoryRoot.appending(path: "bin/rl-install"),
+      contentsOf: repositoryRoot.appending(path: "bin/pinshift-install"),
       encoding: .utf8
     )
     let template = try String(
       contentsOf: repositoryRoot.appending(
-        path: "Support/dev.sayori.remotelocation.cleanup-guardian.plist"
+        path: "Support/dev.sayori.pinshift.cleanup-guardian.plist"
       ),
       encoding: .utf8
     )
@@ -133,7 +133,7 @@ final class RepositoryV11RequirementsTests: XCTestCase {
 
   func testSuccessfulInstallRemovesOnlyItsValidatedGeneratedStagingDirectory() throws {
     let contents = try String(
-      contentsOf: repositoryRoot.appending(path: "bin/rl-install"),
+      contentsOf: repositoryRoot.appending(path: "bin/pinshift-install"),
       encoding: .utf8
     )
 
@@ -151,7 +151,7 @@ final class RepositoryV11RequirementsTests: XCTestCase {
   }
 
   func testAppResigningWorkflowValidatesBeforeUpdatingTheExistingApp() throws {
-    let helperURL = repositoryRoot.appending(path: "bin/rl-resign-app")
+    let helperURL = repositoryRoot.appending(path: "bin/pinshift-resign-app")
     XCTAssertTrue(
       FileManager.default.isExecutableFile(atPath: helperURL.path),
       "The repository must provide an executable app renewal workflow"
@@ -159,7 +159,7 @@ final class RepositoryV11RequirementsTests: XCTestCase {
 
     let contents = try String(contentsOf: helperURL, encoding: .utf8)
     let signingHelpers = try String(
-      contentsOf: repositoryRoot.appending(path: "bin/_rl-app-signing.fish"),
+      contentsOf: repositoryRoot.appending(path: "bin/_pinshift-app-signing.fish"),
       encoding: .utf8
     )
 
@@ -179,7 +179,7 @@ final class RepositoryV11RequirementsTests: XCTestCase {
 
   func testInstalledControllerResolverRejectsEveryUnsafeInstallationState() throws {
     let contents = try String(
-      contentsOf: repositoryRoot.appending(path: "bin/_rl-common.fish"),
+      contentsOf: repositoryRoot.appending(path: "bin/_pinshift-common.fish"),
       encoding: .utf8
     )
 
@@ -194,7 +194,7 @@ final class RepositoryV11RequirementsTests: XCTestCase {
 
   func testRequirementRotationIsRejectedBeforeKeychainAuthorization() throws {
     let contents = try String(
-      contentsOf: repositoryRoot.appending(path: "bin/rl-install"),
+      contentsOf: repositoryRoot.appending(path: "bin/pinshift-install"),
       encoding: .utf8
     )
     let requirementCheck = try XCTUnwrap(contents.range(of: "The signing requirement changed"))
@@ -244,7 +244,7 @@ final class RepositoryV11RequirementsTests: XCTestCase {
 
     let project = try String(
       contentsOf: repositoryRoot.appending(
-        path: "RemoteLocation.xcodeproj/project.pbxproj"
+        path: "Pinshift.xcodeproj/project.pbxproj"
       ),
       encoding: .utf8
     )

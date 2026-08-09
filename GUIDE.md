@@ -15,11 +15,10 @@
 
 ### 1. 启动
 
-连接并解锁 iPhone，确认开发者模式已开启，然后运行：
+连接并解锁 iPhone，确认开发者模式已开启，然后在仓库根目录运行：
 
 ```fish
-cd /Users/sayori/Desktop/remote-location
-rl-start
+pinshift-start
 ```
 
 🚀 启动可信控制器；保持终端窗口运行，并在 iPhone 上打开 Pinshift。
@@ -52,7 +51,7 @@ App 检查效果；Pinshift 自己的最新位置观测只证明 Pinshift 看到
 Apply 成功后，即使不再进行任何操作，系统也会在以下时刻中最早到达的一个要求清理：
 
 - Simulation Lease 到期；
-- `rl-start` 正常退出；
+- `pinshift-start` 正常退出；
 - 前台 server 崩溃或被强杀后，连续 30 秒没有对应 server-owner heartbeat。
 
 iOS App 进入后台或一次 Controller Link 断开不会触发 30 秒规则；只要 server 仍持续写心跳，会话就会
@@ -77,13 +76,12 @@ clear acknowledgement 后才显示 **Simulated Location cleared**。
 
 ## 首次配置或控制器更新
 
-首次使用，或 `rl-start` 提示控制器源码已变化时，运行：
+首次使用，或 `pinshift-start` 提示控制器源码已变化时，运行：
 
 ```fish
-cd /Users/sayori/Desktop/remote-location
 direnv allow
-rl-install
-rl-doctor
+pinshift-install
+pinshift-doctor
 ```
 
 🛠️ 准备仓库环境、安装稳定签名控制器与 Cleanup Guardian，并执行只读健康检查。
@@ -96,17 +94,16 @@ iPhone 信任；失败时会恢复旧控制器与安装元数据。
 Personal Team 签名临近到期时，让 iPhone 通过 USB 或 Wi-Fi 对 Xcode 可达，然后运行：
 
 ```fish
-cd /Users/sayori/Desktop/remote-location
-rl-resign-app
+pinshift-resign-app
 ```
 
 🔏 在剩余不超过 24 小时时续签、验证并原位安装 Pinshift。
 
 命令不会卸载 App，因此会尽量保留收藏、设置和控制器信任。需要立即刷新时使用
-`rl-resign-app --force`；如果手机锁屏导致启动验证延后，解锁后打开 Pinshift，或运行：
+`pinshift-resign-app --force`；如果手机锁屏导致启动验证延后，解锁后打开 Pinshift，或运行：
 
 ```fish
-rl-resign-app --launch-only
+pinshift-resign-app --launch-only
 ```
 
 📱 不重新签名，只在已解锁手机上补做启动验证。
@@ -119,8 +116,7 @@ Xcode 必须保持 Apple Account 登录。如果登录过期、需要双重验�
 先运行只读检查：
 
 ```fish
-cd /Users/sayori/Desktop/remote-location
-rl-doctor
+pinshift-doctor
 ```
 
 🩺 检查 Xcode、iPhone、签名、控制器身份和设备服务，不修改系统设置。
@@ -128,17 +124,16 @@ rl-doctor
 常见恢复路径：
 
 - **找不到 iPhone**：重新连接数据线，解锁手机，确认 Mac 与 iPhone 仍互相信任。
-- **Controller Link 未连接**：确认 `rl-start` 仍在运行，并让 Pinshift 在前台停留片刻。
+- **Controller Link 未连接**：确认 `pinshift-start` 仍在运行，并让 Pinshift 在前台停留片刻。
 - **Apply 按钮不可用**：先选择位置，等待 Controller Link、Injection Backend 与 Cleanup Guardian 全部就绪。
-- **控制器源码已变化**：运行 `rl-install`，不要用 `swift run` 代替日常控制器。
-- **App 无法启动或签名过期**：运行 `rl-resign-app --force`；如有账号错误，先恢复 Xcode 登录。
-- **更换手机或清除了 App Keychain**：重新运行 `rl-start`，输入当次六位码完成一次新配对。
+- **控制器源码已变化**：运行 `pinshift-install`，不要用 `swift run` 代替日常控制器。
+- **App 无法启动或签名过期**：运行 `pinshift-resign-app --force`；如有账号错误，先恢复 Xcode 登录。
+- **更换手机或清除了 App Keychain**：重新运行 `pinshift-start`，输入当次六位码完成一次新配对。
 
 需要手动加入同一持久清理流程时运行：
 
 ```fish
-cd /Users/sayori/Desktop/remote-location
-rl-reset
+pinshift-reset
 ```
 
 🧹 幂等请求清除可能仍在生效的模拟位置；失败时保留 Cleanup Pending 以便后续重试。
@@ -151,7 +146,7 @@ rl-reset
 2. 检查 Guardian 是否由 launchd 保持：
 
    ```fish
-   launchctl print gui/(id -u)/dev.sayori.remotelocation.cleanup-guardian
+   launchctl print gui/(id -u)/dev.sayori.pinshift.cleanup-guardian
    ```
 
    🛡️ 显示 Cleanup Guardian 的当前 launchd 状态和最近退出结果。
@@ -181,7 +176,7 @@ rl-reset
 4. 必要时导出 Mac 侧诊断包：
 
    ```fish
-   rl-diagnostics --copy-to .build/audit/(date +%Y%m%d-%H%M%S)
+   pinshift-diagnostics --copy-to .build/audit/(date +%Y%m%d-%H%M%S)
    ```
 
    📦 复制脱敏的 Mac 诊断事件和元数据，不触发 Apply、Stop 或任何恢复操作。
@@ -202,11 +197,11 @@ Pinshift 内的 **Test Diagnostics** 可单独导出 iOS 侧记录。两侧记�
 
 | 命令 | 用途 |
 | --- | --- |
-| `rl-start` | 启动可信控制器；默认运行一小时 |
-| `rl-start --seconds 86400` | 让 Controller Link 最长运行一天；不会延长 App 中选择的 Simulation Lease |
-| `rl-reset` | 幂等请求清除模拟位置，并沿用持久重试流程 |
-| `rl-doctor` | 只读检查开发环境和控制器状态 |
-| `rl-install` | 首次安装或源码变化后更新稳定签名控制器与 Guardian |
-| `rl-resign-app` | 签名临近到期时续签并原位安装 App |
-| `rl-resign-app --force` | 立即请求新 profile、验证并原位安装 |
-| `rl-resign-app --launch-only` | 不续签，只补做启动验证 |
+| `pinshift-start` | 启动可信控制器；默认运行一小时 |
+| `pinshift-start --seconds 86400` | 让 Controller Link 最长运行一天；不会延长 App 中选择的 Simulation Lease |
+| `pinshift-reset` | 幂等请求清除模拟位置，并沿用持久重试流程 |
+| `pinshift-doctor` | 只读检查开发环境和控制器状态 |
+| `pinshift-install` | 首次安装或源码变化后更新稳定签名控制器与 Guardian |
+| `pinshift-resign-app` | 签名临近到期时续签并原位安装 App |
+| `pinshift-resign-app --force` | 立即请求新 profile、验证并原位安装 |
+| `pinshift-resign-app --launch-only` | 不续签，只补做启动验证 |

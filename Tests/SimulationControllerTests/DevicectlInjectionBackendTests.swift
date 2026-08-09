@@ -116,8 +116,8 @@ final class DevicectlInjectionBackendTests: XCTestCase {
       inherited: [
         "HOME": "/Users/developer",
         "PATH": "/usr/bin:/bin",
-        "REMOTE_LOCATION_E2E_PAIRING_CODE": "123456",
-        "REMOTE_LOCATION_RUNNER_CREDENTIAL": "private",
+        "PINSHIFT_E2E_PAIRING_CODE": "123456",
+        "PINSHIFT_RUNNER_CREDENTIAL": "private",
       ],
       overrides: [
         "DEVELOPER_DIR": "/Applications/Xcode-beta.app/Contents/Developer"
@@ -130,8 +130,8 @@ final class DevicectlInjectionBackendTests: XCTestCase {
       environment["DEVELOPER_DIR"],
       "/Applications/Xcode-beta.app/Contents/Developer"
     )
-    XCTAssertNil(environment["REMOTE_LOCATION_E2E_PAIRING_CODE"])
-    XCTAssertNil(environment["REMOTE_LOCATION_RUNNER_CREDENTIAL"])
+    XCTAssertNil(environment["PINSHIFT_E2E_PAIRING_CODE"])
+    XCTAssertNil(environment["PINSHIFT_RUNNER_CREDENTIAL"])
   }
 
   func testDiagnosticsCaptureInvocationAndFailureOutputWithoutChangingClearResult() async throws {
@@ -183,7 +183,7 @@ final class DevicectlInjectionBackendTests: XCTestCase {
       .string("Active Test Device")
     )
     let exported = String(data: try await diagnostics.exportData(), encoding: .utf8)!
-    XCTAssertFalse(exported.contains("REMOTE_LOCATION_E2E_PAIRING_CODE"))
+    XCTAssertFalse(exported.contains("PINSHIFT_E2E_PAIRING_CODE"))
   }
 
   func testDiagnosticsPreserveConfiguredDeviceSelectorInTheLocalArtifact() async throws {
@@ -380,7 +380,7 @@ final class DevicectlInjectionBackendTests: XCTestCase {
 
   private func temporaryDirectory() -> URL {
     let directory = FileManager.default.temporaryDirectory
-      .appendingPathComponent("remote-location-controller-diagnostics-\(UUID().uuidString)")
+      .appendingPathComponent("pinshift-controller-diagnostics-\(UUID().uuidString)")
     try! FileManager.default.createDirectory(
       at: directory,
       withIntermediateDirectories: true

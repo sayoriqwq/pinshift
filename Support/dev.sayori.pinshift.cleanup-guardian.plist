@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>dev.sayori.remotelocation.cleanup-guardian</string>
+  <string>dev.sayori.pinshift.cleanup-guardian</string>
   <key>ProgramArguments</key>
   <array>
     <string>__CONTROLLER_EXECUTABLE__</string>

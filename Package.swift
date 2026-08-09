@@ -3,7 +3,7 @@
 import PackageDescription
 
 let package = Package(
-  name: "RemoteLocation",
+  name: "Pinshift",
   platforms: [
     .iOS(.v18),
     .macOS(.v15),
@@ -15,8 +15,8 @@ let package = Package(
     .library(name: "SimulationController", targets: ["SimulationController"]),
     .library(name: "ControllerCLI", targets: ["ControllerCLI"]),
     .executable(
-      name: "remote-location-controller",
-      targets: ["RemoteLocationController"]
+      name: "pinshift-controller",
+      targets: ["PinshiftController"]
     ),
   ],
   dependencies: [
@@ -47,7 +47,7 @@ let package = Package(
       ]
     ),
     .executableTarget(
-      name: "RemoteLocationController",
+      name: "PinshiftController",
       dependencies: ["ControllerCLI"]
     ),
     .testTarget(

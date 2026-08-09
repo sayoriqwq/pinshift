@@ -1,0 +1,617 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		15953420A837293C53A8CAB9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 559DB6E0E2CD26084FB7E526 /* ContentView.swift */; };
+		1BE44D9D19EAE01B24350C31 /* LocationPickerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAB0E8F3CD5BA3E65B28DEAB /* LocationPickerViewModel.swift */; };
+		1EF3B39FB66C61C7ABD4F745 /* Pairing.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7B5C926E3E85E459AEA4B7E /* Pairing.swift */; };
+		3C149C84D989BB81128F8353 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 82D0E69E60C7C72AEA5FB7A7 /* Localizable.strings */; };
+		4704AB4A9FF03F17ADA2A6C7 /* ControllerServerSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318A64B1CDE67C93D86DAED5 /* ControllerServerSession.swift */; };
+		4FDAA9B835DD2EB3EF430BDC /* PinshiftApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F221E02F577319085D683B02 /* PinshiftApp.swift */; };
+		50CA543709A8AA655927CC35 /* NetworkControllerLinkTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C36A1722A694C247499910E /* NetworkControllerLinkTransport.swift */; };
+		5A4DF40BE4A512E84E7C9B98 /* ControllerAuthorization.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0A93517ECCC69F00028C27 /* ControllerAuthorization.swift */; };
+		5C68831AF02525506307B3C6 /* PinshiftControllerLinkUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84F131553411B25C82BE6E51 /* PinshiftControllerLinkUITests.swift */; };
+		5D52BA06C0B22533CD491C2E /* ControllerCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11863E4FD7EAA7D8DF07DCE8 /* ControllerCommand.swift */; };
+		5FF00F781C76C18F0E887B28 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = BD2A7C4D3C499825A8E361E6 /* InfoPlist.strings */; };
+		700BD25D6DCB7E7ACBBD178A /* SimulationDiagnosticsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2761D347293149A6DB5A2229 /* SimulationDiagnosticsViewModel.swift */; };
+		72C1C57A40F4DF4CCE3362CB /* ControllerIdentitySecurity.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBDA4F56E5AEE0A196394911 /* ControllerIdentitySecurity.swift */; };
+		7E74EC276731C3AE2FC91855 /* ActionButtonLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C6AF1791B17E4CB78F06DD3 /* ActionButtonLabel.swift */; };
+		7F3E0A61E16505138F2B9D43 /* TLSControllerServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8849994E5324F1A9101F4BA8 /* TLSControllerServer.swift */; };
+		906F405A80453E17B60025E1 /* LocationPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63BA287725671E9F8A3B7E21 /* LocationPickerView.swift */; };
+		9AA911807B95B46110BC6EB2 /* SavedLocationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 621696227B4DB33F21A65072 /* SavedLocationStore.swift */; };
+		9F06A0A62F5F273553282A3C /* BaselineViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 384FBF121EC8EF6D8DA1CF20 /* BaselineViewModel.swift */; };
+		A448DB6E3571878373B99953 /* LocationObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = E67F3879FD8D45AA7CB0A39E /* LocationObserver.swift */; };
+		A6906E996D39CCB87D8A062D /* ControllerLinkViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 505FEFAF432894313B0FF079 /* ControllerLinkViewModel.swift */; };
+		C090D86A06F80818DD50DFC4 /* ControllerLinkState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27F7E6925130BF2A557470F1 /* ControllerLinkState.swift */; };
+		C29250507FE1F8923E21E48B /* PinshiftUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D95CB9D282C35DFE3BECF170 /* PinshiftUITests.swift */; };
+		CE633CBC46569D7E87DBB9BC /* SimulationDiagnosticPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF7F8780E733910149967CFD /* SimulationDiagnosticPipeline.swift */; };
+		D0C732CBAFD8F2B449681684 /* BonjourControllerDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89025DEC3CF68412744EC94C /* BonjourControllerDiscovery.swift */; };
+		D285736CFCF157D15F41A867 /* ControllerTrust.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98B80186C2885AC72A31379A /* ControllerTrust.swift */; };
+		E168B8BBB6B6BD89B5AF3489 /* LocationDomain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A0B0F10BFB0FCD59E64C31F /* LocationDomain.swift */; };
+		E3906D955F3C5495484B357D /* PinshiftDesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF9C95CECF2193B56008FE4F /* PinshiftDesignSystem.swift */; };
+		E4B7707952C6F3FE155A2DED /* SavedLocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC6769CE9F8E503B07026CE1 /* SavedLocation.swift */; };
+		E6426BC63774B81D4E97AEE2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F7A56D0AD7C85F7B154FF4B2 /* Assets.xcassets */; };
+		EAEC96863A05506A88E67D23 /* TrustedControllerLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = B12AADD1AA55A09BE8D2B5B8 /* TrustedControllerLink.swift */; };
+		ECC58FBFA23EA8CD7DEB58B5 /* ManualSimulationSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = E51D096596A719DB7E3FE6E9 /* ManualSimulationSession.swift */; };
+		F9DD8F43F9F0963C610E32AF /* SimulationDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72B3E7495FA68D914EC681FF /* SimulationDiagnostics.swift */; };
+		FD1C1C01CCED6EAD5B86DB00 /* LocationSelectionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FF167419CFAFE19700BEA9E /* LocationSelectionState.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		9EFDB20F17B52466C1638AFA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1FCECCEB795F522793D12CCE /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B7021D3DBB60E7F32EBA6E61;
+			remoteInfo = Pinshift;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		11863E4FD7EAA7D8DF07DCE8 /* ControllerCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerCommand.swift; sourceTree = "<group>"; };
+		1BEF6C45ADAEA560937FB9C0 /* Pinshift.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Pinshift.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		24217DE3F4158040D5962118 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		258B3ECCA6FC250DA2F0EE36 /* PinshiftUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PinshiftUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		2761D347293149A6DB5A2229 /* SimulationDiagnosticsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationDiagnosticsViewModel.swift; sourceTree = "<group>"; };
+		27F7E6925130BF2A557470F1 /* ControllerLinkState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerLinkState.swift; sourceTree = "<group>"; };
+		2C36A1722A694C247499910E /* NetworkControllerLinkTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkControllerLinkTransport.swift; sourceTree = "<group>"; };
+		318A64B1CDE67C93D86DAED5 /* ControllerServerSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerServerSession.swift; sourceTree = "<group>"; };
+		384FBF121EC8EF6D8DA1CF20 /* BaselineViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaselineViewModel.swift; sourceTree = "<group>"; };
+		4A0B0F10BFB0FCD59E64C31F /* LocationDomain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationDomain.swift; sourceTree = "<group>"; };
+		505FEFAF432894313B0FF079 /* ControllerLinkViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerLinkViewModel.swift; sourceTree = "<group>"; };
+		559DB6E0E2CD26084FB7E526 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		5FF167419CFAFE19700BEA9E /* LocationSelectionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationSelectionState.swift; sourceTree = "<group>"; };
+		621696227B4DB33F21A65072 /* SavedLocationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedLocationStore.swift; sourceTree = "<group>"; };
+		63BA287725671E9F8A3B7E21 /* LocationPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationPickerView.swift; sourceTree = "<group>"; };
+		72B3E7495FA68D914EC681FF /* SimulationDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationDiagnostics.swift; sourceTree = "<group>"; };
+		730DDB8AD91B683D924743AF /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		7C6AF1791B17E4CB78F06DD3 /* ActionButtonLabel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionButtonLabel.swift; sourceTree = "<group>"; };
+		84F131553411B25C82BE6E51 /* PinshiftControllerLinkUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinshiftControllerLinkUITests.swift; sourceTree = "<group>"; };
+		8849994E5324F1A9101F4BA8 /* TLSControllerServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TLSControllerServer.swift; sourceTree = "<group>"; };
+		89025DEC3CF68412744EC94C /* BonjourControllerDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BonjourControllerDiscovery.swift; sourceTree = "<group>"; };
+		98B80186C2885AC72A31379A /* ControllerTrust.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerTrust.swift; sourceTree = "<group>"; };
+		AF9C95CECF2193B56008FE4F /* PinshiftDesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinshiftDesignSystem.swift; sourceTree = "<group>"; };
+		B12AADD1AA55A09BE8D2B5B8 /* TrustedControllerLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrustedControllerLink.swift; sourceTree = "<group>"; };
+		BD2A7C4D3C499825A8E361E6 /* InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = InfoPlist.strings; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+		C5D97EE47241D82050A36675 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
+		D7B5C926E3E85E459AEA4B7E /* Pairing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pairing.swift; sourceTree = "<group>"; };
+		D95CB9D282C35DFE3BECF170 /* PinshiftUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinshiftUITests.swift; sourceTree = "<group>"; };
+		DA0A93517ECCC69F00028C27 /* ControllerAuthorization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerAuthorization.swift; sourceTree = "<group>"; };
+		DBDA4F56E5AEE0A196394911 /* ControllerIdentitySecurity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerIdentitySecurity.swift; sourceTree = "<group>"; };
+		DF7F8780E733910149967CFD /* SimulationDiagnosticPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationDiagnosticPipeline.swift; sourceTree = "<group>"; };
+		E51D096596A719DB7E3FE6E9 /* ManualSimulationSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualSimulationSession.swift; sourceTree = "<group>"; };
+		E67F3879FD8D45AA7CB0A39E /* LocationObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationObserver.swift; sourceTree = "<group>"; };
+		EAB0E8F3CD5BA3E65B28DEAB /* LocationPickerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationPickerViewModel.swift; sourceTree = "<group>"; };
+		F221E02F577319085D683B02 /* PinshiftApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinshiftApp.swift; sourceTree = "<group>"; };
+		F7A56D0AD7C85F7B154FF4B2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		FC6769CE9F8E503B07026CE1 /* SavedLocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedLocation.swift; sourceTree = "<group>"; };
+		FC8337A285DAE963F2F32304 /* ShanghaiBaseline.gpx */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = ShanghaiBaseline.gpx; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		13A1DC3A5EF1E038705B0EA9 /* Fixtures */ = {
+			isa = PBXGroup;
+			children = (
+				FC8337A285DAE963F2F32304 /* ShanghaiBaseline.gpx */,
+			);
+			path = Fixtures;
+			sourceTree = "<group>";
+		};
+		2F8E827214B472030F08F53C /* LocationDomain */ = {
+			isa = PBXGroup;
+			children = (
+				4A0B0F10BFB0FCD59E64C31F /* LocationDomain.swift */,
+				5FF167419CFAFE19700BEA9E /* LocationSelectionState.swift */,
+				E51D096596A719DB7E3FE6E9 /* ManualSimulationSession.swift */,
+				FC6769CE9F8E503B07026CE1 /* SavedLocation.swift */,
+			);
+			path = LocationDomain;
+			sourceTree = "<group>";
+		};
+		2FF612E748D6D925F6888467 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				C5D97EE47241D82050A36675 /* Signing.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		83804A800B27FC09E5477E90 = {
+			isa = PBXGroup;
+			children = (
+				F038141B49145E020A7CB2FD /* App */,
+				2FF612E748D6D925F6888467 /* Config */,
+				13A1DC3A5EF1E038705B0EA9 /* Fixtures */,
+				8E172B8B3F8D099685EDE9C7 /* Sources */,
+				BD169F5E62B64595CC5B706E /* Tests */,
+				B2314D0251BC6CAEE2A734AC /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		8E172B8B3F8D099685EDE9C7 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				A4A7F456EE2C3394D23C2823 /* ControllerLink */,
+				2F8E827214B472030F08F53C /* LocationDomain */,
+				8F408EF179FED3AA5148DCBB /* SimulationDiagnostics */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		8F408EF179FED3AA5148DCBB /* SimulationDiagnostics */ = {
+			isa = PBXGroup;
+			children = (
+				72B3E7495FA68D914EC681FF /* SimulationDiagnostics.swift */,
+			);
+			path = SimulationDiagnostics;
+			sourceTree = "<group>";
+		};
+		A4A7F456EE2C3394D23C2823 /* ControllerLink */ = {
+			isa = PBXGroup;
+			children = (
+				89025DEC3CF68412744EC94C /* BonjourControllerDiscovery.swift */,
+				DA0A93517ECCC69F00028C27 /* ControllerAuthorization.swift */,
+				11863E4FD7EAA7D8DF07DCE8 /* ControllerCommand.swift */,
+				DBDA4F56E5AEE0A196394911 /* ControllerIdentitySecurity.swift */,
+				27F7E6925130BF2A557470F1 /* ControllerLinkState.swift */,
+				318A64B1CDE67C93D86DAED5 /* ControllerServerSession.swift */,
+				98B80186C2885AC72A31379A /* ControllerTrust.swift */,
+				2C36A1722A694C247499910E /* NetworkControllerLinkTransport.swift */,
+				D7B5C926E3E85E459AEA4B7E /* Pairing.swift */,
+				8849994E5324F1A9101F4BA8 /* TLSControllerServer.swift */,
+				B12AADD1AA55A09BE8D2B5B8 /* TrustedControllerLink.swift */,
+			);
+			path = ControllerLink;
+			sourceTree = "<group>";
+		};
+		B2314D0251BC6CAEE2A734AC /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				1BEF6C45ADAEA560937FB9C0 /* Pinshift.app */,
+				258B3ECCA6FC250DA2F0EE36 /* PinshiftUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		BD169F5E62B64595CC5B706E /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				CE8E870F87171BD4C884C277 /* PinshiftUITests */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		CE8E870F87171BD4C884C277 /* PinshiftUITests */ = {
+			isa = PBXGroup;
+			children = (
+				84F131553411B25C82BE6E51 /* PinshiftControllerLinkUITests.swift */,
+				D95CB9D282C35DFE3BECF170 /* PinshiftUITests.swift */,
+			);
+			path = PinshiftUITests;
+			sourceTree = "<group>";
+		};
+		F038141B49145E020A7CB2FD /* App */ = {
+			isa = PBXGroup;
+			children = (
+				7C6AF1791B17E4CB78F06DD3 /* ActionButtonLabel.swift */,
+				F7A56D0AD7C85F7B154FF4B2 /* Assets.xcassets */,
+				384FBF121EC8EF6D8DA1CF20 /* BaselineViewModel.swift */,
+				559DB6E0E2CD26084FB7E526 /* ContentView.swift */,
+				505FEFAF432894313B0FF079 /* ControllerLinkViewModel.swift */,
+				BD2A7C4D3C499825A8E361E6 /* InfoPlist.strings */,
+				82D0E69E60C7C72AEA5FB7A7 /* Localizable.strings */,
+				E67F3879FD8D45AA7CB0A39E /* LocationObserver.swift */,
+				63BA287725671E9F8A3B7E21 /* LocationPickerView.swift */,
+				EAB0E8F3CD5BA3E65B28DEAB /* LocationPickerViewModel.swift */,
+				F221E02F577319085D683B02 /* PinshiftApp.swift */,
+				AF9C95CECF2193B56008FE4F /* PinshiftDesignSystem.swift */,
+				621696227B4DB33F21A65072 /* SavedLocationStore.swift */,
+				DF7F8780E733910149967CFD /* SimulationDiagnosticPipeline.swift */,
+				2761D347293149A6DB5A2229 /* SimulationDiagnosticsViewModel.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		ACDEDCF5A1FDC6D873AABB92 /* PinshiftUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3F80FF804B27DB1425E4CA58 /* Build configuration list for PBXNativeTarget "PinshiftUITests" */;
+			buildPhases = (
+				430C35AFEC7D09C364E95CBA /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				783458BEC801CD85204BF0E7 /* PBXTargetDependency */,
+			);
+			name = PinshiftUITests;
+			packageProductDependencies = (
+			);
+			productName = PinshiftUITests;
+			productReference = 258B3ECCA6FC250DA2F0EE36 /* PinshiftUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		B7021D3DBB60E7F32EBA6E61 /* Pinshift */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 961D551F29DC1932DA0D9E7B /* Build configuration list for PBXNativeTarget "Pinshift" */;
+			buildPhases = (
+				9B625CF18C5E1575156A5CE2 /* Sources */,
+				AB45B45D4A2316F88E60643F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Pinshift;
+			packageProductDependencies = (
+			);
+			productName = Pinshift;
+			productReference = 1BEF6C45ADAEA560937FB9C0 /* Pinshift.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		1FCECCEB795F522793D12CCE /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 2700;
+				TargetAttributes = {
+					ACDEDCF5A1FDC6D873AABB92 = {
+						ProvisioningStyle = Automatic;
+						TestTargetID = B7021D3DBB60E7F32EBA6E61;
+					};
+					B7021D3DBB60E7F32EBA6E61 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = BDA9AE46892FB557F5606D45 /* Build configuration list for PBXProject "Pinshift" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+				"zh-Hans",
+			);
+			mainGroup = 83804A800B27FC09E5477E90;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				B7021D3DBB60E7F32EBA6E61 /* Pinshift */,
+				ACDEDCF5A1FDC6D873AABB92 /* PinshiftUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		AB45B45D4A2316F88E60643F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E6426BC63774B81D4E97AEE2 /* Assets.xcassets in Resources */,
+				5FF00F781C76C18F0E887B28 /* InfoPlist.strings in Resources */,
+				3C149C84D989BB81128F8353 /* Localizable.strings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		430C35AFEC7D09C364E95CBA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5C68831AF02525506307B3C6 /* PinshiftControllerLinkUITests.swift in Sources */,
+				C29250507FE1F8923E21E48B /* PinshiftUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9B625CF18C5E1575156A5CE2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7E74EC276731C3AE2FC91855 /* ActionButtonLabel.swift in Sources */,
+				9F06A0A62F5F273553282A3C /* BaselineViewModel.swift in Sources */,
+				D0C732CBAFD8F2B449681684 /* BonjourControllerDiscovery.swift in Sources */,
+				15953420A837293C53A8CAB9 /* ContentView.swift in Sources */,
+				5A4DF40BE4A512E84E7C9B98 /* ControllerAuthorization.swift in Sources */,
+				5D52BA06C0B22533CD491C2E /* ControllerCommand.swift in Sources */,
+				72C1C57A40F4DF4CCE3362CB /* ControllerIdentitySecurity.swift in Sources */,
+				C090D86A06F80818DD50DFC4 /* ControllerLinkState.swift in Sources */,
+				A6906E996D39CCB87D8A062D /* ControllerLinkViewModel.swift in Sources */,
+				4704AB4A9FF03F17ADA2A6C7 /* ControllerServerSession.swift in Sources */,
+				D285736CFCF157D15F41A867 /* ControllerTrust.swift in Sources */,
+				E168B8BBB6B6BD89B5AF3489 /* LocationDomain.swift in Sources */,
+				A448DB6E3571878373B99953 /* LocationObserver.swift in Sources */,
+				906F405A80453E17B60025E1 /* LocationPickerView.swift in Sources */,
+				1BE44D9D19EAE01B24350C31 /* LocationPickerViewModel.swift in Sources */,
+				FD1C1C01CCED6EAD5B86DB00 /* LocationSelectionState.swift in Sources */,
+				ECC58FBFA23EA8CD7DEB58B5 /* ManualSimulationSession.swift in Sources */,
+				50CA543709A8AA655927CC35 /* NetworkControllerLinkTransport.swift in Sources */,
+				1EF3B39FB66C61C7ABD4F745 /* Pairing.swift in Sources */,
+				4FDAA9B835DD2EB3EF430BDC /* PinshiftApp.swift in Sources */,
+				E3906D955F3C5495484B357D /* PinshiftDesignSystem.swift in Sources */,
+				E4B7707952C6F3FE155A2DED /* SavedLocation.swift in Sources */,
+				9AA911807B95B46110BC6EB2 /* SavedLocationStore.swift in Sources */,
+				CE633CBC46569D7E87DBB9BC /* SimulationDiagnosticPipeline.swift in Sources */,
+				F9DD8F43F9F0963C610E32AF /* SimulationDiagnostics.swift in Sources */,
+				700BD25D6DCB7E7ACBBD178A /* SimulationDiagnosticsViewModel.swift in Sources */,
+				7F3E0A61E16505138F2B9D43 /* TLSControllerServer.swift in Sources */,
+				EAEC96863A05506A88E67D23 /* TrustedControllerLink.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		783458BEC801CD85204BF0E7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B7021D3DBB60E7F32EBA6E61 /* Pinshift */;
+			targetProxy = 9EFDB20F17B52466C1638AFA /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		82D0E69E60C7C72AEA5FB7A7 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				24217DE3F4158040D5962118 /* en */,
+				730DDB8AD91B683D924743AF /* zh-Hans */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		16B1D15BB74796A4B24885D3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		19E9FCB5D08F5D487AC461B6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = C5D97EE47241D82050A36675 /* Signing.xcconfig */;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "UI tests use local-network access only when explicitly exercising Controller Link behavior.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.sayori.pinshift.uitests;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = Pinshift;
+			};
+			name = Release;
+		};
+		82EADD71DC76C4DA002BA31D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = C5D97EE47241D82050A36675 /* Signing.xcconfig */;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "UI tests use local-network access only when explicitly exercising Controller Link behavior.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.sayori.pinshift.uitests;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = Pinshift;
+			};
+			name = Debug;
+		};
+		99337C34C65F383FD5C8A51F /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = C5D97EE47241D82050A36675 /* Signing.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Config/Pinshift-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.sayori.pinshift;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		BC1585A7CF2AB4B64536DC8C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = C5D97EE47241D82050A36675 /* Signing.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Config/Pinshift-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.sayori.pinshift;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		EAEE1A7F27E802A96255B8E2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		3F80FF804B27DB1425E4CA58 /* Build configuration list for PBXNativeTarget "PinshiftUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				82EADD71DC76C4DA002BA31D /* Debug */,
+				19E9FCB5D08F5D487AC461B6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		961D551F29DC1932DA0D9E7B /* Build configuration list for PBXNativeTarget "Pinshift" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BC1585A7CF2AB4B64536DC8C /* Debug */,
+				99337C34C65F383FD5C8A51F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BDA9AE46892FB557F5606D45 /* Build configuration list for PBXProject "Pinshift" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EAEE1A7F27E802A96255B8E2 /* Debug */,
+				16B1D15BB74796A4B24885D3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 1FCECCEB795F522793D12CCE /* Project object */;
+}

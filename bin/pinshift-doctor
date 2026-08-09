@@ -1,12 +1,12 @@
 #!/usr/bin/env fish
 
 set --local script_dir (path resolve (path dirname (status filename)))
-source $script_dir/_rl-common.fish
+source $script_dir/_pinshift-common.fish
 or exit 1
 
-rl_prepare_environment
+pinshift_prepare_environment
 or exit $status
-set --local controller (rl_controller_executable)
+set --local controller (pinshift_controller_executable)
 or exit $status
 
 exec $controller doctor

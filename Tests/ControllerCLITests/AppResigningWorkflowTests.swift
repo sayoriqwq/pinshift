@@ -16,12 +16,12 @@ final class AppResigningWorkflowTests: XCTestCase {
       .deletingLastPathComponent()
       .deletingLastPathComponent()
       .deletingLastPathComponent()
-      .appending(path: "bin/rl-resign-app")
+      .appending(path: "bin/pinshift-resign-app")
   }
 
   override func setUpWithError() throws {
     fixtureRoot = FileManager.default.temporaryDirectory
-      .appending(path: "remote-location-resign-\(UUID().uuidString)")
+      .appending(path: "pinshift-resign-\(UUID().uuidString)")
     fakeBin = fixtureRoot.appending(path: "fake-bin")
     profiles = fixtureRoot.appending(path: "profiles")
     workRoot = fixtureRoot.appending(path: "work")
@@ -313,10 +313,10 @@ final class AppResigningWorkflowTests: XCTestCase {
     process.environment = ProcessInfo.processInfo.environment.merging(
       [
         "PATH": "\(fakeBin.path):/etc/profiles/per-user/sayori/bin:/usr/bin:/bin",
-        "REMOTE_LOCATION_DEVELOPER_DIR": fixtureRoot.appending(path: "Developer").path,
-        "REMOTE_LOCATION_DEVICE": "test-iphone",
-        "REMOTE_LOCATION_PROVISIONING_PROFILE_DIRECTORY": profiles.path,
-        "REMOTE_LOCATION_RESIGN_WORK_ROOT": workRoot.path,
+        "PINSHIFT_DEVELOPER_DIR": fixtureRoot.appending(path: "Developer").path,
+        "PINSHIFT_DEVICE": "test-iphone",
+        "PINSHIFT_PROVISIONING_PROFILE_DIRECTORY": profiles.path,
+        "PINSHIFT_RESIGN_WORK_ROOT": workRoot.path,
         "FAKE_EVENT_LOG": eventLog.path,
         "FAKE_CANDIDATE_PROFILE": candidateProfile.path,
       ].merging(environment) { _, new in new }

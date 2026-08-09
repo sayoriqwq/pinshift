@@ -1,4 +1,4 @@
-function rl_decode_mobileprovision --argument-names source destination
+function pinshift_decode_mobileprovision --argument-names source destination
     if not test -f "$source"; or test -L "$source"
         return 1
     end
@@ -8,15 +8,15 @@ function rl_decode_mobileprovision --argument-names source destination
     chmod 600 "$destination"
 end
 
-function rl_plist_raw --argument-names plist key_path
+function pinshift_plist_raw --argument-names plist key_path
     plutil -extract "$key_path" raw "$plist" 2>/dev/null
 end
 
-function rl_decoded_profile_is_ios_app --argument-names profile bundle_identifier
-    set --local prefix (rl_plist_raw "$profile" ApplicationIdentifierPrefix.0)
+function pinshift_decoded_profile_is_ios_app --argument-names profile bundle_identifier
+    set --local prefix (pinshift_plist_raw "$profile" ApplicationIdentifierPrefix.0)
     or return 1
     set --local application_identifier (
-        rl_plist_raw "$profile" Entitlements.application-identifier
+        pinshift_plist_raw "$profile" Entitlements.application-identifier
     )
     or return 1
 
@@ -28,24 +28,24 @@ function rl_decoded_profile_is_ios_app --argument-names profile bundle_identifie
         jq --exit-status 'type == "array" and (index("iOS") != null)' >/dev/null
 end
 
-function rl_iso8601_epoch --argument-names timestamp
+function pinshift_iso8601_epoch --argument-names timestamp
     /usr/bin/env TZ=UTC /bin/date -j -f '%Y-%m-%dT%H:%M:%SZ' "$timestamp" '+%s' 2>/dev/null
 end
 
-function rl_local_expiration --argument-names epoch
+function pinshift_local_expiration --argument-names epoch
     /bin/date -r "$epoch" '+%Y-%m-%d %H:%M:%S %Z'
 end
 
-function rl_resign_restore_profiles
-    if not set --query _rl_resign_moved_sources
+function pinshift_resign_restore_profiles
+    if not set --query _pinshift_resign_moved_sources
         return 0
     end
 
     set --local restore_status 0
     set --local index 1
-    while test $index -le (count $_rl_resign_moved_sources)
-        set --local source_path $_rl_resign_moved_sources[$index]
-        set --local backup_path $_rl_resign_moved_backups[$index]
+    while test $index -le (count $_pinshift_resign_moved_sources)
+        set --local source_path $_pinshift_resign_moved_sources[$index]
+        set --local backup_path $_pinshift_resign_moved_backups[$index]
 
         if not test -e "$backup_path"
             set index (math $index + 1)
@@ -66,17 +66,17 @@ function rl_resign_restore_profiles
     return $restore_status
 end
 
-function rl_resign_archive_new_profiles
-    if not set --query _rl_resign_profile_directories \
-            _rl_resign_bundle_identifier \
-            _rl_resign_backup_directory \
-            _rl_resign_staging_root
+function pinshift_resign_archive_new_profiles
+    if not set --query _pinshift_resign_profile_directories \
+            _pinshift_resign_bundle_identifier \
+            _pinshift_resign_backup_directory \
+            _pinshift_resign_staging_root
         return 0
     end
 
     set --local archive_status 0
     set --local archive_index 0
-    for profile_directory in $_rl_resign_profile_directories
+    for profile_directory in $_pinshift_resign_profile_directories
         if not test -d "$profile_directory"; or test -L "$profile_directory"
             continue
         end
@@ -100,19 +100,19 @@ function rl_resign_archive_new_profiles
 
             set archive_index (math $archive_index + 1)
             set --local decoded \
-                "$_rl_resign_staging_root/cleanup-profile-$archive_index.plist"
-            rl_decode_mobileprovision "$profile" "$decoded"
+                "$_pinshift_resign_staging_root/cleanup-profile-$archive_index.plist"
+            pinshift_decode_mobileprovision "$profile" "$decoded"
             or begin
                 set archive_status 1
                 continue
             end
-            if not rl_decoded_profile_is_ios_app \
-                    "$decoded" "$_rl_resign_bundle_identifier"
+            if not pinshift_decoded_profile_is_ios_app \
+                    "$decoded" "$_pinshift_resign_bundle_identifier"
                 continue
             end
 
             set --local backup_path \
-                "$_rl_resign_backup_directory/generated-$archive_index-"(path basename "$profile")
+                "$_pinshift_resign_backup_directory/generated-$archive_index-"(path basename "$profile")
             mv "$profile" "$backup_path"
             or set archive_status $status
         end
@@ -121,47 +121,47 @@ function rl_resign_archive_new_profiles
     return $archive_status
 end
 
-function rl_resign_cleanup --on-event fish_exit
-    if set --query _rl_resign_profiles_committed
-        if test "$_rl_resign_profiles_committed" != 1
-            rl_resign_archive_new_profiles
+function pinshift_resign_cleanup --on-event fish_exit
+    if set --query _pinshift_resign_profiles_committed
+        if test "$_pinshift_resign_profiles_committed" != 1
+            pinshift_resign_archive_new_profiles
             or echo "A newly generated profile was preserved for manual inspection." >&2
-            rl_resign_restore_profiles
+            pinshift_resign_restore_profiles
             or echo "Provisioning-profile rollback needs manual inspection." >&2
         end
     end
 
-    if set --query _rl_resign_staging_root _rl_resign_work_root; and not begin
-            set --query _rl_resign_preserve_staging
-            and test "$_rl_resign_preserve_staging" = 1
+    if set --query _pinshift_resign_staging_root _pinshift_resign_work_root; and not begin
+            set --query _pinshift_resign_preserve_staging
+            and test "$_pinshift_resign_preserve_staging" = 1
         end
-        if test -d "$_rl_resign_staging_root"; and test (path dirname "$_rl_resign_staging_root") = "$_rl_resign_work_root"
-            command rm -rf -- "$_rl_resign_staging_root"
-        end
-    end
-
-    if set --query _rl_resign_lock_directory
-        if test -d "$_rl_resign_lock_directory"
-            command rmdir "$_rl_resign_lock_directory" 2>/dev/null
+        if test -d "$_pinshift_resign_staging_root"; and test (path dirname "$_pinshift_resign_staging_root") = "$_pinshift_resign_work_root"
+            command rm -rf -- "$_pinshift_resign_staging_root"
         end
     end
 
-    if set --query _rl_resign_backup_directory
-        if test -d "$_rl_resign_backup_directory"
-            command rmdir "$_rl_resign_backup_directory" 2>/dev/null
+    if set --query _pinshift_resign_lock_directory
+        if test -d "$_pinshift_resign_lock_directory"
+            command rmdir "$_pinshift_resign_lock_directory" 2>/dev/null
+        end
+    end
+
+    if set --query _pinshift_resign_backup_directory
+        if test -d "$_pinshift_resign_backup_directory"
+            command rmdir "$_pinshift_resign_backup_directory" 2>/dev/null
         end
     end
 end
 
-function rl_resign_interrupt --on-signal INT
+function pinshift_resign_interrupt --on-signal INT
     exit 130
 end
 
-function rl_resign_terminate --on-signal TERM
+function pinshift_resign_terminate --on-signal TERM
     exit 143
 end
 
-function rl_launch_pinshift_app --argument-names device bundle_identifier output_root
+function pinshift_launch_pinshift_app --argument-names device bundle_identifier output_root
     set --local launch_json "$output_root/launch.json"
     set --local launch_log "$output_root/launch.log"
 
@@ -189,6 +189,6 @@ function rl_launch_pinshift_app --argument-names device bundle_identifier output
     end
 
     echo "Pinshift is installed, but automatic launch verification failed." >&2
-    echo "Unlock the iPhone and run rl-resign-app --launch-only, or open Pinshift manually." >&2
+    echo "Unlock the iPhone and run pinshift-resign-app --launch-only, or open Pinshift manually." >&2
     return 1
 end

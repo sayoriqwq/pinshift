@@ -154,7 +154,7 @@ public actor InMemorySimulationLifecycleStore: SimulationLifecycleStoring {
 }
 
 public actor FileSimulationLifecycleStore: SimulationLifecycleStoring {
-  public static let fileEnvironmentKey = "REMOTE_LOCATION_LIFECYCLE_FILE"
+  public static let fileEnvironmentKey = "PINSHIFT_LIFECYCLE_FILE"
 
   public let fileURL: URL
   private let fileManager: FileManager

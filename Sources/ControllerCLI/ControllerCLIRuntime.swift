@@ -17,13 +17,13 @@ public enum ControllerServeLifecycleError: Error, Equatable, Sendable {
 }
 
 public enum ControllerCLIRuntime {
-  public static let deviceEnvironmentKey = "REMOTE_LOCATION_DEVICE"
+  public static let deviceEnvironmentKey = "PINSHIFT_DEVICE"
   public static let developerDirectoryEnvironmentKey =
-    "REMOTE_LOCATION_DEVELOPER_DIR"
+    "PINSHIFT_DEVELOPER_DIR"
   public static let defaultDeveloperDirectory =
     "/Applications/Xcode-beta.app/Contents/Developer"
   public static let e2ePairingCodeEnvironmentKey =
-    "REMOTE_LOCATION_E2E_PAIRING_CODE"
+    "PINSHIFT_E2E_PAIRING_CODE"
   public static let defaultSimulationLeaseDuration: TimeInterval =
     SimulationLeasePolicy.defaultDuration
 

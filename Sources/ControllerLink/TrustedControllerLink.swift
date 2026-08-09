@@ -1,7 +1,7 @@
 import Foundation
 
 public struct ControllerService: Codable, Hashable, Sendable {
-  public static let serviceType = "_remote-location._tcp"
+  public static let serviceType = "_pinshift._tcp"
 
   public let name: String
   public let type: String

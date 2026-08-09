@@ -9,7 +9,7 @@ import XCTest
 final class ControllerCLIRuntimeTests: XCTestCase {
   func testServeLifecycleNormalCompletionResetsOnceAndReportsResult() async throws {
     let directory = FileManager.default.temporaryDirectory
-      .appendingPathComponent("remote-location-serve-events-(UUID().uuidString)")
+      .appendingPathComponent("pinshift-serve-events-(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: directory) }
     let diagnostics = SimulationDiagnosticRecorder(
       side: .macController,
@@ -41,7 +41,7 @@ final class ControllerCLIRuntimeTests: XCTestCase {
 
   func testServeLifecycleInterruptedCleanupIsRecordedAndStillResetsOnce() async throws {
     let directory = FileManager.default.temporaryDirectory
-      .appendingPathComponent("remote-location-serve-events-(UUID().uuidString)")
+      .appendingPathComponent("pinshift-serve-events-(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: directory) }
     let diagnostics = SimulationDiagnosticRecorder(
       side: .macController,
@@ -107,14 +107,14 @@ final class ControllerCLIRuntimeTests: XCTestCase {
       device: " Explicit Device ",
       developerDirectory: " /Explicit/Xcode.app/Contents/Developer ",
       environment: [
-        "REMOTE_LOCATION_DEVICE": "Environment Device",
-        "REMOTE_LOCATION_DEVELOPER_DIR": "/Environment/Xcode.app/Contents/Developer",
+        "PINSHIFT_DEVICE": "Environment Device",
+        "PINSHIFT_DEVELOPER_DIR": "/Environment/Xcode.app/Contents/Developer",
       ]
     )
     let environment = ControllerCLIRuntime.resolveConfiguration(
       environment: [
-        "REMOTE_LOCATION_DEVICE": " Environment Device ",
-        "REMOTE_LOCATION_DEVELOPER_DIR": " /Environment/Xcode.app/Contents/Developer ",
+        "PINSHIFT_DEVICE": " Environment Device ",
+        "PINSHIFT_DEVELOPER_DIR": " /Environment/Xcode.app/Contents/Developer ",
       ]
     )
     let defaults = ControllerCLIRuntime.resolveConfiguration(environment: [:])
@@ -145,8 +145,8 @@ final class ControllerCLIRuntimeTests: XCTestCase {
       results: [.exited(0), .exited(0), .exited(0), .exited(0)]
     )
     let environment = [
-      "REMOTE_LOCATION_DEVICE": "Active Test Device",
-      "REMOTE_LOCATION_DEVELOPER_DIR": "/Applications/Xcode-beta.app/Contents/Developer",
+      "PINSHIFT_DEVICE": "Active Test Device",
+      "PINSHIFT_DEVELOPER_DIR": "/Applications/Xcode-beta.app/Contents/Developer",
       FileSimulationLifecycleStore.fileEnvironmentKey:
         directory.appendingPathComponent("lifecycle.json").path,
     ]
@@ -203,7 +203,7 @@ final class ControllerCLIRuntimeTests: XCTestCase {
       result,
       ControllerCLIResult(
         exitCode: 1,
-        output: "No Active Test Device is configured. Pass --device or set REMOTE_LOCATION_DEVICE."
+        output: "No Active Test Device is configured. Pass --device or set PINSHIFT_DEVICE."
       )
     )
     XCTAssertTrue(executor.invocations.isEmpty)

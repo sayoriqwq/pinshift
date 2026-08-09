@@ -28,7 +28,7 @@ public struct NetworkControllerLinkTransport: ControllerLinkTransport {
       tls.securityProtocolOptions,
       .TLSv13
     )
-    let verifyQueue = DispatchQueue(label: "dev.sayori.remotelocation.controller-tls-verify")
+    let verifyQueue = DispatchQueue(label: "dev.sayori.pinshift.controller-tls-verify")
     sec_protocol_options_set_verify_block(
       tls.securityProtocolOptions,
       { _, protocolTrust, complete in
@@ -64,7 +64,7 @@ public struct NetworkControllerLinkTransport: ControllerLinkTransport {
 
     return try await withCheckedThrowingContinuation { continuation in
       let completion = ControllerLinkCompletion<ControllerTransportReply>(continuation)
-      let queue = DispatchQueue(label: "dev.sayori.remotelocation.controller-client")
+      let queue = DispatchQueue(label: "dev.sayori.pinshift.controller-client")
       connection.stateUpdateHandler = { (state: NWConnection.State) in
         switch state {
         case .ready:

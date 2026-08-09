@@ -1,19 +1,19 @@
 #!/usr/bin/env fish
 
 set --local script_dir (path resolve (path dirname (status filename)))
-source $script_dir/_rl-common.fish
+source $script_dir/_pinshift-common.fish
 or exit 1
 
-rl_prepare_environment
+pinshift_prepare_environment
 or exit $status
 
-set --local identifier dev.sayori.remotelocation.controller
+set --local identifier dev.sayori.pinshift.controller
 set --local install_root (path resolve .build/controller)
 set --local install_bin $install_root/bin
-set --local executable $install_bin/remote-location-controller
+set --local executable $install_bin/pinshift-controller
 set --local requirement_file $install_root/designated-requirement
 set --local source_file $install_root/source-fingerprint
-set --local guardian_label dev.sayori.remotelocation.cleanup-guardian
+set --local guardian_label dev.sayori.pinshift.cleanup-guardian
 set --local guardian_template (path resolve Support/$guardian_label.plist)
 set --local guardian_directory $HOME/Library/LaunchAgents
 set --local guardian_plist $guardian_directory/$guardian_label.plist
@@ -26,25 +26,25 @@ set --local staging_root (mktemp -d .build/controller-install.XXXXXX)
 or exit 1
 set --local build_path $staging_root/build
 
-swift build --configuration release --product remote-location-controller --build-path $build_path
+swift build --configuration release --product pinshift-controller --build-path $build_path
 or exit $status
 set --local product_bin (swift build --configuration release --show-bin-path --build-path $build_path)
 or exit $status
-set --local candidate $staging_root/remote-location-controller
-cp $product_bin/remote-location-controller $candidate
+set --local candidate $staging_root/pinshift-controller
+cp $product_bin/pinshift-controller $candidate
 or exit $status
 chmod 755 $candidate
 
 set --local signing_identity
-if set --query REMOTE_LOCATION_CODE_SIGN_IDENTITY; and test -n "$REMOTE_LOCATION_CODE_SIGN_IDENTITY"
-    set signing_identity $REMOTE_LOCATION_CODE_SIGN_IDENTITY
+if set --query PINSHIFT_CODE_SIGN_IDENTITY; and test -n "$PINSHIFT_CODE_SIGN_IDENTITY"
+    set signing_identity $PINSHIFT_CODE_SIGN_IDENTITY
 else
     set --local identities (
         security find-identity -v -p codesigning |
         string match --regex --groups-only '^\s*\d+\) ([0-9A-F]{40}) '
     )
     if test (count $identities) -ne 1
-        echo "Expected one valid code-signing identity. Set REMOTE_LOCATION_CODE_SIGN_IDENTITY privately." >&2
+        echo "Expected one valid code-signing identity. Set PINSHIFT_CODE_SIGN_IDENTITY privately." >&2
         exit 1
     end
     set signing_identity $identities[1]
@@ -65,7 +65,7 @@ if not string match --quiet "*identifier \"$identifier\"*" $requirement
 end
 
 # Compute and stage every piece of metadata before replacing the installed controller.
-set --local source_fingerprint (rl_controller_source_fingerprint)
+set --local source_fingerprint (pinshift_controller_source_fingerprint)
 or exit $status
 set --local staged_requirement $staging_root/designated-requirement
 set --local staged_source $staging_root/source-fingerprint
@@ -82,11 +82,11 @@ plutil -insert ProgramArguments.0 -string $executable $staged_guardian
 or exit $status
 plutil -remove ProgramArguments.3 $staged_guardian
 or exit $status
-plutil -insert ProgramArguments.3 -string $REMOTE_LOCATION_DEVICE $staged_guardian
+plutil -insert ProgramArguments.3 -string $PINSHIFT_DEVICE $staged_guardian
 or exit $status
 plutil -remove ProgramArguments.5 $staged_guardian
 or exit $status
-plutil -insert ProgramArguments.5 -string $REMOTE_LOCATION_DEVELOPER_DIR $staged_guardian
+plutil -insert ProgramArguments.5 -string $PINSHIFT_DEVELOPER_DIR $staged_guardian
 or exit $status
 plutil -replace StandardOutPath -string $guardian_log $staged_guardian
 or exit $status
@@ -219,7 +219,7 @@ launchctl bootout gui/$user_id/$guardian_label >/dev/null 2>&1
 launchctl bootstrap gui/$user_id $guardian_plist
 or begin
     echo "The controller was installed, but the Cleanup Guardian could not be registered." >&2
-    echo "Run rl-install again before applying another Simulated Location." >&2
+    echo "Run pinshift-install again before applying another Simulated Location." >&2
     exit 1
 end
 launchctl kickstart -k gui/$user_id/$guardian_label
@@ -240,4 +240,4 @@ or begin
     exit 1
 end
 
-echo "Stable controller and persistent Cleanup Guardian installed. Daily rl-start, rl-doctor, and rl-reset are ready."
+echo "Stable controller and persistent Cleanup Guardian installed. Daily pinshift-start, pinshift-doctor, and pinshift-reset are ready."

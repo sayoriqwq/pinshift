@@ -198,13 +198,13 @@ public struct ControllerCLIRunner: Sendable {
     switch reason {
     case .noActiveDevice:
       message =
-        "No Active Test Device is configured. Pass --device or set REMOTE_LOCATION_DEVICE."
+        "No Active Test Device is configured. Pass --device or set PINSHIFT_DEVICE."
     case .sessionNotReady:
       message =
-        "The Xcode device workflow is not ready. Run `remote-location-controller doctor`, resolve the reported device check, and retry."
+        "The Xcode device workflow is not ready. Run `pinshift-controller doctor`, resolve the reported device check, and retry."
     case .backendUnavailable:
       message =
-        "The Injection Backend is unavailable. Run `remote-location-controller doctor`, resolve the reported Xcode or device check, and retry."
+        "The Injection Backend is unavailable. Run `pinshift-controller doctor`, resolve the reported Xcode or device check, and retry."
     case .timedOut:
       message = "The Injection Backend timed out before acknowledging the request."
     case .authenticationFailed:
@@ -223,7 +223,7 @@ public struct ControllerCLIRunner: Sendable {
       message = "Choose a Simulation Lease of 15, 30, or 60 minutes and retry."
     case .cleanupGuardianUnavailable:
       message =
-        "Cleanup Guardian protection is unavailable. Run rl-install, wait for the LaunchAgent to become healthy, and retry."
+        "Cleanup Guardian protection is unavailable. Run pinshift-install, wait for the LaunchAgent to become healthy, and retry."
     }
     return ControllerCLIResult(exitCode: 1, output: message)
   }

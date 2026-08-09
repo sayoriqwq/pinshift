@@ -6,7 +6,7 @@ final class ControllerDoctorTests: XCTestCase {
   private let configuration = ControllerDoctorConfiguration(
     device: "Private Device Selector",
     developerDirectory: "/Applications/Xcode-beta.app/Contents/Developer",
-    identityLabel: "Remote Location Controller"
+    identityLabel: "Pinshift Controller"
   )
 
   func testHealthyFixturePassesWithoutExposingPrivateProbeData() {

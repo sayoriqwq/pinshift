@@ -617,7 +617,7 @@ private extension ManualSimulationRequest {
 }
 
 public final class FileManualSimulationSessionStore: @unchecked Sendable {
-  public static let fileEnvironmentKey = "REMOTE_LOCATION_APP_LIFECYCLE_FILE"
+  public static let fileEnvironmentKey = "PINSHIFT_APP_LIFECYCLE_FILE"
 
   public let fileURL: URL
   private let fileManager: FileManager

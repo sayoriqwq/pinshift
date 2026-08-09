@@ -220,7 +220,7 @@ final class SimulationDiagnosticRecorderTests: XCTestCase {
 
   private func temporaryDirectory() -> URL {
     let directory = FileManager.default.temporaryDirectory
-      .appendingPathComponent("remote-location-diagnostics-\(UUID().uuidString)")
+      .appendingPathComponent("pinshift-diagnostics-\(UUID().uuidString)")
     try! FileManager.default.createDirectory(
       at: directory,
       withIntermediateDirectories: true

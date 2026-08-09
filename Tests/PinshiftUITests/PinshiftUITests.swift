@@ -81,8 +81,8 @@ final class PinshiftUITests: XCTestCase {
 
   func testPinshiftMapFirstHomeKeepsSecondaryToolsInSettings() {
     let app = selectedLocationFixtureApp()
-    app.launchEnvironment["REMOTE_LOCATION_E2E_LOCATION_PERMISSION"] = "allowed"
-    app.launchEnvironment["REMOTE_LOCATION_E2E_LOCAL_NETWORK_PERMISSION"] = "allowed"
+    app.launchEnvironment["PINSHIFT_E2E_LOCATION_PERMISSION"] = "allowed"
+    app.launchEnvironment["PINSHIFT_E2E_LOCAL_NETWORK_PERMISSION"] = "allowed"
     app.launch()
     app.tap()
 
@@ -170,8 +170,8 @@ final class PinshiftUITests: XCTestCase {
 
   func testDiagnosticsSurviveFixtureApplyObservationStopAndAppRelaunch() {
     let app = pinshiftApp()
-    app.launchEnvironment["REMOTE_LOCATION_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
-    app.launchEnvironment["REMOTE_LOCATION_E2E_DIAGNOSTICS_ARTIFACT_FIXTURE"] = "1"
+    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
+    app.launchEnvironment["PINSHIFT_E2E_DIAGNOSTICS_ARTIFACT_FIXTURE"] = "1"
     app.launch()
     app.tap()
     waitForDiagnostics(in: app)
@@ -194,8 +194,8 @@ final class PinshiftUITests: XCTestCase {
     }
 
     app.terminate()
-    app.launchEnvironment["REMOTE_LOCATION_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
-    app.launchEnvironment["REMOTE_LOCATION_E2E_DIAGNOSTICS_ARTIFACT_FIXTURE"] = "1"
+    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
+    app.launchEnvironment["PINSHIFT_E2E_DIAGNOSTICS_ARTIFACT_FIXTURE"] = "1"
     app.launch()
     app.tap()
 
@@ -253,9 +253,9 @@ final class PinshiftUITests: XCTestCase {
 
   func testDiagnosticsRecordUnavailableControllerAndFailedStopWithoutClaimingStopped() {
     let app = pinshiftApp()
-    app.launchEnvironment["REMOTE_LOCATION_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
-    app.launchEnvironment["REMOTE_LOCATION_E2E_CONTROLLER_LINK_FAILURE_FIXTURE"] = "failed-stop"
-    app.launchEnvironment["REMOTE_LOCATION_E2E_DIAGNOSTICS_ARTIFACT_FIXTURE"] = "1"
+    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
+    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FAILURE_FIXTURE"] = "failed-stop"
+    app.launchEnvironment["PINSHIFT_E2E_DIAGNOSTICS_ARTIFACT_FIXTURE"] = "1"
     app.launch()
     app.tap()
     waitForDiagnostics(in: app)
@@ -336,7 +336,7 @@ final class PinshiftUITests: XCTestCase {
 
   func testLanguageSelectorSwitchesImmediatelyAndPersistsTheChoice() {
     let app = permissionFixtureApp(location: "allowed", localNetwork: "allowed")
-    app.launchEnvironment["REMOTE_LOCATION_E2E_APP_LANGUAGE"] = "en"
+    app.launchEnvironment["PINSHIFT_E2E_APP_LANGUAGE"] = "en"
     app.launch()
     openSettings(in: app)
 
@@ -356,7 +356,7 @@ final class PinshiftUITests: XCTestCase {
     XCTAssertTrue(waitForLabel(localNetworkStatus, endingWith: "已允许"))
 
     app.terminate()
-    app.launchEnvironment.removeValue(forKey: "REMOTE_LOCATION_E2E_APP_LANGUAGE")
+    app.launchEnvironment.removeValue(forKey: "PINSHIFT_E2E_APP_LANGUAGE")
     app.launch()
     openSettings(in: app)
 
@@ -491,7 +491,7 @@ final class PinshiftUITests: XCTestCase {
   func testSavedLocationSelectionAndDeletionPreserveAcknowledgedAppliedSimulationUntilExplicitStop()
   {
     let app = savedLocationsFixtureApp()
-    app.launchEnvironment["REMOTE_LOCATION_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
+    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
     app.launch()
     app.tap()
 
@@ -566,9 +566,9 @@ final class PinshiftUITests: XCTestCase {
 
   func testSavedLocationSaveFailureKeepsCollectionAndSimulationState() {
     let app = savedLocationsFixtureApp()
-    app.launchEnvironment["REMOTE_LOCATION_E2E_APP_LANGUAGE"] = "zh-Hans"
-    app.launchEnvironment["REMOTE_LOCATION_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
-    app.launchEnvironment["REMOTE_LOCATION_E2E_SAVED_LOCATIONS_FAIL_ON_SAVE_NUMBER"] = "3"
+    app.launchEnvironment["PINSHIFT_E2E_APP_LANGUAGE"] = "zh-Hans"
+    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
+    app.launchEnvironment["PINSHIFT_E2E_SAVED_LOCATIONS_FAIL_ON_SAVE_NUMBER"] = "3"
     app.launch()
     app.tap()
 
@@ -699,7 +699,7 @@ final class PinshiftUITests: XCTestCase {
 
   func testMapSelectionReachesTheFreshObservationVerificationSeam() {
     let app = pinshiftApp()
-    app.launchEnvironment["REMOTE_LOCATION_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
+    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
     app.launch()
     app.tap()
 
@@ -741,7 +741,7 @@ final class PinshiftUITests: XCTestCase {
 
   func testLocationPickerKeepsMapActionsVisibleAndRequiresExplicitDismissal() {
     let app = pinshiftApp()
-    app.launchEnvironment["REMOTE_LOCATION_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
+    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
     app.launch()
     app.tap()
 
@@ -910,7 +910,7 @@ final class PinshiftUITests: XCTestCase {
 
   func testFineAdjustmentDoesNotReplaceAnAppliedSimulationUntilExplicitStop() {
     let app = selectedLocationFixtureApp()
-    app.launchEnvironment["REMOTE_LOCATION_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
+    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
     app.launch()
     app.navigationBars["Pinshift"].tap()
 
@@ -939,7 +939,7 @@ final class PinshiftUITests: XCTestCase {
 
   func testTimeBoundedSimulationShowsDurationProtectionCountdownAndActions() {
     let app = selectedLocationFixtureApp()
-    app.launchEnvironment["REMOTE_LOCATION_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
+    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
     app.launch()
     app.navigationBars["Pinshift"].tap()
 
@@ -983,7 +983,7 @@ final class PinshiftUITests: XCTestCase {
 
   func testFineAdjustmentFeedbackIsLocalizedInSimplifiedChinese() {
     let app = selectedLocationFixtureApp()
-    app.launchEnvironment["REMOTE_LOCATION_E2E_APP_LANGUAGE"] = "zh-Hans"
+    app.launchEnvironment["PINSHIFT_E2E_APP_LANGUAGE"] = "zh-Hans"
     app.launch()
     app.tap()
 
@@ -1000,8 +1000,8 @@ final class PinshiftUITests: XCTestCase {
 
   func testSearchResultReachesTheFreshObservationVerificationSeam() {
     let app = pinshiftApp()
-    app.launchEnvironment["REMOTE_LOCATION_E2E_SEARCH_FIXTURE"] = "1"
-    app.launchEnvironment["REMOTE_LOCATION_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
+    app.launchEnvironment["PINSHIFT_E2E_SEARCH_FIXTURE"] = "1"
+    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
     app.launch()
     app.tap()
 
@@ -1039,7 +1039,7 @@ final class PinshiftUITests: XCTestCase {
 
   func testSearchEmptyAndFailureStatesPreserveThePreviousSelection() {
     let app = pinshiftApp()
-    app.launchEnvironment["REMOTE_LOCATION_E2E_SEARCH_FIXTURE"] = "1"
+    app.launchEnvironment["PINSHIFT_E2E_SEARCH_FIXTURE"] = "1"
     app.launch()
     app.tap()
 
@@ -1406,8 +1406,8 @@ final class PinshiftUITests: XCTestCase {
     localNetwork: String
   ) -> XCUIApplication {
     let app = pinshiftApp()
-    app.launchEnvironment["REMOTE_LOCATION_E2E_LOCATION_PERMISSION"] = location
-    app.launchEnvironment["REMOTE_LOCATION_E2E_LOCAL_NETWORK_PERMISSION"] = localNetwork
+    app.launchEnvironment["PINSHIFT_E2E_LOCATION_PERMISSION"] = location
+    app.launchEnvironment["PINSHIFT_E2E_LOCAL_NETWORK_PERMISSION"] = localNetwork
     return app
   }
 
@@ -1567,7 +1567,7 @@ final class PinshiftUITests: XCTestCase {
 
   private func savedLocationsFixtureApp() -> XCUIApplication {
     let app = permissionFixtureApp(location: "allowed", localNetwork: "allowed")
-    app.launchEnvironment["REMOTE_LOCATION_E2E_SAVED_LOCATIONS_RESET_TOKEN"] = UUID().uuidString
+    app.launchEnvironment["PINSHIFT_E2E_SAVED_LOCATIONS_RESET_TOKEN"] = UUID().uuidString
     return app
   }
 
@@ -1720,7 +1720,7 @@ final class PinshiftUITests: XCTestCase {
 
   private func pinshiftApp() -> XCUIApplication {
     let app = XCUIApplication()
-    app.launchEnvironment["REMOTE_LOCATION_E2E_APP_LANGUAGE"] = "en"
+    app.launchEnvironment["PINSHIFT_E2E_APP_LANGUAGE"] = "en"
     return app
   }
 
@@ -1754,7 +1754,7 @@ final class PinshiftUITests: XCTestCase {
 
   private func selectedLocationFixtureApp() -> XCUIApplication {
     let app = pinshiftApp()
-    app.launchEnvironment["REMOTE_LOCATION_E2E_SELECTED_LOCATION"] = "31.230400,121.473700"
+    app.launchEnvironment["PINSHIFT_E2E_SELECTED_LOCATION"] = "31.230400,121.473700"
     return app
   }
 

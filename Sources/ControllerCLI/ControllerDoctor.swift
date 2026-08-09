@@ -223,7 +223,7 @@ public enum ControllerDoctor {
         status: .fail,
         summary: "No active iPhone is configured.",
         recovery:
-          "Connect an iPhone and pass its private selector with --device or REMOTE_LOCATION_DEVICE."
+          "Connect an iPhone and pass its private selector with --device or PINSHIFT_DEVICE."
       )
     case .unavailable:
       return ControllerDoctorCheck(
@@ -333,7 +333,7 @@ public enum ControllerDoctor {
         status: .fail,
         summary: "The Controller Link identity is missing from Keychain.",
         recovery:
-          "Run `remote-location-controller link identity create` once, then run doctor again."
+          "Run `pinshift-controller link identity create` once, then run doctor again."
       )
     }
     return ControllerDoctorCheck(

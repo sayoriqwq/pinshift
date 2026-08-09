@@ -14,8 +14,8 @@ final class ControllerTutorialTests: XCTestCase {
       "automatic signing",
       "seven days",
       "devicectl",
-      "rl-install",
-      "rl-start",
+      "pinshift-install",
+      "pinshift-start",
       "Apply",
       "Verify",
       "15, 30, or 60 minutes",
@@ -34,17 +34,17 @@ final class ControllerTutorialTests: XCTestCase {
 
   func testDoctorAndTutorialAreRegisteredSubcommands() throws {
     XCTAssertTrue(
-      try RemoteLocationControllerCommand.parseAsRoot(["doctor"])
-        is RemoteLocationControllerCommand.Doctor
+      try PinshiftControllerCommand.parseAsRoot(["doctor"])
+        is PinshiftControllerCommand.Doctor
     )
     XCTAssertTrue(
-      try RemoteLocationControllerCommand.parseAsRoot(["tutorial"])
-        is RemoteLocationControllerCommand.Tutorial
+      try PinshiftControllerCommand.parseAsRoot(["tutorial"])
+        is PinshiftControllerCommand.Tutorial
     )
     XCTAssertTrue(
-      try RemoteLocationControllerCommand.parseAsRoot([
+      try PinshiftControllerCommand.parseAsRoot([
         "link", "identity", "authorize-current-executable",
-      ]) is RemoteLocationControllerCommand.Link.Identity.AuthorizeCurrentExecutable
+      ]) is PinshiftControllerCommand.Link.Identity.AuthorizeCurrentExecutable
     )
   }
 }

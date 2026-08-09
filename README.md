@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/brand/remote-location-mark.png" alt="Pinshift geometric mark" width="180">
+  <img src="docs/assets/brand/pinshift-mark.png" alt="Pinshift geometric mark" width="180">
 </p>
 
 <h1 align="center">Pinshift</h1>
@@ -12,11 +12,13 @@ Pinshift 是一套由 iPhone App、可信 Mac 控制器和独立清理守护进�
 Xcode 的公开 `devicectl` 工作流设置测试位置，并把“最终一定尝试恢复正常定位”作为会话生命周期
 的一部分，而不是依赖用户记得再次点击 Stop。
 
+当前正式版本为 **1.0**。
+
 ## 核心能力
 
 - **直观选点**：地图中心选点、地点搜索、经纬度输入、收藏地点和近距离微调。
 - **限时会话**：每次模拟明确选择 15、30 或 60 分钟，默认 15 分钟；会话中可延长 15 分钟。
-- **独立清理**：macOS Cleanup Guardian 不依赖前台 `rl-start` 进程，在租约到期、服务正常退出或心跳丢失后执行清理。
+- **独立清理**：macOS Cleanup Guardian 不依赖前台 `pinshift-start` 进程，在租约到期、服务正常退出或心跳丢失后执行清理。
 - **可信连接**：iPhone 与 Mac 通过 Bonjour、TLS 和一次性六位码配对，不需要账号或云服务。
 - **如实反馈**：区分已选择、后端已应用、Pinshift 已观测、等待清理和后端已确认清除，不用“看起来成功”代替真实状态。
 - **本地诊断**：App 与 Mac 分别保留经过脱敏、容量受限的事件记录，便于复盘 Apply、Stop、重连和自动清理。
@@ -42,8 +44,8 @@ Pinshift 看到了什么，不被当作系统状态的权威来源。
 完成首次安装与配对后，日常只需要：
 
 ```fish
-cd remote-location
-rl-start
+cd pinshift
+pinshift-start
 ```
 
 🚀 启动可信 Mac 控制器，随后在 iPhone 上打开 Pinshift。
@@ -73,3 +75,7 @@ iPhone 离线，清理义务会持久保留，并在同一台 Mac 与 iPhone 再
 
 Swift 6、SwiftUI、MapKit、Core Location、Network.framework、Security/Keychain、Swift Package
 Manager、XcodeGen，以及 Xcode 27 的公开 `devicectl` 位置模拟接口。
+
+## License
+
+Pinshift 使用 [MIT License](LICENSE)。

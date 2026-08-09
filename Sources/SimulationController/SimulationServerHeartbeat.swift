@@ -69,7 +69,7 @@ public actor InMemorySimulationServerHeartbeatStore: SimulationServerHeartbeatSt
 }
 
 public actor FileSimulationServerHeartbeatStore: SimulationServerHeartbeatStoring {
-  public static let fileEnvironmentKey = "REMOTE_LOCATION_SERVER_HEARTBEAT_FILE"
+  public static let fileEnvironmentKey = "PINSHIFT_SERVER_HEARTBEAT_FILE"
 
   public let fileURL: URL
   private let fileManager: FileManager

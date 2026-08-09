@@ -45,14 +45,17 @@ final class SimulationDiagnosticsViewModel: ObservableObject {
     Task { [weak self] in
       guard let self else { return }
       let destination = FileManager.default.temporaryDirectory
-        .appendingPathComponent("Pinshift-Diagnostics-\(UUID().uuidString).json", isDirectory: false)
+        .appendingPathComponent(
+          "Pinshift-Diagnostics-\(UUID().uuidString).json",
+          isDirectory: false
+        )
       do {
         let data = try await diagnostics.exportData()
         try data.write(to: destination, options: .atomic)
         exportedURL = destination
         #if DEBUG
           let exposesArtifact = ProcessInfo.processInfo.environment[
-            "REMOTE_LOCATION_E2E_DIAGNOSTICS_ARTIFACT_FIXTURE"
+            "PINSHIFT_E2E_DIAGNOSTICS_ARTIFACT_FIXTURE"
           ] == "1"
           if exposesArtifact {
             exportedArtifactJSON = String(data: data, encoding: .utf8)

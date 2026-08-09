@@ -21,7 +21,7 @@ public protocol ControllerDiscovering: Sendable {
 }
 
 public final class BonjourControllerDiscovery: ControllerDiscovering, @unchecked Sendable {
-  private let queue = DispatchQueue(label: "dev.sayori.remotelocation.controller-discovery")
+  private let queue = DispatchQueue(label: "dev.sayori.pinshift.controller-discovery")
   private let lock = NSLock()
   private var browser: NWBrowser?
 

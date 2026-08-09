@@ -43,7 +43,7 @@ public struct MacKeychainControllerIdentityAccessManager:
   ControllerIdentityAccessManaging, Sendable
 {
   private static let controllerAuthorizationService =
-    "dev.sayori.remotelocation.controller-server-authorization"
+    "dev.sayori.pinshift.controller-server-authorization"
   private static let controllerAuthorizationAccount =
     ControllerAuthorization.pairedAppKeychainAccount
 
@@ -321,7 +321,7 @@ public struct MacKeychainControllerIdentityAccessManager:
 
   private func verifySigningAccess(_ privateKey: SecKey) throws {
     var error: Unmanaged<CFError>?
-    let payload = Data("remote-location-controller-key-access".utf8)
+    let payload = Data("pinshift-controller-key-access".utf8)
     let signature = SecKeyCreateSignature(
       privateKey,
       .rsaSignatureMessagePKCS1v15SHA256,

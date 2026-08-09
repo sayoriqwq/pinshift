@@ -62,7 +62,7 @@ struct LocationPickerView: View {
     let searcher: any LocationSearching
     #if DEBUG
       if ProcessInfo.processInfo.environment[
-        "REMOTE_LOCATION_E2E_SEARCH_FIXTURE"
+        "PINSHIFT_E2E_SEARCH_FIXTURE"
       ] == "1" {
         searcher = FixtureLocationSearcher()
       } else {

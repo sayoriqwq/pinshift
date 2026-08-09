@@ -1,4 +1,6 @@
-# v1.1 trusted controller and UI evidence — 2026-07-28
+# Trusted controller and UI evidence — 2026-07-28
+
+This record certifies a historical pre-1.0 implementation milestone.
 
 ## Automated checks
 
@@ -17,11 +19,11 @@
 
 - A release Pinshift app build containing the launch-screen declaration and full-screen
   picker was installed and launched on the paired physical iPhone.
-- `rl-install` preserved the existing controller TLS fingerprint and authorized the stable,
+- `pinshift-install` preserved the existing controller TLS fingerprint and authorized the stable,
   signed executable for both the private key and the existing paired-app authorization item.
 - A denied/expired authorization attempt restored the previous executable and metadata,
   demonstrating the installer failure path before the successful migration.
-- Two consecutive `rl-start` sessions completed without a Keychain password prompt and
+- Two consecutive `pinshift-start` sessions completed without a Keychain password prompt and
   without entering a new six-digit pairing code.
 - Both sessions were stopped with Control-C and completed the idempotent reset cleanup.
 - The user completed the final physical-device walkthrough and confirmed that the updated

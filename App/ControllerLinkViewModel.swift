@@ -32,13 +32,13 @@ final class ControllerLinkViewModel: ObservableObject {
 
     private var usesE2EFixture: Bool {
       ProcessInfo.processInfo.environment[
-        "REMOTE_LOCATION_E2E_CONTROLLER_LINK_FIXTURE"
+        "PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"
       ] == "1"
     }
 
     private var usesE2EStopFailureFixture: Bool {
       ProcessInfo.processInfo.environment[
-        "REMOTE_LOCATION_E2E_CONTROLLER_LINK_FAILURE_FIXTURE"
+        "PINSHIFT_E2E_CONTROLLER_LINK_FAILURE_FIXTURE"
       ] == "failed-stop"
     }
   #endif
@@ -77,7 +77,7 @@ final class ControllerLinkViewModel: ObservableObject {
       guard let self else { return }
       #if DEBUG
         if ProcessInfo.processInfo.environment[
-          "REMOTE_LOCATION_E2E_RESET_CONTROLLER_TRUST"
+          "PINSHIFT_E2E_RESET_CONTROLLER_TRUST"
         ] == "1" {
           state = await link.forgetController()
           backendReadiness = nil
@@ -142,7 +142,9 @@ final class ControllerLinkViewModel: ObservableObject {
     case .ready:
       return nil
     case .unavailable(.cleanupGuardianUnavailable):
-      return "Cleanup Guardian protection is unavailable. Run rl-install on the Mac, then retry."
+      return
+        "Cleanup Guardian protection is unavailable. Run pinshift-install on the Mac, "
+        + "then retry."
     case .unavailable:
       return
         "Automatic cleanup protection is unavailable. Resolve the Mac "
@@ -150,7 +152,7 @@ final class ControllerLinkViewModel: ObservableObject {
     case .unsupportedController:
       return
         "This Mac controller is too old for protected time-bounded sessions. "
-        + "Update it with rl-install."
+        + "Update it with pinshift-install."
     case nil:
       return "Waiting for the Mac to confirm automatic-cleanup protection."
     }

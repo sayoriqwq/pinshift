@@ -1720,7 +1720,7 @@ struct ContentView: View {
 
   private var locationPermissionFixture: LocationPermissionState? {
     #if DEBUG
-      switch ProcessInfo.processInfo.environment["REMOTE_LOCATION_E2E_LOCATION_PERMISSION"] {
+      switch ProcessInfo.processInfo.environment["PINSHIFT_E2E_LOCATION_PERMISSION"] {
       case "not-determined":
         return .notDetermined
       case "allowed":
@@ -1740,7 +1740,7 @@ struct ContentView: View {
   private var localNetworkPermissionFixture: LocalNetworkPermissionState? {
     #if DEBUG
       switch ProcessInfo.processInfo.environment[
-        "REMOTE_LOCATION_E2E_LOCAL_NETWORK_PERMISSION"
+        "PINSHIFT_E2E_LOCAL_NETWORK_PERMISSION"
       ] {
       case "not-yet-confirmed":
         return .notYetConfirmed
@@ -1760,7 +1760,7 @@ struct ContentView: View {
     #if DEBUG
       guard
         let value = ProcessInfo.processInfo.environment[
-          "REMOTE_LOCATION_E2E_APP_LANGUAGE"
+          "PINSHIFT_E2E_APP_LANGUAGE"
         ]
       else {
         return nil
@@ -1775,7 +1775,7 @@ struct ContentView: View {
     #if DEBUG
       guard
         let value = ProcessInfo.processInfo.environment[
-          "REMOTE_LOCATION_E2E_SELECTED_LOCATION"
+          "PINSHIFT_E2E_SELECTED_LOCATION"
         ]
       else {
         return nil

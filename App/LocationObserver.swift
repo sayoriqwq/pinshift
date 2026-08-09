@@ -87,10 +87,10 @@ final class LocationObserver: NSObject, ObservableObject {
     record(kind: "app.observed-location.received", fields: fields)
     #if DEBUG
       if ProcessInfo.processInfo.environment[
-        "REMOTE_LOCATION_EVIDENCE_STDOUT"
+        "PINSHIFT_EVIDENCE_STDOUT"
       ] == "1" {
         print(
-          "REMOTE_LOCATION_OBSERVATION latitude=\(coordinate.latitude) longitude=\(coordinate.longitude)"
+          "PINSHIFT_OBSERVATION latitude=\(coordinate.latitude) longitude=\(coordinate.longitude)"
         )
       }
     #endif

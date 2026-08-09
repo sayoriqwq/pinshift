@@ -9,7 +9,7 @@ final class ControllerServerSessionTests: XCTestCase {
     let identity = try ControllerIdentity(fingerprint: Data(repeating: 0x35, count: 32))
     let authorization = try ControllerAuthorization(bytes: Data(repeating: 0x53, count: 32))
     let store = KeychainControllerAuthorizationStore(
-      service: "dev.sayori.remotelocation.tests.\(UUID().uuidString)",
+      service: "dev.sayori.pinshift.tests.\(UUID().uuidString)",
       account: ControllerAuthorization.pairedAppKeychainAccount
     )
     let session = ControllerServerSession(
@@ -154,7 +154,7 @@ final class ControllerServerSessionTests: XCTestCase {
 
   func testPairingAndAuthorizationValuesNeverEnterTheControllerRecord() async throws {
     let directory = FileManager.default.temporaryDirectory
-      .appendingPathComponent("remote-location-link-events-(UUID().uuidString)")
+      .appendingPathComponent("pinshift-link-events-(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: directory) }
     let identity = try ControllerIdentity(fingerprint: Data(repeating: 0x71, count: 32))
     let authorization = try ControllerAuthorization(bytes: Data(repeating: 0x72, count: 32))

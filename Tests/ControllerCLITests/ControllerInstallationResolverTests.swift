@@ -9,15 +9,15 @@ final class ControllerInstallationResolverTests: XCTestCase {
       .deletingLastPathComponent()
       .deletingLastPathComponent()
       .deletingLastPathComponent()
-      .appending(path: "bin/_rl-common.fish")
+      .appending(path: "bin/_pinshift-common.fish")
   }
 
   override func setUpWithError() throws {
     fixtureRoot = FileManager.default.temporaryDirectory
-      .appending(path: "remote-location-resolver-(UUID().uuidString)")
+      .appending(path: "pinshift-resolver-(UUID().uuidString)")
     fakeBin = fixtureRoot.appending(path: "fake-bin")
     let controllerRoot = fixtureRoot.appending(path: ".build/controller")
-    let executable = controllerRoot.appending(path: "bin/remote-location-controller")
+    let executable = controllerRoot.appending(path: "bin/pinshift-controller")
     try FileManager.default.createDirectory(
       at: executable.deletingLastPathComponent(),
       withIntermediateDirectories: true
@@ -54,7 +54,7 @@ final class ControllerInstallationResolverTests: XCTestCase {
     """.write(to: fakeCodesign, atomically: true, encoding: .utf8)
     try makeExecutable(fakeCodesign)
 
-    let fingerprint = try runFish("rl_controller_source_fingerprint").output
+    let fingerprint = try runFish("pinshift_controller_source_fingerprint").output
       .trimmingCharacters(in: .whitespacesAndNewlines)
     try "\(fingerprint)\n".write(
       to: controllerRoot.appending(path: "source-fingerprint"),
@@ -71,7 +71,7 @@ final class ControllerInstallationResolverTests: XCTestCase {
 
   func testResolverExecutesEveryInstallationSafetyGuard() throws {
     let validRequirement =
-      "designated => identifier \"dev.sayori.remotelocation.controller\" and anchor apple generic"
+      "designated => identifier \"dev.sayori.pinshift.controller\" and anchor apple generic"
     let requirementFile = fixtureRoot.appending(path: ".build/controller/designated-requirement")
     try "\(validRequirement)\n".write(
       to: requirementFile,
@@ -94,13 +94,13 @@ final class ControllerInstallationResolverTests: XCTestCase {
 
     result = try runResolver(
       requirement:
-        "designated => identifier \"dev.sayori.remotelocation.controller\" and cdhash H\"00\""
+        "designated => identifier \"dev.sayori.pinshift.controller\" and cdhash H\"00\""
     )
     XCTAssertNotEqual(result.status, 0)
 
     result = try runResolver(
       requirement:
-        "designated => identifier \"dev.sayori.remotelocation.controller\" and certificate leaf = H\"changed\""
+        "designated => identifier \"dev.sayori.pinshift.controller\" and certificate leaf = H\"changed\""
     )
     XCTAssertNotEqual(result.status, 0)
     XCTAssertTrue(result.output.contains("signing identity changed"))
@@ -120,7 +120,7 @@ final class ControllerInstallationResolverTests: XCTestCase {
     verifyStatus: Int = 0
   ) throws -> (status: Int32, output: String) {
     try runFish(
-      "rl_controller_executable",
+      "pinshift_controller_executable",
       environment: [
         "FAKE_CODESIGN_REQUIREMENT": requirement,
         "FAKE_CODESIGN_VERIFY_STATUS": String(verifyStatus),

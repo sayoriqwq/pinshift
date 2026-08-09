@@ -23,7 +23,7 @@ final class PinshiftControllerLinkUITests: XCTestCase {
   }
 
   func testDiscoversPairsAndPinsTheMacController() throws {
-    guard let pairingCode = ProcessInfo.processInfo.environment["REMOTE_LOCATION_PAIRING_CODE"]
+    guard let pairingCode = ProcessInfo.processInfo.environment["PINSHIFT_PAIRING_CODE"]
     else {
       throw XCTSkip("A short-lived Mac pairing code is required for this smoke test.")
     }
@@ -51,13 +51,13 @@ final class PinshiftControllerLinkUITests: XCTestCase {
     if ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"] != nil {
       throw XCTSkip("This end-to-end controller journey runs only on the physical iPhone.")
     }
-    guard let pairingCode = ProcessInfo.processInfo.environment["REMOTE_LOCATION_PAIRING_CODE"]
+    guard let pairingCode = ProcessInfo.processInfo.environment["PINSHIFT_PAIRING_CODE"]
     else {
       throw XCTSkip("A short-lived Mac pairing code is required for this smoke test.")
     }
 
     let app = pinshiftApp()
-    app.launchEnvironment["REMOTE_LOCATION_E2E_SEARCH_FIXTURE"] = "1"
+    app.launchEnvironment["PINSHIFT_E2E_SEARCH_FIXTURE"] = "1"
     app.launch()
     app.tap()
     try ensureConnected(app, pairingCode: pairingCode)
@@ -115,7 +115,7 @@ final class PinshiftControllerLinkUITests: XCTestCase {
 
   private func pinshiftApp() -> XCUIApplication {
     let app = XCUIApplication()
-    app.launchEnvironment["REMOTE_LOCATION_E2E_APP_LANGUAGE"] = "en"
+    app.launchEnvironment["PINSHIFT_E2E_APP_LANGUAGE"] = "en"
     return app
   }
 

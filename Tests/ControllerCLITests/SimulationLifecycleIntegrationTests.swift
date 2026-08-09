@@ -17,7 +17,7 @@ final class SimulationLifecycleIntegrationTests: XCTestCase {
       ControllerCLIRuntime.deviceEnvironmentKey: "Active Test Device",
       ControllerCLIRuntime.developerDirectoryEnvironmentKey:
         "/Applications/Xcode-beta.app/Contents/Developer",
-      "REMOTE_LOCATION_LIFECYCLE_FILE": lifecycleFile.path,
+      "PINSHIFT_LIFECYCLE_FILE": lifecycleFile.path,
     ]
     let executor = LifecycleRecordingDevicectlExecutor()
     let guardianHealthStore = InMemorySimulationCleanupGuardianHealthStore(
@@ -1211,7 +1211,7 @@ final class SimulationLifecycleIntegrationTests: XCTestCase {
   }
 
   func testOptInProductionHeartbeatSmokeAppliesAndExtendsPhysicalDevice() async throws {
-    guard ProcessInfo.processInfo.environment["REMOTE_LOCATION_PHYSICAL_SMOKE"] == "1"
+    guard ProcessInfo.processInfo.environment["PINSHIFT_PHYSICAL_SMOKE"] == "1"
     else {
       throw XCTSkip("Explicit physical-device smoke opt-in is required.")
     }

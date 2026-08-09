@@ -1,5 +1,5 @@
 {
-  description = "Remote Location development environment";
+  description = "Pinshift development environment";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 

@@ -6,22 +6,22 @@ import SimulationController
 public struct ActiveDeviceOptions: ParsableArguments {
   @Option(
     name: .long,
-    help: "Active Test Device name or identifier. Falls back to REMOTE_LOCATION_DEVICE."
+    help: "Active Test Device name or identifier. Falls back to PINSHIFT_DEVICE."
   )
   public var device: String?
 
   @Option(
     name: .long,
-    help: "Xcode developer directory. Falls back to REMOTE_LOCATION_DEVELOPER_DIR."
+    help: "Xcode developer directory. Falls back to PINSHIFT_DEVELOPER_DIR."
   )
   public var developerDirectory: String?
 
   public init() {}
 }
 
-public struct RemoteLocationControllerCommand: AsyncParsableCommand {
+public struct PinshiftControllerCommand: AsyncParsableCommand {
   public static let configuration = CommandConfiguration(
-    commandName: "remote-location-controller",
+    commandName: "pinshift-controller",
     abstract: "Control one Static Simulation on an Xcode-connected device.",
     subcommands: [
       Status.self, Apply.self, Stop.self, Reset.self, Doctor.self, Tutorial.self, Link.self,
@@ -69,7 +69,7 @@ public struct RemoteLocationControllerCommand: AsyncParsableCommand {
     @OptionGroup public var activeDevice: ActiveDeviceOptions
 
     @Option(name: .long, help: "Keychain label for the controller identity.")
-    public var identityLabel = "Remote Location Controller"
+    public var identityLabel = "Pinshift Controller"
 
     public init() {}
 
@@ -236,7 +236,7 @@ public struct RemoteLocationControllerCommand: AsyncParsableCommand {
         )
 
         @Option(name: .long, help: "Keychain label for the controller identity.")
-        public var label = "Remote Location Controller"
+        public var label = "Pinshift Controller"
 
         public init() {}
 
@@ -265,7 +265,7 @@ public struct RemoteLocationControllerCommand: AsyncParsableCommand {
         )
 
         @Option(name: .long, help: "Keychain label for the controller identity.")
-        public var label = "Remote Location Controller"
+        public var label = "Pinshift Controller"
 
         public init() {}
 
@@ -302,7 +302,7 @@ public struct RemoteLocationControllerCommand: AsyncParsableCommand {
       )
 
       @Option(name: .long, help: "Keychain label for the controller identity.")
-      public var identityLabel = "Remote Location Controller"
+      public var identityLabel = "Pinshift Controller"
 
       @Option(name: .long, help: "Maximum server duration in seconds (60 through 86400).")
       public var seconds: Double = 3_600
@@ -349,7 +349,7 @@ public struct RemoteLocationControllerCommand: AsyncParsableCommand {
           tlsIdentity = try KeychainTLSIdentity.load(label: identityLabel)
         } catch KeychainTLSIdentityError.notFound {
           throw ValidationError(
-            "The controller TLS identity is missing. Run `remote-location-controller link identity create` once."
+            "The controller TLS identity is missing. Run `pinshift-controller link identity create` once."
           )
         }
         let identity = try KeychainTLSIdentity.fingerprint(of: tlsIdentity)
@@ -359,7 +359,7 @@ public struct RemoteLocationControllerCommand: AsyncParsableCommand {
         if let suppliedCode {
           guard suppliedCode.count == 6, suppliedCode.allSatisfy(\.isNumber) else {
             throw ValidationError(
-              "REMOTE_LOCATION_E2E_PAIRING_CODE must contain exactly six digits."
+              "PINSHIFT_E2E_PAIRING_CODE must contain exactly six digits."
             )
           }
         }
@@ -396,7 +396,7 @@ public struct RemoteLocationControllerCommand: AsyncParsableCommand {
           identity: identity,
           pairingAuthority: authority,
           authorizationStore: KeychainControllerAuthorizationStore(
-            service: "dev.sayori.remotelocation.controller-server-authorization",
+            service: "dev.sayori.pinshift.controller-server-authorization",
             account: ControllerAuthorization.pairedAppKeychainAccount
           ),
           commandHandler: SimulationControllerCommandHandler(

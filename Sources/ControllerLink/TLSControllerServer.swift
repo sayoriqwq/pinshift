@@ -11,7 +11,7 @@ public final class TLSControllerServer: @unchecked Sendable {
   private let identity: SecIdentity
   private let session: ControllerServerSession
   private let serviceName: String
-  private let queue = DispatchQueue(label: "dev.sayori.remotelocation.controller-server")
+  private let queue = DispatchQueue(label: "dev.sayori.pinshift.controller-server")
   private let lock = NSLock()
   private var listener: NWListener?
 

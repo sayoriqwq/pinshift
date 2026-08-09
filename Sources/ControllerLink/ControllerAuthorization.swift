@@ -84,7 +84,7 @@ public actor KeychainControllerAuthorizationStore: ControllerAuthorizationStore 
   private let account: String
 
   public init(
-    service: String = "dev.sayori.remotelocation.controller-authorization",
+    service: String = "dev.sayori.pinshift.controller-authorization",
     account: String = "trusted-controller-authorization"
   ) {
     self.service = service

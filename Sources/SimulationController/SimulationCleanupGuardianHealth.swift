@@ -42,7 +42,7 @@ public actor InMemorySimulationCleanupGuardianHealthStore:
 public actor FileSimulationCleanupGuardianHealthStore:
   SimulationCleanupGuardianHealthStoring
 {
-  public static let fileEnvironmentKey = "REMOTE_LOCATION_GUARDIAN_HEALTH_FILE"
+  public static let fileEnvironmentKey = "PINSHIFT_GUARDIAN_HEALTH_FILE"
 
   public let fileURL: URL
   private let fileManager: FileManager

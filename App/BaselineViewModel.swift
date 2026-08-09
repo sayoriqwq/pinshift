@@ -27,17 +27,17 @@ final class BaselineViewModel: ObservableObject {
     self.diagnostics = diagnostics
     self.manualSessionStore = manualSessionStore
     if let resetToken = ProcessInfo.processInfo.environment[
-      "REMOTE_LOCATION_E2E_SAVED_LOCATIONS_RESET_TOKEN"
+      "PINSHIFT_E2E_SAVED_LOCATIONS_RESET_TOKEN"
     ], let resettableStore = savedLocationStore as? any ResettableSavedLocationStore,
       UserDefaults.standard.string(
-        forKey: "remote-location-e2e-saved-locations-reset-token"
+        forKey: "pinshift-e2e-saved-locations-reset-token"
       ) != resetToken
     {
       do {
         try resettableStore.reset()
         UserDefaults.standard.set(
           resetToken,
-          forKey: "remote-location-e2e-saved-locations-reset-token"
+          forKey: "pinshift-e2e-saved-locations-reset-token"
         )
       } catch {
         // The normal load below surfaces the actionable persistence error.

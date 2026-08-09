@@ -184,7 +184,7 @@ public struct SimulationDiagnosticRecordStatus: Equatable, Sendable {
 public actor SimulationDiagnosticRecorder {
   public static let currentSchemaVersion = 1
   public static let defaultMaximumBytes = 10 * 1_024 * 1_024
-  public static let directoryEnvironmentKey = "REMOTE_LOCATION_DIAGNOSTICS_DIRECTORY"
+  public static let directoryEnvironmentKey = "PINSHIFT_DIAGNOSTICS_DIRECTORY"
 
   public let side: SimulationDiagnosticSide
   public let fileURL: URL

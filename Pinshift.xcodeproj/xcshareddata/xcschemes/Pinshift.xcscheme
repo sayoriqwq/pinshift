@@ -15,10 +15,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "95CBA304701F4478C159A087"
+               BlueprintIdentifier = "B7021D3DBB60E7F32EBA6E61"
                BuildableName = "Pinshift.app"
                BlueprintName = "Pinshift"
-               ReferencedContainer = "container:RemoteLocation.xcodeproj">
+               ReferencedContainer = "container:Pinshift.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -32,10 +32,10 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "95CBA304701F4478C159A087"
+            BlueprintIdentifier = "B7021D3DBB60E7F32EBA6E61"
             BuildableName = "Pinshift.app"
             BlueprintName = "Pinshift"
-            ReferencedContainer = "container:RemoteLocation.xcodeproj">
+            ReferencedContainer = "container:Pinshift.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <Testables>
@@ -44,10 +44,10 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "682B4497AAB05CDE2C6A5723"
+               BlueprintIdentifier = "ACDEDCF5A1FDC6D873AABB92"
                BuildableName = "PinshiftUITests.xctest"
                BlueprintName = "PinshiftUITests"
-               ReferencedContainer = "container:RemoteLocation.xcodeproj">
+               ReferencedContainer = "container:Pinshift.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -68,10 +68,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "95CBA304701F4478C159A087"
+            BlueprintIdentifier = "B7021D3DBB60E7F32EBA6E61"
             BuildableName = "Pinshift.app"
             BlueprintName = "Pinshift"
-            ReferencedContainer = "container:RemoteLocation.xcodeproj">
+            ReferencedContainer = "container:Pinshift.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <CommandLineArguments>
@@ -87,10 +87,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "95CBA304701F4478C159A087"
+            BlueprintIdentifier = "B7021D3DBB60E7F32EBA6E61"
             BuildableName = "Pinshift.app"
             BlueprintName = "Pinshift"
-            ReferencedContainer = "container:RemoteLocation.xcodeproj">
+            ReferencedContainer = "container:Pinshift.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <CommandLineArguments>

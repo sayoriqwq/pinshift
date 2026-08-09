@@ -11,11 +11,11 @@ final class ControllerIdentityAccessAuthorizerTests: XCTestCase {
     )
 
     let result = try ControllerIdentityAccessAuthorizer(manager: manager).authorize(
-      label: "Remote Location Controller"
+      label: "Pinshift Controller"
     )
 
     XCTAssertEqual(result, identity)
-    XCTAssertEqual(manager.authorizedLabels, ["Remote Location Controller"])
+    XCTAssertEqual(manager.authorizedLabels, ["Pinshift Controller"])
   }
 
   func testAuthorizationRejectsAnyIdentityReplacement() throws {
@@ -27,7 +27,7 @@ final class ControllerIdentityAccessAuthorizerTests: XCTestCase {
 
     XCTAssertThrowsError(
       try ControllerIdentityAccessAuthorizer(manager: manager).authorize(
-        label: "Remote Location Controller"
+        label: "Pinshift Controller"
       )
     ) { error in
       XCTAssertEqual(error as? ControllerIdentityAccessAuthorizationError, .identityChanged)
@@ -43,7 +43,7 @@ final class ControllerIdentityAccessAuthorizerTests: XCTestCase {
 
     XCTAssertThrowsError(
       try ControllerIdentityAccessAuthorizer(manager: manager).authorize(
-        label: "Remote Location Controller"
+        label: "Pinshift Controller"
       )
     ) { error in
       XCTAssertEqual(error as? TestAuthorizationError, .denied)
@@ -56,7 +56,7 @@ final class ControllerIdentityAccessAuthorizerTests: XCTestCase {
     let manager = RecordingControllerIdentityAccessManager(fingerprints: [identity, identity])
 
     _ = try ControllerIdentityAccessAuthorizer(manager: manager).authorize(
-      label: "Remote Location Controller"
+      label: "Pinshift Controller"
     )
 
     XCTAssertEqual(manager.preservedIdentities, [identity])
@@ -68,7 +68,7 @@ final class ControllerIdentityAccessAuthorizerTests: XCTestCase {
 
     XCTAssertThrowsError(
       try ControllerIdentityAccessAuthorizer(manager: manager).authorize(
-        label: "Remote Location Controller"
+        label: "Pinshift Controller"
       )
     )
 
