@@ -228,4 +228,16 @@ or begin
     exit 1
 end
 
+set --local staging_name (path basename "$staging_root")
+if test (path dirname "$staging_root") != (path resolve .build); or \
+        not string match --quiet --regex '^controller-install\.[[:alnum:]]+$' "$staging_name"
+    echo "The completed install staging path failed its cleanup safety check." >&2
+    exit 1
+end
+command rm -rf -- "$staging_root"
+or begin
+    echo "The controller was installed, but its generated staging directory could not be removed." >&2
+    exit 1
+end
+
 echo "Stable controller and persistent Cleanup Guardian installed. Daily rl-start, rl-doctor, and rl-reset are ready."

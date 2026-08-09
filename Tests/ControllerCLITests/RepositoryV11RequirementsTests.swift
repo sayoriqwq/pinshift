@@ -131,6 +131,25 @@ final class RepositoryV11RequirementsTests: XCTestCase {
     XCTAssertTrue(template.contains("<key>RunAtLoad</key>"))
   }
 
+  func testSuccessfulInstallRemovesOnlyItsValidatedGeneratedStagingDirectory() throws {
+    let contents = try String(
+      contentsOf: repositoryRoot.appending(path: "bin/rl-install"),
+      encoding: .utf8
+    )
+
+    XCTAssertTrue(contents.contains("path dirname \"$staging_root\""))
+    XCTAssertTrue(contents.contains("^controller-install\\.[[:alnum:]]+$"))
+    let guardianStart = try XCTUnwrap(contents.range(of: "launchctl kickstart -k"))
+    let cleanup = try XCTUnwrap(
+      contents.range(of: "command rm -rf -- \"$staging_root\"")
+    )
+    let success = try XCTUnwrap(
+      contents.range(of: "Stable controller and persistent Cleanup Guardian installed")
+    )
+    XCTAssertLessThan(guardianStart.lowerBound, cleanup.lowerBound)
+    XCTAssertLessThan(cleanup.lowerBound, success.lowerBound)
+  }
+
   func testAppResigningWorkflowValidatesBeforeUpdatingTheExistingApp() throws {
     let helperURL = repositoryRoot.appending(path: "bin/rl-resign-app")
     XCTAssertTrue(

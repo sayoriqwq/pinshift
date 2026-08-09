@@ -1,5 +1,7 @@
 # Remote Location 分阶段 Lead 执行协议
 
+_状态：这是 Issues #1–#10 的历史首轮执行协议。后续工作以当前 GitHub Issue、`CONTEXT.md` 和已批准 ADR 为准；不要复用本文的旧模型路由或 ticket frontier。_
+
 ## 结论
 
 第一轮实现采用以下拓扑：

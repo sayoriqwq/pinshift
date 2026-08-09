@@ -18,7 +18,7 @@ Status: the foreground-server-independent eventual-clear invariant passed on the
 - Normal Learning App Stop returned a production clear acknowledgement; the journal recorded the matching generation as `stopped` and `active: null`.
 - `bin/rl-reset`: returned a successful clear acknowledgement. The durable journal reported `activeCleared: true` afterward.
 - Production restart recovery: a standalone Apply of `52.5200, 13.4050` succeeded and its process exited. A fresh controller `status` process then reconciled the persisted lifecycle state before answering and returned `No Applied Simulation is active.`
-- Server-independent destructive test: production Apply request `1C71D399-3D6F-40FD-B05E-1A57CCF94A2D` established a 30-second lease ending `2026-08-09T08:26:54Z`. The complete `rl-start` process group was then killed with `SIGKILL`; no Controller Link server remained, while Cleanup Guardian PID `23612` remained alive under launchd.
+- Foreground-server-independent lease-expiry test: production Apply request `1C71D399-3D6F-40FD-B05E-1A57CCF94A2D` established a 30-second lease ending `2026-08-09T08:26:54Z`. The complete `rl-start` process group was then killed with `SIGKILL`; no Controller Link server remained, while Cleanup Guardian PID `23612` remained alive under launchd.
 - Without restarting the server, tapping Stop, or running reset, the Guardian recorded `controller.lifecycle.lease-expired` at `08:26:54Z` and exactly one `controller.lifecycle.clear-acknowledged` at `08:26:56Z`. The journal recorded generation `1C71D399-3D6F-40FD-B05E-1A57CCF94A2D` as `stopped` and `active: null`.
 - Reconciliation occurred approximately once per second; the earlier duplicate-maintenance-task defect was fixed and locked down before this passing run.
 
