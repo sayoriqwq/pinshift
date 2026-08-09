@@ -51,7 +51,7 @@ Device identifiers, signing identities, hostnames, pairing material, raw `device
 ## Explicitly unverified boundaries
 
 - No other Mac, Xcode, iOS, device, connection, account, or distribution environment is certified.
-- Crash-safe clear after process kill, power loss, cable loss, or OS failure is not guaranteed; explicit reset remains the recovery path.
+- At the time of this certification, crash-safe clear after process kill, power loss, cable loss, or OS failure was not guaranteed and explicit reset was the recovery path. ADR-0010 and the later eventual-cleanup implementation supersede this boundary with a durable obligation that resumes at the first recovery opportunity; its separate physical verification record states the remaining certification boundary.
 - A fresh physical Core Location callback immediately after clear is not guaranteed; the last successful observation may remain visible.
 - Search was not manually repeated on the physical iPhone in this final pass; the required physical map entry was completed and search remains automated.
 - QQ is the only additional app observed in this pass. No behavior is promised for QQ versions, other apps, or system components.

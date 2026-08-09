@@ -1,7 +1,7 @@
 import ControllerLink
 import Foundation
-import SimulationDiagnostics
 import SimulationController
+import SimulationDiagnostics
 import XCTest
 
 @testable import ControllerCLI
@@ -78,6 +78,30 @@ final class ControllerCLIRuntimeTests: XCTestCase {
     XCTAssertTrue(events.contains { $0.kind == "controller.reset.requested" })
   }
 
+  func testServeLifecycleReportsCleanupFailureThroughExitSemantics() async {
+    let backend = ServeLifecycleFailingClearBackend()
+    let controller = SimulationController(backend: backend)
+    let reports = ServeLifecycleReports()
+
+    do {
+      try await ControllerCLIRuntime.runServeLifecycle(
+        seconds: 60,
+        controller: controller,
+        sleep: { _ in },
+        report: { result in await reports.append(result) }
+      )
+      XCTFail("Expected failed expiry cleanup to make the serve command fail")
+    } catch let error as ControllerServeLifecycleError {
+      XCTAssertEqual(error, .cleanupFailed)
+    } catch {
+      XCTFail("Unexpected error: \(error)")
+    }
+
+    let reportedValues = await reports.values
+    XCTAssertEqual(reportedValues.count, 1)
+    XCTAssertEqual(reportedValues[0].exitCode, 1)
+  }
+
   func testResolvesExplicitValuesBeforeEnvironmentAndDefaults() {
     let explicit = ControllerCLIRuntime.resolveConfiguration(
       device: " Explicit Device ",
@@ -109,15 +133,32 @@ final class ControllerCLIRuntimeTests: XCTestCase {
     )
   }
 
+  func testDefaultSimulationLeaseIsIndependentFromServerDuration() {
+    XCTAssertEqual(ControllerCLIRuntime.defaultSimulationLeaseDuration, 900)
+  }
+
   func testBuildsTheProductionControllerFromDevicectlConfiguration() async {
+    let directory = FileManager.default.temporaryDirectory
+      .appendingPathComponent("pinshift-runtime-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: directory) }
     let executor = RuntimeRecordingDevicectlExecutor(
       results: [.exited(0), .exited(0), .exited(0), .exited(0)]
     )
     let environment = [
       "REMOTE_LOCATION_DEVICE": "Active Test Device",
       "REMOTE_LOCATION_DEVELOPER_DIR": "/Applications/Xcode-beta.app/Contents/Developer",
+      FileSimulationLifecycleStore.fileEnvironmentKey:
+        directory.appendingPathComponent("lifecycle.json").path,
     ]
+    let guardianHealthStore = InMemorySimulationCleanupGuardianHealthStore(
+      health: SimulationCleanupGuardianHealth(
+        guardianID: UUID(),
+        activeDeviceIdentifier: "Active Test Device",
+        recordedAt: Date()
+      )
+    )
     let controller = ControllerCLIRuntime.makeController(
+      cleanupGuardianHealthStore: guardianHealthStore,
       environment: environment,
       executor: executor
     )
@@ -144,9 +185,15 @@ final class ControllerCLIRuntimeTests: XCTestCase {
   }
 
   func testMissingDeviceConfigurationReportsNoActiveDeviceWithoutSpawningAProcess() async {
+    let directory = FileManager.default.temporaryDirectory
+      .appendingPathComponent("pinshift-runtime-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: directory) }
     let executor = RuntimeRecordingDevicectlExecutor(results: [])
     let runner = ControllerCLIRuntime.makeRunner(
-      environment: [:],
+      environment: [
+        FileSimulationLifecycleStore.fileEnvironmentKey:
+          directory.appendingPathComponent("lifecycle.json").path
+      ],
       executor: executor
     )
 
@@ -177,6 +224,21 @@ private actor ServeLifecycleRecordingBackend: InjectionBackend {
     case .clear(let requestID):
       clearCount += 1
       return .cleared(requestID: requestID)
+    }
+  }
+}
+
+private actor ServeLifecycleFailingClearBackend: InjectionBackend {
+  func readiness() -> InjectionBackendReadiness {
+    .ready
+  }
+
+  func execute(_ command: InjectionBackendCommand) -> InjectionBackendResult {
+    switch command {
+    case .apply(let requestID, let location):
+      return .applied(requestID: requestID, location: location)
+    case .clear(let requestID):
+      return .failed(requestID: requestID, reason: .clearFailed)
     }
   }
 }

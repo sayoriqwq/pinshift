@@ -78,7 +78,7 @@ public struct SelectedLocation: Codable, Equatable, Sendable {
   }
 }
 
-public struct LocationObservation: Equatable, Sendable {
+public struct LocationObservation: Codable, Equatable, Sendable {
   public let coordinate: SelectedLocation
   public let timestamp: Date
   public let horizontalAccuracy: Double
@@ -97,7 +97,7 @@ public struct LocationObservation: Equatable, Sendable {
   }
 }
 
-public struct ObservationMatchEvidence: Equatable, Sendable {
+public struct ObservationMatchEvidence: Codable, Equatable, Sendable {
   public let elapsedSeconds: TimeInterval
   public let distanceMeters: Double
 
@@ -130,10 +130,12 @@ public enum LocationDistance {
       pow(sin(latitudeDelta / 2), 2)
       + cos(startLatitude) * cos(endLatitude) * pow(sin(longitudeDelta / 2), 2)
     let boundedHaversine = min(max(haversine, 0), 1)
-    let centralAngle = 2 * atan2(
-      sqrt(boundedHaversine),
-      sqrt(1 - boundedHaversine)
-    )
+    let centralAngle =
+      2
+      * atan2(
+        sqrt(boundedHaversine),
+        sqrt(1 - boundedHaversine)
+      )
     return earthRadiusMeters * centralAngle
   }
 }

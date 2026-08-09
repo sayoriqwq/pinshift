@@ -45,6 +45,18 @@
 "Saved Locations could not be loaded." = "Saved Locations could not be loaded.";
 "Save a valid Selected Location first." = "Save a valid Selected Location first.";
 "Saved Locations could not be saved. Your existing collection is unchanged." = "Saved Locations could not be saved. Your existing collection is unchanged.";
+"Simulation Lease expires" = "Simulation Lease expires";
+"Cleanup pending — retrying automatically…" = "Cleanup pending — retrying automatically…";
+"Cleanup is still pending" = "Cleanup is still pending";
+"The trusted controller is unavailable. Cleanup remains pending and will retry automatically." = "The trusted controller is unavailable. Cleanup remains pending and will retry automatically.";
+"Pending cleanup belongs to a different Active Test Device" = "Pending cleanup belongs to a different Active Test Device";
+"Stop targets an older simulation generation" = "Stop targets an older simulation generation";
+"Finish the pending simulation cleanup before applying another location." = "Finish the pending simulation cleanup before applying another location.";
+"The pending simulation cleanup could not be restored." = "The pending simulation cleanup could not be restored.";
+"The simulation cleanup state could not be saved." = "The simulation cleanup state could not be saved.";
+"Apply outcome unknown — cleanup required" = "Apply outcome unknown — cleanup required";
+"Unknown until Controller Link reconnects" = "Unknown until Controller Link reconnects";
+"Acknowledged locally — awaiting reconciliation" = "Acknowledged locally — awaiting reconciliation";
 
 /* Selected location */
 "Typing does not change the Selected Location until you use the button below." = "Typing does not change the Selected Location until you use the button below.";
@@ -62,3 +74,37 @@
 "Commits the map center without applying a simulation." = "Commits the map center without applying a simulation.";
 "Use Map Center" = "Use Map Center";
 "Map Center Selected" = "Map Center Selected";
+
+/* Time-bounded simulation */
+"Time-Bounded Simulation" = "Time-Bounded Simulation";
+"Choose how long this simulation may remain active. After Apply succeeds, automatic cleanup no longer depends on remembering Stop." = "Choose how long this simulation may remain active. After Apply succeeds, automatic cleanup no longer depends on remembering Stop.";
+"Duration" = "Duration";
+"%d min" = "%d min";
+"Start Time-Bounded Simulation" = "Start Time-Bounded Simulation";
+"Simulated Location" = "Simulated Location";
+"Automatic cleanup at" = "Automatic cleanup at";
+"Automatic cleanup in %@" = "Automatic cleanup in %@";
+"Cleanup due — waiting for Mac confirmation" = "Cleanup due — waiting for Mac confirmation";
+"Automatic cleanup entrusted to Cleanup Guardian" = "Automatic cleanup entrusted to Cleanup Guardian";
+"Extending…" = "Extending…";
+"Extend 15 Minutes" = "Extend 15 Minutes";
+"Restoring…" = "Restoring…";
+"Return to Normal Location" = "Return to Normal Location";
+"Simulation active" = "Simulation active";
+"Restore requested" = "Restore requested";
+"Cleanup pending — waiting for Mac confirmation" = "Cleanup pending — waiting for Mac confirmation";
+"Verified by a fresh observation in this app" = "Verified by a fresh observation in this app";
+"Applied; latest observation is not yet verified" = "Applied; latest observation is not yet verified";
+"Applied; waiting for a fresh observation" = "Applied; waiting for a fresh observation";
+"Restore requested — retrying automatically…" = "Restore requested — retrying automatically…";
+"Simulated Location cleared" = "Simulated Location cleared";
+"Automatic Cleanup" = "Automatic Cleanup";
+"Cleanup Guardian ready" = "Cleanup Guardian ready";
+"Controller update required" = "Controller update required";
+"Choose a 15-, 30-, or 60-minute duration" = "Choose a 15-, 30-, or 60-minute duration";
+"Cleanup Guardian protection is unavailable" = "Cleanup Guardian protection is unavailable";
+"Update the Mac controller to use protected sessions" = "Update the Mac controller to use protected sessions";
+"Cleanup Guardian protection is unavailable. Run rl-install on the Mac, then retry." = "Cleanup Guardian protection is unavailable. Run rl-install on the Mac, then retry.";
+"Automatic cleanup protection is unavailable. Resolve the Mac controller check and retry." = "Automatic cleanup protection is unavailable. Resolve the Mac controller check and retry.";
+"This Mac controller is too old for protected time-bounded sessions. Update it with rl-install." = "This Mac controller is too old for protected time-bounded sessions. Update it with rl-install.";
+"Waiting for the Mac to confirm automatic-cleanup protection." = "Waiting for the Mac to confirm automatic-cleanup protection.";

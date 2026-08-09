@@ -20,6 +20,7 @@ public struct ControllerService: Codable, Hashable, Sendable {
 
 public enum ControllerLinkRequest: Codable, Equatable, Sendable {
   case status(requestID: UUID, authorization: ControllerAuthorization?)
+  case lifecycleStatus(requestID: UUID, authorization: ControllerAuthorization)
   case pair(requestID: UUID, code: String)
   case apply(
     requestID: UUID,
@@ -27,14 +28,37 @@ public enum ControllerLinkRequest: Codable, Equatable, Sendable {
     latitude: Double,
     longitude: Double
   )
+  case applyLifecycle(
+    requestID: UUID,
+    generationID: UUID,
+    authorization: ControllerAuthorization,
+    latitude: Double,
+    longitude: Double,
+    requestedLeaseDuration: TimeInterval
+  )
+  case extendLifecycle(
+    requestID: UUID,
+    generationID: UUID,
+    authorization: ControllerAuthorization,
+    extensionDuration: TimeInterval
+  )
   case stop(requestID: UUID, authorization: ControllerAuthorization)
+  case stopLifecycle(
+    requestID: UUID,
+    generationID: UUID?,
+    authorization: ControllerAuthorization
+  )
 
   public var requestID: UUID {
     switch self {
     case .status(let requestID, _),
+      .lifecycleStatus(let requestID, _),
       .pair(let requestID, _),
       .apply(let requestID, _, _, _),
-      .stop(let requestID, _):
+      .applyLifecycle(let requestID, _, _, _, _, _),
+      .extendLifecycle(let requestID, _, _, _),
+      .stop(let requestID, _),
+      .stopLifecycle(let requestID, _, _):
       requestID
     }
   }
@@ -53,18 +77,26 @@ public enum ControllerLinkRejection: String, Codable, Error, Equatable, Sendable
 
 public enum ControllerLinkResponse: Codable, Equatable, Sendable {
   case status(requestID: UUID, readiness: ControllerBackendReadiness)
+  case lifecycleStatus(requestID: UUID, status: ControllerLifecycleStatus)
   case paired(requestID: UUID, authorization: ControllerAuthorization)
   case applied(requestID: UUID)
+  case appliedLifecycle(requestID: UUID, generationID: UUID, leaseExpiresAt: Date)
+  case extendedLifecycle(requestID: UUID, generationID: UUID, leaseExpiresAt: Date)
   case stopped(requestID: UUID)
+  case stoppedLifecycle(requestID: UUID, generationID: UUID?)
   case failed(requestID: UUID, reason: ControllerCommandFailure)
   case rejected(requestID: UUID, reason: ControllerLinkRejection)
 
   public var requestID: UUID {
     switch self {
     case .status(let requestID, _),
+      .lifecycleStatus(let requestID, _),
       .paired(let requestID, _),
       .applied(let requestID),
+      .appliedLifecycle(let requestID, _, _),
+      .extendedLifecycle(let requestID, _, _),
       .stopped(let requestID),
+      .stoppedLifecycle(let requestID, _),
       .failed(let requestID, _),
       .rejected(let requestID, _):
       requestID
@@ -101,6 +133,7 @@ public actor TrustedControllerLink {
   private var currentService: ControllerService?
   private var pendingIdentity: ControllerIdentity?
   private var backendReadiness: ControllerBackendReadiness?
+  private var lifecycleStatus: ControllerLifecycleStatus?
 
   public init(
     trust: ControllerTrust,
@@ -115,6 +148,7 @@ public actor TrustedControllerLink {
   public func connect(to service: ControllerService) async -> ControllerLinkState {
     currentService = service
     backendReadiness = nil
+    lifecycleStatus = nil
     let trustedIdentity: ControllerIdentity?
     do {
       trustedIdentity = try await trust.trustedIdentity()
@@ -130,10 +164,15 @@ public actor TrustedControllerLink {
       stateMachine.transportUnavailable()
       return stateMachine.state
     }
-    let request = ControllerLinkRequest.status(
-      requestID: UUID(),
-      authorization: authorization
-    )
+    let request: ControllerLinkRequest
+    if let authorization {
+      request = .lifecycleStatus(
+        requestID: UUID(),
+        authorization: authorization
+      )
+    } else {
+      request = .status(requestID: UUID(), authorization: nil)
+    }
     let reply: ControllerTransportReply
     do {
       reply = try await transport.send(
@@ -160,14 +199,25 @@ public actor TrustedControllerLink {
         stateMachine.discovered(trustedIdentity, trust: .pairingRequired)
         return stateMachine.state
       }
-      guard
-        case .status(_, let readiness) = reply.response,
-        authorization != nil
-      else {
+      guard authorization != nil else {
         stateMachine.transportUnavailable()
         return stateMachine.state
       }
-      backendReadiness = readiness
+      switch reply.response {
+      case .lifecycleStatus(_, let status):
+        lifecycleStatus = status
+        backendReadiness = status.readiness
+      case .status(_, let readiness):
+        lifecycleStatus = ControllerLifecycleStatus(
+          readiness: readiness,
+          cleanupReadiness: .unsupportedController,
+          simulation: .noActive
+        )
+        backendReadiness = readiness
+      default:
+        stateMachine.transportUnavailable()
+        return stateMachine.state
+      }
       pendingIdentity = nil
       stateMachine.discovered(trustedIdentity, trust: .trusted)
       return stateMachine.state
@@ -227,8 +277,10 @@ public actor TrustedControllerLink {
 
   public func apply(
     requestID: UUID,
+    generationID: UUID? = nil,
     latitude: Double,
-    longitude: Double
+    longitude: Double,
+    requestedLeaseDuration: TimeInterval = 900
   ) async -> ControllerLinkResponse {
     let needsRefresh: Bool
     if case .connected = stateMachine.state {
@@ -248,24 +300,52 @@ public actor TrustedControllerLink {
     case nil:
       return .failed(requestID: requestID, reason: .controllerUnavailable)
     }
-    return await sendAuthorized(
+    switch lifecycleStatus?.cleanupReadiness {
+    case .ready:
+      break
+    case .unavailable(let reason):
+      return .failed(requestID: requestID, reason: reason)
+    case .unsupportedController, nil:
+      return .failed(requestID: requestID, reason: .controllerUpgradeRequired)
+    }
+    let response = await sendAuthorized(
       requestID: requestID,
       makeRequest: { authorization in
-        .apply(
+        .applyLifecycle(
           requestID: requestID,
+          generationID: generationID ?? requestID,
           authorization: authorization,
           latitude: latitude,
-          longitude: longitude
+          longitude: longitude,
+          requestedLeaseDuration: requestedLeaseDuration
         )
       },
       accepts: { response in
-        if case .applied = response { return true }
-        return false
+        switch response {
+        case .applied, .appliedLifecycle:
+          return true
+        default:
+          return false
+        }
       }
     )
+    if case .appliedLifecycle(_, let generationID, let leaseExpiresAt) = response {
+      lifecycleStatus = ControllerLifecycleStatus(
+        readiness: .ready,
+        simulation: .applied(
+          generationID: generationID,
+          leaseExpiresAt: leaseExpiresAt
+        )
+      )
+      backendReadiness = .ready
+    }
+    return response
   }
 
-  public func stop(requestID: UUID) async -> ControllerLinkResponse {
+  public func stop(
+    requestID: UUID,
+    generationID: UUID? = nil
+  ) async -> ControllerLinkResponse {
     switch stateMachine.state {
     case .connected:
       break
@@ -273,16 +353,72 @@ public actor TrustedControllerLink {
       _ = await refresh()
     }
 
-    return await sendAuthorized(
+    let response = await sendAuthorized(
       requestID: requestID,
       makeRequest: { authorization in
-        .stop(requestID: requestID, authorization: authorization)
+        .stopLifecycle(
+          requestID: requestID,
+          generationID: generationID,
+          authorization: authorization
+        )
       },
       accepts: { response in
-        if case .stopped = response { return true }
+        switch response {
+        case .stopped, .stoppedLifecycle:
+          return true
+        default:
+          return false
+        }
+      }
+    )
+    if case .stoppedLifecycle(_, let generationID) = response {
+      lifecycleStatus = ControllerLifecycleStatus(
+        readiness: .ready,
+        simulation: .stopped(generationID: generationID)
+      )
+      backendReadiness = .ready
+    }
+    return response
+  }
+
+  public func extendLease(
+    requestID: UUID,
+    generationID: UUID,
+    extensionDuration: TimeInterval = 900
+  ) async -> ControllerLinkResponse {
+    switch stateMachine.state {
+    case .connected:
+      break
+    default:
+      _ = await refresh()
+    }
+
+    let response = await sendAuthorized(
+      requestID: requestID,
+      makeRequest: { authorization in
+        .extendLifecycle(
+          requestID: requestID,
+          generationID: generationID,
+          authorization: authorization,
+          extensionDuration: extensionDuration
+        )
+      },
+      accepts: { response in
+        if case .extendedLifecycle = response { return true }
         return false
       }
     )
+    if case .extendedLifecycle(_, let generationID, let leaseExpiresAt) = response {
+      lifecycleStatus = ControllerLifecycleStatus(
+        readiness: .ready,
+        simulation: .applied(
+          generationID: generationID,
+          leaseExpiresAt: leaseExpiresAt
+        )
+      )
+      backendReadiness = .ready
+    }
+    return response
   }
 
   public func currentState() -> ControllerLinkState {
@@ -291,6 +427,10 @@ public actor TrustedControllerLink {
 
   public func currentBackendReadiness() -> ControllerBackendReadiness? {
     backendReadiness
+  }
+
+  public func currentLifecycleStatus() -> ControllerLifecycleStatus? {
+    lifecycleStatus
   }
 
   public func refresh() async -> ControllerLinkState {
@@ -313,6 +453,7 @@ public actor TrustedControllerLink {
     currentService = nil
     pendingIdentity = nil
     backendReadiness = nil
+    lifecycleStatus = nil
     stateMachine.resetDiscovery()
     return stateMachine.state
   }
@@ -320,12 +461,14 @@ public actor TrustedControllerLink {
   public func disconnected() -> ControllerLinkState {
     stateMachine.disconnected()
     backendReadiness = nil
+    lifecycleStatus = nil
     return stateMachine.state
   }
 
   public func localNetworkPermissionDenied() -> ControllerLinkState {
     stateMachine.localNetworkPermissionDenied()
     backendReadiness = nil
+    lifecycleStatus = nil
     return stateMachine.state
   }
 
@@ -380,7 +523,9 @@ public actor TrustedControllerLink {
     switch reply.response {
     case .failed, .rejected:
       return reply.response
-    case .status, .paired, .applied, .stopped:
+    case .status, .lifecycleStatus, .paired, .applied, .appliedLifecycle,
+      .extendedLifecycle,
+      .stopped, .stoppedLifecycle:
       stateMachine.transportUnavailable()
       return .failed(requestID: requestID, reason: .responseIdentityMismatch)
     }

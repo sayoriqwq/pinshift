@@ -20,9 +20,9 @@ rl-doctor
 rl-start
 ```
 
-`rl-install` creates a stable, signed controller executable and conservatively authorizes that exact executable to use the existing controller private key. The first migration can show one macOS Keychain approval; approve the signed controller permanently. It does not delete or replace the existing TLS identity, and it stops before changing Keychain if the signing requirement differs from the previous installation.
+`rl-install` creates a stable, signed controller executable, installs its per-user launchd Cleanup Guardian, and conservatively authorizes that exact executable to use the existing controller private key. The first migration can show one macOS Keychain approval; approve the signed controller permanently. It does not delete or replace the existing TLS identity, and it stops before changing Keychain if the signing requirement differs from the previous installation.
 
-Daily commands never rebuild or re-sign the controller. `rl-start` keeps the trusted Controller Link open for one hour by default. Use `rl-start --seconds 86400` for a longer session and stop it with Control-C; the wrapper then performs an idempotent cleanup reset. `rl-reset` clears an active simulation without starting the link.
+Daily commands never rebuild or re-sign the controller. `rl-start` keeps the trusted Controller Link open for one hour by default, while every Learning App Apply starts its own visible Simulation Lease. The App offers exactly 15, 30, and 60 minutes and defaults to 15 minutes. Server duration never extends that lease. Immediate restore, lease expiry, orderly server shutdown, 30 seconds of continuous server-owner heartbeat loss, startup reconciliation, and `rl-reset` all converge on the same durable, idempotent cleanup workflow.
 
 When exactly one paired physical iPhone is known to Xcode, these commands select it automatically without printing its private identifier. If discovery is ambiguous, copy `.env.example` to the Git-ignored `.env.local` and set `REMOTE_LOCATION_DEVICE` there.
 
@@ -91,8 +91,10 @@ In the Learning App:
 
 1. Allow **Location** and **Local Network** access, then enter the short-lived pairing code.
 2. Choose one Selected Location with manual coordinates, the map, or place search. Selecting never applies automatically.
-3. Tap **Apply Selected Location**. **Applied** means the `devicectl` backend acknowledged the request.
-4. Wait for a fresh nearby observation. **Verified** means this Learning App observed the selected coordinate within its verification window; it is not a Cross-App Propagation guarantee.
-5. Tap **Stop Simulation** to clear the static proxy. The last observed coordinate can remain visible and a fresh physical callback is not guaranteed immediately.
+3. Choose **15**, **30**, or **60 minutes**, then tap **Apply Selected Location**. Apply remains unavailable until the independent Cleanup Guardian reports ready.
+4. Use the active session card to see the authoritative end time, live remaining time, and automatic-cleanup protection. **Applied** means the `devicectl` backend acknowledged the request; a fresh Learning App observation remains separate evidence.
+5. Do nothing and let cleanup become due automatically, tap **Extend 15 Minutes**, or tap **Return to Normal Location** for immediate restore. The App retains extension and Stop Intent requests across reconnection or relaunch and reports the Simulated Location cleared only after public `devicectl` clear succeeds.
+
+If the foreground server exits normally, cleanup is requested immediately. If it crashes or is killed, the launchd Cleanup Guardian makes cleanup mandatory after 30 seconds without the matching server-owner heartbeat; an ordinary iOS disconnect or App backgrounding does not trigger this rule. The selected lease remains the hard upper bound. If the whole Mac or Active Test Device is unavailable, restore the same device connection and unlock the iPhone; the Guardian retains and resumes the Cleanup Obligation automatically. No second tap is required. iOS has no public API for this developer-service clear, so cleanup cannot execute while both the Mac-side Guardian and device connection are unavailable.
 
 `remote-location-controller tutorial` prints the same compact workflow in the terminal.

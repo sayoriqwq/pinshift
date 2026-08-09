@@ -82,10 +82,20 @@ final class TrustedControllerLinkTests: XCTestCase {
       latitude: 31.2304,
       longitude: 121.4737
     )
-    XCTAssertEqual(applied, .applied(requestID: applyID))
+    XCTAssertEqual(
+      applied,
+      .appliedLifecycle(
+        requestID: applyID,
+        generationID: applyID,
+        leaseExpiresAt: Date(timeIntervalSince1970: 3_600)
+      )
+    )
     let stopID = UUID()
     let stopped = await link.stop(requestID: stopID)
-    XCTAssertEqual(stopped, .stopped(requestID: stopID))
+    XCTAssertEqual(
+      stopped,
+      .stoppedLifecycle(requestID: stopID, generationID: nil)
+    )
   }
 
   func testApplyAndStopRefreshTheTrustedLinkAfterTransientDiscoveryLoss() async throws {
@@ -114,7 +124,14 @@ final class TrustedControllerLinkTests: XCTestCase {
       longitude: 121.4737
     )
 
-    XCTAssertEqual(response, .applied(requestID: requestID))
+    XCTAssertEqual(
+      response,
+      .appliedLifecycle(
+        requestID: requestID,
+        generationID: requestID,
+        leaseExpiresAt: Date(timeIntervalSince1970: 3_600)
+      )
+    )
     let refreshedState = await link.currentState()
     XCTAssertEqual(refreshedState, .connected(identity))
 
@@ -122,9 +139,47 @@ final class TrustedControllerLinkTests: XCTestCase {
     let stopID = UUID()
     let stopResponse = await link.stop(requestID: stopID)
 
-    XCTAssertEqual(stopResponse, .stopped(requestID: stopID))
+    XCTAssertEqual(
+      stopResponse,
+      .stoppedLifecycle(requestID: stopID, generationID: nil)
+    )
     let stopRefreshedState = await link.currentState()
     XCTAssertEqual(stopRefreshedState, .connected(identity))
+  }
+
+  func testLegacyControllerCannotReceiveAnUnprotectedApply() async throws {
+    let identity = try ControllerIdentity(fingerprint: Data(repeating: 0x77, count: 32))
+    let authorization = try ControllerAuthorization(bytes: Data(repeating: 0x78, count: 32))
+    let transport = LegacyControllerTransport(
+      identity: identity,
+      authorization: authorization
+    )
+    let link = TrustedControllerLink(
+      trust: ControllerTrust(
+        store: InMemoryControllerTrustStore(identity: identity)
+      ),
+      authorizationStore: InMemoryControllerAuthorizationStore(
+        authorization: authorization
+      ),
+      transport: transport
+    )
+    let connection = await link.connect(to: ControllerService(name: "controller"))
+    XCTAssertEqual(connection, .connected(identity))
+
+    let requestID = UUID()
+    let response = await link.apply(
+      requestID: requestID,
+      latitude: 31.2304,
+      longitude: 121.4737,
+      requestedLeaseDuration: 900
+    )
+    let applyCount = await transport.applyCount()
+
+    XCTAssertEqual(
+      response,
+      .failed(requestID: requestID, reason: .controllerUpgradeRequired)
+    )
+    XCTAssertEqual(applyCount, 0)
   }
 
   func testUnavailableBackendPreventsApplyWithoutSendingACommand() async throws {
@@ -160,6 +215,46 @@ final class TrustedControllerLinkTests: XCTestCase {
   }
 }
 
+private actor LegacyControllerTransport: ControllerLinkTransport {
+  let identity: ControllerIdentity
+  let authorization: ControllerAuthorization
+  private var sentApplyCount = 0
+
+  init(identity: ControllerIdentity, authorization: ControllerAuthorization) {
+    self.identity = identity
+    self.authorization = authorization
+  }
+
+  func send(
+    _ request: ControllerLinkRequest,
+    to service: ControllerService,
+    expectedIdentity: ControllerIdentity?
+  ) -> ControllerTransportReply {
+    XCTAssertEqual(expectedIdentity, identity)
+    let response: ControllerLinkResponse
+    switch request {
+    case .lifecycleStatus(let requestID, let presentedAuthorization):
+      XCTAssertEqual(presentedAuthorization, authorization)
+      response = .status(requestID: requestID, readiness: .ready)
+    case .apply, .applyLifecycle:
+      sentApplyCount += 1
+      response = .rejected(requestID: request.requestID, reason: .invalidRequest)
+    case .status(let requestID, _):
+      response = .status(requestID: requestID, readiness: .ready)
+    case .pair, .extendLifecycle, .stop, .stopLifecycle:
+      response = .rejected(requestID: request.requestID, reason: .invalidRequest)
+    }
+    return ControllerTransportReply(
+      presentedIdentity: identity,
+      response: response
+    )
+  }
+
+  func applyCount() -> Int {
+    sentApplyCount
+  }
+}
+
 private actor PairingTransport: ControllerLinkTransport {
   let identity: ControllerIdentity
   let authorization: ControllerAuthorization
@@ -181,6 +276,11 @@ private actor PairingTransport: ControllerLinkTransport {
         presentedIdentity: identity,
         response: .rejected(requestID: requestID, reason: .pairingRequired)
       )
+    case .lifecycleStatus(let requestID, _):
+      return ControllerTransportReply(
+        presentedIdentity: identity,
+        response: .rejected(requestID: requestID, reason: .invalidRequest)
+      )
     case .pair(let requestID, let code):
       XCTAssertEqual(code, "123456")
       XCTAssertEqual(expectedIdentity, identity)
@@ -188,7 +288,7 @@ private actor PairingTransport: ControllerLinkTransport {
         presentedIdentity: identity,
         response: .paired(requestID: requestID, authorization: authorization)
       )
-    case .apply, .stop:
+    case .apply, .applyLifecycle, .extendLifecycle, .stop, .stopLifecycle:
       return ControllerTransportReply(
         presentedIdentity: identity,
         response: .rejected(requestID: request.requestID, reason: .invalidRequest)
@@ -213,7 +313,7 @@ private actor TrustedStatusTransport: ControllerLinkTransport {
     expectedIdentity: ControllerIdentity?
   ) throws -> ControllerTransportReply {
     self.expectedIdentity = expectedIdentity
-    guard case .status(let requestID, let presentedAuthorization) = request else {
+    guard case .lifecycleStatus(let requestID, let presentedAuthorization) = request else {
       return ControllerTransportReply(
         presentedIdentity: identity,
         response: .rejected(requestID: request.requestID, reason: .invalidRequest)
@@ -222,7 +322,13 @@ private actor TrustedStatusTransport: ControllerLinkTransport {
     XCTAssertEqual(presentedAuthorization, authorization)
     return ControllerTransportReply(
       presentedIdentity: identity,
-      response: .status(requestID: requestID, readiness: .ready)
+      response: .lifecycleStatus(
+        requestID: requestID,
+        status: ControllerLifecycleStatus(
+          readiness: .ready,
+          simulation: .noActive
+        )
+      )
     )
   }
 
@@ -257,7 +363,12 @@ private actor MismatchedResponseTransport: ControllerLinkTransport {
           authorization: try ControllerAuthorization(bytes: Data(repeating: 0x55, count: 32))
         )
       )
-    case .apply, .stop:
+    case .lifecycleStatus(let requestID, _):
+      return ControllerTransportReply(
+        presentedIdentity: identity,
+        response: .rejected(requestID: requestID, reason: .invalidRequest)
+      )
+    case .apply, .applyLifecycle, .extendLifecycle, .stop, .stopLifecycle:
       return ControllerTransportReply(
         presentedIdentity: identity,
         response: .rejected(requestID: request.requestID, reason: .invalidRequest)
@@ -286,14 +397,59 @@ private actor AuthorizedCommandTransport: ControllerLinkTransport {
     case .status(let requestID, let presentedAuthorization):
       XCTAssertEqual(presentedAuthorization, authorization)
       response = .status(requestID: requestID, readiness: .ready)
+    case .lifecycleStatus(let requestID, let presentedAuthorization):
+      XCTAssertEqual(presentedAuthorization, authorization)
+      response = .lifecycleStatus(
+        requestID: requestID,
+        status: ControllerLifecycleStatus(
+          readiness: .ready,
+          simulation: .noActive
+        )
+      )
     case .apply(let requestID, let presentedAuthorization, let latitude, let longitude):
       XCTAssertEqual(presentedAuthorization, authorization)
       XCTAssertEqual(latitude, 31.2304)
       XCTAssertEqual(longitude, 121.4737)
       response = .applied(requestID: requestID)
+    case .applyLifecycle(
+      let requestID,
+      let generationID,
+      let presentedAuthorization,
+      let latitude,
+      let longitude,
+      let requestedLeaseDuration
+    ):
+      XCTAssertEqual(presentedAuthorization, authorization)
+      XCTAssertEqual(latitude, 31.2304)
+      XCTAssertEqual(longitude, 121.4737)
+      XCTAssertEqual(requestedLeaseDuration, 900)
+      response = .appliedLifecycle(
+        requestID: requestID,
+        generationID: generationID,
+        leaseExpiresAt: Date(timeIntervalSince1970: 3_600)
+      )
+    case .extendLifecycle(
+      let requestID,
+      let generationID,
+      let presentedAuthorization,
+      let extensionDuration
+    ):
+      XCTAssertEqual(presentedAuthorization, authorization)
+      XCTAssertEqual(extensionDuration, 900)
+      response = .extendedLifecycle(
+        requestID: requestID,
+        generationID: generationID,
+        leaseExpiresAt: Date(timeIntervalSince1970: 4_500)
+      )
     case .stop(let requestID, let presentedAuthorization):
       XCTAssertEqual(presentedAuthorization, authorization)
       response = .stopped(requestID: requestID)
+    case .stopLifecycle(let requestID, let generationID, let presentedAuthorization):
+      XCTAssertEqual(presentedAuthorization, authorization)
+      response = .stoppedLifecycle(
+        requestID: requestID,
+        generationID: generationID
+      )
     case .pair(let requestID, _):
       response = .rejected(requestID: requestID, reason: .invalidRequest)
     }
@@ -324,10 +480,24 @@ private actor UnavailableBackendTransport: ControllerLinkTransport {
         requestID: requestID,
         readiness: .unavailable(.sessionNotReady)
       )
+    case .lifecycleStatus(let requestID, let presentedAuthorization):
+      XCTAssertEqual(presentedAuthorization, authorization)
+      response = .lifecycleStatus(
+        requestID: requestID,
+        status: ControllerLifecycleStatus(
+          readiness: .unavailable(.sessionNotReady),
+          simulation: .noActive
+        )
+      )
     case .apply(let requestID, _, _, _):
       sentApplyCount += 1
       response = .applied(requestID: requestID)
-    case .pair(let requestID, _), .stop(let requestID, _):
+    case .applyLifecycle(let requestID, _, _, _, _, _):
+      sentApplyCount += 1
+      response = .applied(requestID: requestID)
+    case .pair(let requestID, _), .extendLifecycle(let requestID, _, _, _),
+      .stop(let requestID, _),
+      .stopLifecycle(let requestID, _, _):
       response = .rejected(requestID: requestID, reason: .invalidRequest)
     }
     return ControllerTransportReply(presentedIdentity: identity, response: response)

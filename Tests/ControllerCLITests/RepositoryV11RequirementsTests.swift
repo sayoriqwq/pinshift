@@ -23,6 +23,18 @@ final class RepositoryV11RequirementsTests: XCTestCase {
     }
   }
 
+  func testDailyStartDefersItsDefaultLeaseToTheControllerOwnedPolicy() throws {
+    let contents = try String(
+      contentsOf: repositoryRoot.appending(path: "bin/rl-start"),
+      encoding: .utf8
+    )
+
+    XCTAssertFalse(contents.contains("set --local lease_seconds 300"))
+    XCTAssertFalse(contents.contains("after 300 seconds by default"))
+    XCTAssertTrue(contents.contains("15 minutes by default"))
+    XCTAssertTrue(contents.contains("set --append serve_arguments --lease-seconds"))
+  }
+
   func testDiagnosticsHelperLocatesOrCopiesTheMacPackageWithoutRunningRecovery() throws {
     let helperURL = repositoryRoot.appending(path: "bin/rl-diagnostics")
     XCTAssertTrue(FileManager.default.isExecutableFile(atPath: helperURL.path))
@@ -93,6 +105,30 @@ final class RepositoryV11RequirementsTests: XCTestCase {
     XCTAssertFalse(contents.contains("create-keypair -A"))
     XCTAssertFalse(contents.contains("set-key-partition-list"))
     XCTAssertTrue(contents.contains("codesign --verify"))
+  }
+
+  func testInstallRegistersCleanupGuardianOutsideTheControllerLinkProcess() throws {
+    let contents = try String(
+      contentsOf: repositoryRoot.appending(path: "bin/rl-install"),
+      encoding: .utf8
+    )
+    let template = try String(
+      contentsOf: repositoryRoot.appending(
+        path: "Support/dev.sayori.remotelocation.cleanup-guardian.plist"
+      ),
+      encoding: .utf8
+    )
+
+    XCTAssertTrue(contents.contains("launchctl bootstrap"))
+    XCTAssertTrue(contents.contains("launchctl kickstart -k"))
+    let guardianBootout = try XCTUnwrap(
+      contents.range(of: "launchctl bootout gui/$user_id/$guardian_label")
+    )
+    let executablePublish = try XCTUnwrap(contents.range(of: "cp $candidate $executable"))
+    XCTAssertLessThan(guardianBootout.lowerBound, executablePublish.lowerBound)
+    XCTAssertTrue(template.contains("cleanup-guardian"))
+    XCTAssertTrue(template.contains("<key>KeepAlive</key>"))
+    XCTAssertTrue(template.contains("<key>RunAtLoad</key>"))
   }
 
   func testAppResigningWorkflowValidatesBeforeUpdatingTheExistingApp() throws {

@@ -195,10 +195,35 @@ private actor RecordingControllerCommandHandler: ControllerCommandHandling {
     switch command {
     case .status(let requestID):
       return .ready(requestID: requestID)
+    case .lifecycleStatus(let requestID):
+      return .lifecycleStatus(
+        requestID: requestID,
+        status: ControllerLifecycleStatus(
+          readiness: .ready,
+          simulation: .noActive
+        )
+      )
     case .apply(let requestID, _, _):
       return .applied(requestID: requestID)
+    case .applyLifecycle(let requestID, let generationID, _, _, _):
+      return .appliedLifecycle(
+        requestID: requestID,
+        generationID: generationID,
+        leaseExpiresAt: Date(timeIntervalSince1970: 3_600)
+      )
+    case .extendLifecycle(let requestID, let generationID, _):
+      return .extendedLifecycle(
+        requestID: requestID,
+        generationID: generationID,
+        leaseExpiresAt: Date(timeIntervalSince1970: 4_500)
+      )
     case .stop(let requestID):
       return .stopped(requestID: requestID)
+    case .stopLifecycle(let requestID, let generationID):
+      return .stoppedLifecycle(
+        requestID: requestID,
+        generationID: generationID
+      )
     }
   }
 

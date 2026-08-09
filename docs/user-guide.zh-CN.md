@@ -14,12 +14,13 @@ Keychain 密码或重复输入六位配对码。
    ```
 
 3. 保持这个终端窗口运行，打开 iPhone 上的 **Pinshift**。
-4. 等待 App 顶部四项状态就绪：
+4. 等待 App 中的 Controller 与自动清理状态就绪：
 
    - `Local Network Permission`：`Allowed`
    - `Controller Link`：`Trusted controller connected`
    - `Active Test Device / Xcode`：`Ready`
    - `Injection Backend`：`devicectl ready`
+   - `Automatic Cleanup`：`Cleanup Guardian ready`
 
 终端显示新的六位码是正常的备用配对信息。已信任的 iPhone 会自动连接，不需要输入该码。
 
@@ -29,17 +30,36 @@ Keychain 密码或重复输入六位配对码。
 2. 在地图上移动到目标位置。
 3. 点地图中央蓝色 `+`，把地图中心保存为 `Selected Location`。
 4. 点右上角 **Done** 返回主页面。
-5. 点 **Apply Selected Location**。
-6. 等待 `Applied Simulation` 变为已应用，并确认 `Verified Simulation` 完成验证。
-7. 打开 QQ、地图或其他目标 App 检查位置。
+5. 在 **Time-Bounded Simulation** 中选择 15、30 或 60 分钟；默认是 15 分钟，不提供无限时长。
+6. 点 **Start Time-Bounded Simulation**。
+7. Apply 成功后，使用会话卡查看清理时间、倒计时和自动清理保护。可在卡片中延长 15 分钟或立即恢复正常定位。
+8. 打开 QQ、地图或其他目标 App 检查位置。Pinshift 的最新位置观察只是独立证据，不代表清理状态。
 
 也可以使用地点搜索或手动输入经纬度。选择地址只会更新待选位置；只有点击
 **Apply Selected Location** 才会真正修改系统提供给其他 App 的测试位置。
 
-## 停止使用
+## 结束使用与自动清理
 
-先在 App 中点 **Stop Simulation**，然后回到终端按 `Control-C`。终端会再执行一次安全的
-幂等清理。即使 App 已经关闭，也可以运行：
+Apply 成功后可以不再进行任何操作。系统会在以下三个时刻中最早到达的一个进入同一清理流程：
+
+- 会话卡显示的 15、30 或 60 分钟 Simulation Lease 到期；
+- `rl-start` 正常退出；
+- foreground server 崩溃或被强杀后，连续 30 秒收不到对应 server-owner heartbeat。
+
+iOS App 进入后台或一次 Controller Link 网络断开不会触发 30 秒规则；只要 server 仍在持续写入心跳，
+本次测试会继续到已确认的租约期限。
+
+若要提前结束，在会话卡中点 **Return to Normal Location**。App 会先持久保存 Stop Intent；如果 Mac
+暂时离线、Controller Link 正在重连，或 App 随后被关闭，同一请求会在恢复连接后自动重试，不需要
+再次点击。只有 Mac 上公开的 `devicectl ... location clear` 成功后，界面才会显示
+**Simulated Location cleared**。倒计时到零但尚未收到确认时，界面只会显示等待清理，不会假报成功。
+
+`rl-install` 安装的 macOS Cleanup Guardian 由 launchd 独立保活。Apply 只有在 Guardian 报告健康并且
+Cleanup Obligation 已持久保存时才会执行。如果整台 Mac 或 iPhone 暂时不可达，清理义务会保留；同一台
+Mac 与 iPhone 恢复可达并解锁后，Guardian 会自动重试。iOS App 本身没有公开 API 可以执行这项开发者
+服务清理，因此 Mac 关机且手机不可达期间无法完成清理，但也不会丢失清理义务。
+
+手动恢复仍可运行：
 
 ```fish
 cd /Users/sayori/Desktop/remote-location
@@ -106,8 +126,8 @@ rl-doctor
 | 命令 | 用途 |
 | --- | --- |
 | `rl-start` | 启动可信控制器；默认运行一小时 |
-| `rl-start --seconds 86400` | 最长运行一天 |
-| `rl-reset` | 清除可能仍在生效的模拟位置 |
+| `rl-start --seconds 86400` | Controller Link 最长运行一天；App 中的 Simulation Lease 仍由 15/30/60 分钟选择决定 |
+| `rl-reset` | 加入同一持久清理流程，幂等清除可能仍在生效的模拟位置 |
 | `rl-doctor` | 只读检查 Xcode、iPhone、签名和控制器状态 |
 | `rl-install` | 首次安装或源码变化后更新稳定签名控制器 |
 | `rl-resign-app` | 签名剩余不超过 24 小时时续签并原位安装 App |

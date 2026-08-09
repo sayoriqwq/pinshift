@@ -113,6 +113,18 @@
 "Saved Locations use an unsupported version." = "已保存地点使用了不支持的版本。";
 "Saved Locations could not be loaded." = "无法加载已保存地点。";
 "Saved Locations could not be saved. Your existing collection is unchanged." = "无法保存已保存地点；现有集合未更改。";
+"Simulation Lease expires" = "模拟租约到期时间";
+"Cleanup pending — retrying automatically…" = "等待清理——正在自动重试…";
+"Cleanup is still pending" = "仍在等待清理";
+"The trusted controller is unavailable. Cleanup remains pending and will retry automatically." = "可信控制器暂时不可用。清理请求会保留，并在恢复后自动重试。";
+"Pending cleanup belongs to a different Active Test Device" = "等待清理的模拟属于另一台活动测试设备";
+"Stop targets an older simulation generation" = "停止请求指向较早的模拟代次";
+"Finish the pending simulation cleanup before applying another location." = "请先完成等待中的模拟清理，再应用其他位置。";
+"The pending simulation cleanup could not be restored." = "无法恢复等待中的模拟清理状态。";
+"The simulation cleanup state could not be saved." = "无法保存模拟清理状态。";
+"Apply outcome unknown — cleanup required" = "应用结果未知——需要清理";
+"Unknown until Controller Link reconnects" = "未知——等待控制器链路重新连接";
+"Acknowledged locally — awaiting reconciliation" = "本地已确认——等待与控制器对账";
 
 /* Static simulation */
 "Static Simulation" = "静态模拟";
@@ -216,3 +228,37 @@
 "%@ is now the Selected Location." = "%@ 已设为待应用位置。";
 "Finish the current apply or stop request before changing the selection." = "请等待当前应用或停止请求完成后再更改选择。";
 "Map center is now the Selected Location." = "地图中心已设为待应用位置。";
+
+/* Time-bounded simulation */
+"Time-Bounded Simulation" = "限时位置模拟";
+"Choose how long this simulation may remain active. After Apply succeeds, automatic cleanup no longer depends on remembering Stop." = "选择本次模拟允许持续的时间。应用成功后，即使忘记停止，也会进入自动清理。";
+"Duration" = "持续时间";
+"%d min" = "%d 分钟";
+"Start Time-Bounded Simulation" = "开始限时模拟";
+"Simulated Location" = "模拟位置";
+"Automatic cleanup at" = "自动清理时间";
+"Automatic cleanup in %@" = "%@ 后自动清理";
+"Cleanup due — waiting for Mac confirmation" = "已到清理时间——等待 Mac 确认";
+"Automatic cleanup entrusted to Cleanup Guardian" = "已将自动清理托付给清理守护者";
+"Extending…" = "正在延长…";
+"Extend 15 Minutes" = "延长 15 分钟";
+"Restoring…" = "正在恢复…";
+"Return to Normal Location" = "恢复正常位置";
+"Simulation active" = "位置模拟中";
+"Restore requested" = "已请求恢复";
+"Cleanup pending — waiting for Mac confirmation" = "等待清理——正在等待 Mac 确认";
+"Verified by a fresh observation in this app" = "已通过本 App 的新观测验证";
+"Applied; latest observation is not yet verified" = "已应用；最新观测尚未验证";
+"Applied; waiting for a fresh observation" = "已应用；正在等待新的观测";
+"Restore requested — retrying automatically…" = "已请求恢复——正在自动重试…";
+"Simulated Location cleared" = "已清除模拟位置";
+"Automatic Cleanup" = "自动清理";
+"Cleanup Guardian ready" = "清理守护者已就绪";
+"Controller update required" = "需要更新控制器";
+"Choose a 15-, 30-, or 60-minute duration" = "请选择 15、30 或 60 分钟";
+"Cleanup Guardian protection is unavailable" = "清理守护者保护不可用";
+"Update the Mac controller to use protected sessions" = "请更新 Mac 控制器以使用受保护的模拟会话";
+"Cleanup Guardian protection is unavailable. Run rl-install on the Mac, then retry." = "清理守护者保护不可用。请在 Mac 上运行 rl-install 后重试。";
+"Automatic cleanup protection is unavailable. Resolve the Mac controller check and retry." = "自动清理保护不可用。请解决 Mac 控制器检查项后重试。";
+"This Mac controller is too old for protected time-bounded sessions. Update it with rl-install." = "此 Mac 控制器版本过旧，无法使用受保护的限时模拟。请使用 rl-install 更新。";
+"Waiting for the Mac to confirm automatic-cleanup protection." = "正在等待 Mac 确认自动清理保护。";

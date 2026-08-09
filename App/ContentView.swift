@@ -42,11 +42,11 @@ struct ContentView: View {
   var body: some View {
     NavigationStack {
       Form {
-        controllerLinkSection
         selectionSection
         savedLocationsSection
         simulationSection
         observationSection
+        controllerLinkSection
         diagnosticsSection
         baselineSection
         limitationsSection
@@ -112,6 +112,7 @@ struct ContentView: View {
         controllerLink.start()
       }
       while !Task.isCancelled {
+        await reconcileSimulationLifecycle()
         await diagnostics.refreshNow()
         do {
           try await Task.sleep(for: .seconds(1))
@@ -253,6 +254,11 @@ struct ContentView: View {
           .accessibilityIdentifier("controller-backend-status")
       }
 
+      LabeledContent("Automatic Cleanup") {
+        Text(cleanupProtectionDescription)
+          .accessibilityIdentifier("cleanup-guardian-status")
+      }
+
       LabeledContent("Applied Simulation") {
         Text(appliedSimulationDescription)
           .accessibilityIdentifier("applied-simulation-status")
@@ -337,7 +343,10 @@ struct ContentView: View {
         .accessibilityIdentifier("retry-controller-discovery")
       }
 
-      if case .connected = controllerLink.state, controllerLink.backendReadiness != .ready {
+      if case .connected = controllerLink.state,
+        controllerLink.backendReadiness != .ready
+          || controllerLink.lifecycleStatus?.cleanupReadiness != .ready
+      {
         Button {
           controllerLink.refreshReadiness()
         } label: {
@@ -640,67 +649,215 @@ struct ContentView: View {
     )
   }
 
+  private func activeLocationDescription(_ location: SelectedLocation) -> String {
+    if let name = model.savedLocationName(for: location) {
+      return name
+    }
+    return savedLocationCoordinateDescription(location)
+  }
+
+  private func remainingTimeDescription(until expiry: Date, now: Date) -> String {
+    let totalSeconds = max(0, Int(ceil(expiry.timeIntervalSince(now))))
+    let minutes = totalSeconds / 60
+    let seconds = totalSeconds % 60
+    return String(format: "%02d:%02d", minutes, seconds)
+  }
+
   private var simulationSection: some View {
-    Section("Static Simulation") {
-      Text(
-        "Apply sends only the current Selected Location to your paired Mac controller. Applied confirms the backend; Verified additionally requires a fresh nearby observation in this app."
-      )
-      .font(.footnote)
-      .foregroundStyle(.secondary)
-
-      Button {
-        guard let request = model.beginManualApply() else { return }
-        Task {
-          let response = await controllerLink.apply(request)
-          model.receiveApplyResponse(response, for: request)
-        }
-      } label: {
-        ActionButtonLabel(
-          title: Text(localized(model.isApplying ? "Applying…" : "Apply Selected Location")),
-          systemImage: "location.circle.fill",
-          isBusy: model.isApplying
-        )
-      }
-      .buttonStyle(.borderedProminent)
-      .disabled(
-        model.selection.selected == nil
-          || model.isApplying
-      )
-      .accessibilityIdentifier("apply-selected-location")
-
-      manualSimulationStatus
-
+    Section("Time-Bounded Simulation") {
       if let activeRequest = model.manualSession.activeAppliedRequest {
-        Label("Applied Simulation acknowledged", systemImage: "checkmark.circle")
-          .foregroundStyle(.blue)
-          .accessibilityIdentifier("applied-acknowledgement")
-        LabeledContent("Active Applied Request", value: activeRequest.requestID.uuidString)
-          .font(.footnote.monospaced())
-          .accessibilityIdentifier("active-simulation-request-id")
-      }
-
-      Button {
-        guard let requestID = model.beginStop() else { return }
-        Task {
-          let response = await controllerLink.stop(requestID: requestID)
-          model.receiveStopResponse(response, for: requestID)
-        }
-      } label: {
-        ActionButtonLabel(
-          title: Text(localized(model.isStopping ? "Stopping…" : "Stop Simulation")),
-          systemImage: "stop.circle",
-          isBusy: model.isStopping
+        activeSimulationCard(activeRequest)
+      } else {
+        Text(
+          "Choose how long this simulation may remain active. After Apply succeeds, automatic cleanup no longer depends on remembering Stop."
         )
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+
+        Picker("Duration", selection: $model.selectedLeaseDuration) {
+          ForEach(SimulationLeaseDuration.allCases) { duration in
+            Text(localizedFormat("%d min", duration.minutes))
+              .tag(duration)
+          }
+        }
+        .pickerStyle(.segmented)
+        .disabled(model.isApplying)
+        .accessibilityIdentifier("simulation-duration-picker")
+
+        if let protectionMessage = controllerLink.cleanupProtectionMessage,
+          model.selection.selected != nil
+        {
+          Label(localized(protectionMessage), systemImage: "exclamationmark.shield")
+            .font(.footnote)
+            .foregroundStyle(.orange)
+            .accessibilityIdentifier("cleanup-protection-guidance")
+        }
+
+        Button {
+          guard let request = model.beginManualApply() else { return }
+          Task {
+            let response = await controllerLink.apply(request)
+            model.receiveApplyResponse(response, for: request)
+          }
+        } label: {
+          ActionButtonLabel(
+            title: Text(
+              localized(model.isApplying ? "Applying…" : "Start Time-Bounded Simulation")
+            ),
+            systemImage: "location.circle.fill",
+            isBusy: model.isApplying
+          )
+        }
+        .buttonStyle(.borderedProminent)
+        .disabled(
+          model.selection.selected == nil
+            || model.isApplying
+            || model.pendingStopIntent != nil
+            || !controllerLink.canApply
+        )
+        .accessibilityIdentifier("apply-selected-location")
+
+        manualSimulationStatus
       }
-      .buttonStyle(.bordered)
-      .tint(.red)
-      .disabled(
-        model.manualSession.activeAppliedRequest == nil
-          || model.isStopping
-      )
-      .accessibilityIdentifier("stop-simulation")
 
       manualStopStatus
+    }
+  }
+
+  private func activeSimulationCard(_ request: ManualSimulationRequest) -> some View {
+    VStack(alignment: .leading, spacing: 12) {
+      activeSimulationLifecycleLabel
+
+      LabeledContent("Simulated Location") {
+        Text(activeLocationDescription(request.location))
+          .multilineTextAlignment(.trailing)
+          .accessibilityIdentifier("active-simulation-location")
+      }
+
+      if let leaseExpiresAt = request.leaseExpiresAt {
+        LabeledContent("Automatic cleanup at", value: formattedDateTime(leaseExpiresAt))
+          .accessibilityIdentifier("simulation-lease-expiry")
+
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+          if context.date < leaseExpiresAt {
+            Label(
+              localizedFormat(
+                "Automatic cleanup in %@",
+                remainingTimeDescription(until: leaseExpiresAt, now: context.date)
+              ),
+              systemImage: "timer"
+            )
+            .font(.headline.monospacedDigit())
+            .accessibilityIdentifier("simulation-lease-countdown")
+          } else {
+            Label(
+              "Cleanup due — waiting for Mac confirmation",
+              systemImage: "clock.badge.exclamationmark"
+            )
+            .font(.headline)
+            .foregroundStyle(.orange)
+            .accessibilityIdentifier("simulation-cleanup-due")
+          }
+        }
+      }
+
+      Label(
+        "Automatic cleanup entrusted to Cleanup Guardian",
+        systemImage: "checkmark.shield.fill"
+      )
+      .font(.footnote)
+      .foregroundStyle(.green)
+      .accessibilityIdentifier("cleanup-protection-receipt")
+
+      activeVerificationSummary
+
+      VStack(spacing: 8) {
+        Button {
+          guard let intent = model.beginLeaseExtension() else { return }
+          Task {
+            guard let response = await controllerLink.deliverLeaseExtension(intent) else {
+              return
+            }
+            model.receiveLeaseExtensionResponse(response, for: intent)
+          }
+        } label: {
+          ActionButtonLabel(
+            title: Text(localized(model.isExtendingLease ? "Extending…" : "Extend 15 Minutes")),
+            systemImage: "clock.badge.plus",
+            isBusy: model.isExtendingLease
+          )
+        }
+        .buttonStyle(.bordered)
+        .disabled(model.isExtendingLease || model.pendingStopIntent != nil)
+        .accessibilityIdentifier("extend-simulation-lease")
+
+        Button {
+          guard let intent = model.beginStop() else { return }
+          Task {
+            guard let response = await controllerLink.deliverStop(intent) else { return }
+            model.receiveStopResponse(response, for: intent)
+          }
+        } label: {
+          ActionButtonLabel(
+            title: Text(localized(model.isStopping ? "Restoring…" : "Return to Normal Location")),
+            systemImage: "location.slash",
+            isBusy: model.isStopping
+          )
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(.red)
+        .disabled(model.isStopping)
+        .accessibilityIdentifier("stop-simulation")
+      }
+    }
+    .padding(.vertical, 4)
+    .accessibilityElement(children: .contain)
+    .accessibilityIdentifier("active-simulation-card")
+  }
+
+  @ViewBuilder
+  private var activeSimulationLifecycleLabel: some View {
+    switch model.manualSession.cleanupStatus {
+    case .inactive, .protected:
+      Label("Simulation active", systemImage: "location.fill")
+        .font(.headline)
+        .foregroundStyle(.blue)
+        .accessibilityIdentifier("applied-acknowledgement")
+    case .restoreRequested:
+      Label("Restore requested", systemImage: "arrow.uturn.backward.circle")
+        .font(.headline)
+        .foregroundStyle(.orange)
+        .accessibilityIdentifier("active-simulation-status")
+    case .pending:
+      Label("Cleanup pending — waiting for Mac confirmation", systemImage: "clock.arrow.circlepath")
+        .font(.headline)
+        .foregroundStyle(.orange)
+        .accessibilityIdentifier("active-simulation-status")
+    case .cleared:
+      EmptyView()
+    }
+  }
+
+  @ViewBuilder
+  private var activeVerificationSummary: some View {
+    switch model.manualSession.status {
+    case .verified:
+      Label("Verified by a fresh observation in this app", systemImage: "checkmark.seal.fill")
+        .font(.footnote)
+        .foregroundStyle(.green)
+        .accessibilityIdentifier("simulation-status")
+    case .appliedNotVerified:
+      Label("Applied; latest observation is not yet verified", systemImage: "scope")
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+        .accessibilityIdentifier("simulation-status")
+    case .applied:
+      Label("Applied; waiting for a fresh observation", systemImage: "scope")
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+        .accessibilityIdentifier("simulation-status")
+    case .noSelection, .selected, .applying, .failed, .stopped:
+      EmptyView()
     }
   }
 
@@ -715,25 +872,22 @@ struct ContentView: View {
       Label("Selected — waiting to apply", systemImage: "location.circle")
         .foregroundStyle(.blue)
         .accessibilityIdentifier("simulation-status")
-    case .applying(let request):
+    case .applying:
       Label("Applying to the Injection Backend…", systemImage: "arrow.up.circle")
         .foregroundStyle(.orange)
         .accessibilityIdentifier("simulation-status")
-      requestIdentity(request)
-    case .applied(let request):
+    case .applied:
       Label("Applied Simulation — waiting for a fresh observation", systemImage: "checkmark.circle")
         .foregroundStyle(.blue)
         .accessibilityIdentifier("simulation-status")
-      requestIdentity(request)
-    case .appliedNotVerified(let request, let issue):
+    case .appliedNotVerified(_, let issue):
       Label("Applied, but not verified", systemImage: "exclamationmark.circle")
         .foregroundStyle(.orange)
         .accessibilityIdentifier("simulation-status")
       Text(verificationIssueDescription(issue))
         .font(.footnote)
         .accessibilityIdentifier("simulation-diagnostic")
-      requestIdentity(request)
-    case .verified(let request, let evidence):
+    case .verified(_, let evidence):
       Label("Verified Simulation in this Learning App", systemImage: "checkmark.seal.fill")
         .foregroundStyle(.green)
         .accessibilityIdentifier("simulation-status")
@@ -745,27 +899,17 @@ struct ContentView: View {
         Text("\(evidence.distanceMeters.formatted(.number.precision(.fractionLength(2)))) m")
           .accessibilityIdentifier("simulation-distance")
       }
-      requestIdentity(request)
-    case .failed(let request, let failure):
+    case .failed(_, let failure):
       Label("Simulation request failed", systemImage: "xmark.circle")
         .foregroundStyle(.red)
         .accessibilityIdentifier("simulation-status")
       Text(manualFailureDescription(failure))
         .font(.footnote)
         .accessibilityIdentifier("simulation-diagnostic")
-      requestIdentity(request)
     case .stopped:
       Label("No Applied Simulation is active.", systemImage: "stop.circle")
         .foregroundStyle(.secondary)
         .accessibilityIdentifier("simulation-status")
-    }
-  }
-
-  private func requestIdentity(_ request: ManualSimulationRequest) -> some View {
-    LabeledContent("Request") {
-      Text(request.requestID.uuidString)
-        .font(.footnote.monospaced())
-        .accessibilityIdentifier("simulation-request-id")
     }
   }
 
@@ -774,14 +918,12 @@ struct ContentView: View {
     switch model.manualSession.stopStatus {
     case .idle:
       EmptyView()
-    case .stopping(let requestID):
-      Label("Stopping the active simulation…", systemImage: "stop.circle")
+    case .stopping:
+      Label("Restore requested — retrying automatically…", systemImage: "stop.circle")
         .foregroundStyle(.orange)
         .accessibilityIdentifier("stop-status")
-      LabeledContent("Stop Request", value: requestID.uuidString)
-        .font(.footnote.monospaced())
     case .stopped:
-      Label("Injection Backend cleared", systemImage: "stop.circle.fill")
+      Label("Simulated Location cleared", systemImage: "stop.circle.fill")
         .foregroundStyle(.green)
         .accessibilityIdentifier("stop-status")
       Text(
@@ -790,12 +932,42 @@ struct ContentView: View {
       .font(.footnote)
       .foregroundStyle(.secondary)
     case .failed(_, let failure):
-      Label("Could not stop the active simulation", systemImage: "exclamationmark.triangle")
+      Label("Cleanup is still pending", systemImage: "exclamationmark.triangle")
         .foregroundStyle(.red)
         .accessibilityIdentifier("stop-status")
       Text(manualFailureDescription(failure))
         .font(.footnote)
         .accessibilityIdentifier("stop-diagnostic")
+    }
+  }
+
+  @MainActor
+  private func reconcileSimulationLifecycle() async {
+    let shouldReconcile: Bool
+    if case .connected = controllerLink.state {
+      shouldReconcile = true
+    } else {
+      shouldReconcile =
+        model.pendingStopIntent != nil
+        || model.manualSession.pendingLeaseExtension != nil
+        || model.manualSession.activeAppliedRequest != nil
+        || model.isApplying
+    }
+    guard shouldReconcile else { return }
+
+    if let lifecycle = await controllerLink.reconcileLifecycle() {
+      model.reconcileControllerLifecycle(lifecycle)
+    }
+    if let intent = model.pendingStopIntent,
+      let response = await controllerLink.deliverStop(intent)
+    {
+      model.receiveStopResponse(response, for: intent)
+      return
+    }
+    if let extensionIntent = model.manualSession.pendingLeaseExtension,
+      let response = await controllerLink.deliverLeaseExtension(extensionIntent)
+    {
+      model.receiveLeaseExtensionResponse(response, for: extensionIntent)
     }
   }
 
@@ -1137,12 +1309,38 @@ struct ContentView: View {
     }
   }
 
+  private var cleanupProtectionDescription: String {
+    switch controllerLink.lifecycleStatus?.cleanupReadiness {
+    case .ready:
+      localized("Cleanup Guardian ready")
+    case .unavailable(let reason):
+      controllerFailureDescription(reason)
+    case .unsupportedController:
+      localized("Controller update required")
+    case nil:
+      localized("Waiting for Controller Link")
+    }
+  }
+
   private var appliedSimulationDescription: String {
-    localized(
-      model.manualSession.activeAppliedRequest == nil
-        ? "Inactive"
-        : "Acknowledged"
-    )
+    switch controllerLink.lifecycleStatus?.simulation {
+    case .applied:
+      localized("Acknowledged")
+    case .applyUncertain:
+      localized("Apply outcome unknown — cleanup required")
+    case .cleanupPending:
+      localized("Cleanup pending — retrying automatically…")
+    case .deviceMismatch:
+      localized("Pending cleanup belongs to a different Active Test Device")
+    case .noActive, .stopped:
+      localized("Inactive")
+    case nil:
+      localized(
+        model.manualSession.activeAppliedRequest == nil
+          ? "Unknown until Controller Link reconnects"
+          : "Acknowledged locally — awaiting reconciliation"
+      )
+    }
   }
 
   private var verifiedSimulationDescription: String {
@@ -1160,7 +1358,7 @@ struct ContentView: View {
       )
     case .controllerUnavailable:
       localized(
-        "The trusted controller became unavailable. Retry discovery without changing the Selected Location."
+        "The trusted controller is unavailable. Cleanup remains pending and will retry automatically."
       )
     case .requestRejected(let stableCode):
       localizedFormat(
@@ -1209,6 +1407,16 @@ struct ContentView: View {
       localized("Controller unavailable")
     case .responseIdentityMismatch:
       localized("Controller response mismatch")
+    case .deviceMismatch:
+      localized("Pending cleanup belongs to a different Active Test Device")
+    case .generationMismatch:
+      localized("Stop targets an older simulation generation")
+    case .invalidLeaseDuration:
+      localized("Choose a 15-, 30-, or 60-minute duration")
+    case .cleanupGuardianUnavailable:
+      localized("Cleanup Guardian protection is unavailable")
+    case .controllerUpgradeRequired:
+      localized("Update the Mac controller to use protected sessions")
     }
   }
 

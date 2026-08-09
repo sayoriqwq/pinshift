@@ -168,6 +168,30 @@ final class ManualSimulationSessionTests: XCTestCase {
     XCTAssertEqual(session.status, .applying(request))
   }
 
+  func testStopDuringReplacementApplyTargetsTheInFlightGeneration() throws {
+    var session = ManualSimulationSession()
+    try session.select(latitude: "31.2304", longitude: "121.4737")
+    let firstID = UUID()
+    _ = try session.beginApply(
+      requestID: firstID,
+      generationID: UUID(),
+      at: requestTime
+    )
+    XCTAssertTrue(session.acknowledgeApplied(requestID: firstID))
+
+    try session.select(latitude: "52.5200", longitude: "13.4050")
+    let replacementGenerationID = UUID()
+    _ = try session.beginApply(
+      requestID: UUID(),
+      generationID: replacementGenerationID,
+      at: requestTime.addingTimeInterval(10)
+    )
+
+    let intent = try XCTUnwrap(session.beginStop(requestID: UUID()))
+
+    XCTAssertEqual(intent.generationID, replacementGenerationID)
+  }
+
   func testLateAppliedAcknowledgementStillEndsAsAppliedButTimedOut() throws {
     var session = ManualSimulationSession()
     try session.select(latitude: "31.2304", longitude: "121.4737")
@@ -183,6 +207,71 @@ final class ManualSimulationSessionTests: XCTestCase {
       session.status,
       .appliedNotVerified(request, .timedOut(elapsedSeconds: 16))
     )
+  }
+
+  func testPendingStopSurvivesRelaunchAndKeepsTheSameOperationIdentity() throws {
+    let directory = FileManager.default.temporaryDirectory
+      .appendingPathComponent("pinshift-app-lifecycle-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let store = FileManualSimulationSessionStore(
+      fileURL: directory.appendingPathComponent("session.json")
+    )
+    var session = ManualSimulationSession()
+    try session.select(latitude: "31.2304", longitude: "121.4737")
+    let applyID = UUID()
+    let generationID = UUID()
+    _ = try session.beginApply(
+      requestID: applyID,
+      generationID: generationID,
+      at: requestTime
+    )
+    XCTAssertTrue(
+      session.acknowledgeApplied(
+        requestID: applyID,
+        generationID: generationID,
+        leaseExpiresAt: requestTime.addingTimeInterval(3_600)
+      )
+    )
+    let stopID = UUID()
+    let intent = session.beginStop(requestID: stopID, at: requestTime)
+    try store.save(session)
+
+    var restored = try XCTUnwrap(store.load())
+    XCTAssertEqual(restored.pendingStopIntent, intent)
+    let reusedIntent = restored.beginStop(requestID: UUID(), at: requestTime)
+    XCTAssertEqual(reusedIntent, intent)
+  }
+
+  func testActiveGenerationSurvivesRelaunchAndRemainsStoppable() throws {
+    let directory = FileManager.default.temporaryDirectory
+      .appendingPathComponent("pinshift-active-lifecycle-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let store = FileManualSimulationSessionStore(
+      fileURL: directory.appendingPathComponent("session.json")
+    )
+    var session = ManualSimulationSession()
+    try session.select(latitude: "31.2304", longitude: "121.4737")
+    let applyID = UUID()
+    let generationID = UUID()
+    _ = try session.beginApply(
+      requestID: applyID,
+      generationID: generationID,
+      at: requestTime
+    )
+    XCTAssertTrue(
+      session.acknowledgeApplied(
+        requestID: applyID,
+        generationID: generationID,
+        leaseExpiresAt: requestTime.addingTimeInterval(3_600)
+      )
+    )
+    try store.save(session)
+
+    var restored = try XCTUnwrap(store.load())
+    let intent = try XCTUnwrap(restored.beginStop(requestID: UUID()))
+
+    XCTAssertEqual(restored.activeAppliedRequest?.generationID, generationID)
+    XCTAssertEqual(intent.generationID, generationID)
   }
 
   private func observation(secondsAfterRequest: TimeInterval) -> LocationObservation {

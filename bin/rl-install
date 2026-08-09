@@ -13,6 +13,15 @@ set --local install_bin $install_root/bin
 set --local executable $install_bin/remote-location-controller
 set --local requirement_file $install_root/designated-requirement
 set --local source_file $install_root/source-fingerprint
+set --local guardian_label dev.sayori.remotelocation.cleanup-guardian
+set --local guardian_template (path resolve Support/$guardian_label.plist)
+set --local guardian_directory $HOME/Library/LaunchAgents
+set --local guardian_plist $guardian_directory/$guardian_label.plist
+set --local guardian_log_directory $HOME/Library/Logs/Pinshift
+set --local guardian_log $guardian_log_directory/cleanup-guardian.log
+set --local user_id (id -u)
+set --local guardian_was_loaded 0
+set --local guardian_restarted_after_rollback 0
 set --local staging_root (mktemp -d .build/controller-install.XXXXXX)
 or exit 1
 set --local build_path $staging_root/build
@@ -60,9 +69,30 @@ set --local source_fingerprint (rl_controller_source_fingerprint)
 or exit $status
 set --local staged_requirement $staging_root/designated-requirement
 set --local staged_source $staging_root/source-fingerprint
+set --local staged_guardian $staging_root/$guardian_label.plist
 printf '%s\n' $requirement > $staged_requirement
 or exit $status
 printf '%s\n' $source_fingerprint > $staged_source
+or exit $status
+cp $guardian_template $staged_guardian
+or exit $status
+plutil -remove ProgramArguments.0 $staged_guardian
+or exit $status
+plutil -insert ProgramArguments.0 -string $executable $staged_guardian
+or exit $status
+plutil -remove ProgramArguments.3 $staged_guardian
+or exit $status
+plutil -insert ProgramArguments.3 -string $REMOTE_LOCATION_DEVICE $staged_guardian
+or exit $status
+plutil -remove ProgramArguments.5 $staged_guardian
+or exit $status
+plutil -insert ProgramArguments.5 -string $REMOTE_LOCATION_DEVELOPER_DIR $staged_guardian
+or exit $status
+plutil -replace StandardOutPath -string $guardian_log $staged_guardian
+or exit $status
+plutil -replace StandardErrorPath -string $guardian_log $staged_guardian
+or exit $status
+plutil -lint $staged_guardian
 or exit $status
 
 if test -f $requirement_file
@@ -117,7 +147,23 @@ function rollback_install --no-scope-shadowing
         command rm -f -- $source_file
         or set rollback_status $status
     end
+    if test $guardian_was_loaded -eq 1; and test $guardian_restarted_after_rollback -eq 0
+        launchctl bootstrap gui/$user_id $guardian_plist
+        or set rollback_status $status
+        if test $rollback_status -eq 0
+            set guardian_restarted_after_rollback 1
+        end
+    end
     return $rollback_status
+end
+
+# A running process cannot safely share an executable path while that signed
+# executable is replaced. Stop only this exact LaunchAgent and restore it from
+# rollback_install if any later install step fails.
+if launchctl print gui/$user_id/$guardian_label >/dev/null 2>&1
+    set guardian_was_loaded 1
+    launchctl bootout gui/$user_id/$guardian_label
+    or exit $status
 end
 
 cp $candidate $executable
@@ -161,4 +207,25 @@ if test $authorization_status -ne 0
     exit $authorization_status
 end
 
-echo "Stable controller installed. Daily rl-start, rl-doctor, and rl-reset are ready."
+# Cleanup ownership must outlive the foreground Controller Link. Publish the
+# per-user LaunchAgent only after the signed executable and Keychain ACL commit.
+mkdir -p $guardian_directory $guardian_log_directory
+or exit $status
+cp $staged_guardian $guardian_plist
+or exit $status
+chmod 600 $guardian_plist
+or exit $status
+launchctl bootout gui/$user_id/$guardian_label >/dev/null 2>&1
+launchctl bootstrap gui/$user_id $guardian_plist
+or begin
+    echo "The controller was installed, but the Cleanup Guardian could not be registered." >&2
+    echo "Run rl-install again before applying another Simulated Location." >&2
+    exit 1
+end
+launchctl kickstart -k gui/$user_id/$guardian_label
+or begin
+    echo "The Cleanup Guardian was registered but did not start." >&2
+    exit 1
+end
+
+echo "Stable controller and persistent Cleanup Guardian installed. Daily rl-start, rl-doctor, and rl-reset are ready."

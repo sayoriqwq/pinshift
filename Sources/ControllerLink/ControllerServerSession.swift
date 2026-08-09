@@ -1,4 +1,5 @@
 import Foundation
+
 #if SWIFT_PACKAGE
   import SimulationDiagnostics
 #endif
@@ -52,6 +53,19 @@ public actor ControllerServerSession {
         await processCommand(
           .status(requestID: requestID),
           expectedResult: .status
+        )
+      )
+
+    case .lifecycleStatus(let requestID, let presentedAuthorization):
+      guard await isAuthorized(presentedAuthorization) else {
+        return await finish(
+          .rejected(requestID: requestID, reason: .authorizationFailed)
+        )
+      }
+      return await finish(
+        await processCommand(
+          .lifecycleStatus(requestID: requestID),
+          expectedResult: .lifecycleStatus
         )
       )
 
@@ -109,6 +123,64 @@ public actor ControllerServerSession {
         )
       )
 
+    case .applyLifecycle(
+      let requestID,
+      let generationID,
+      let presentedAuthorization,
+      let latitude,
+      let longitude,
+      let requestedLeaseDuration
+    ):
+      guard await isAuthorized(presentedAuthorization) else {
+        return await finish(
+          .rejected(requestID: requestID, reason: .authorizationFailed)
+        )
+      }
+      guard
+        latitude.isFinite,
+        longitude.isFinite,
+        (-90.0...90.0).contains(latitude),
+        (-180.0...180.0).contains(longitude)
+      else {
+        return await finish(
+          .failed(requestID: requestID, reason: .invalidCoordinate)
+        )
+      }
+      return await finish(
+        await processCommand(
+          .applyLifecycle(
+            requestID: requestID,
+            generationID: generationID,
+            latitude: latitude,
+            longitude: longitude,
+            requestedLeaseDuration: requestedLeaseDuration
+          ),
+          expectedResult: .apply
+        )
+      )
+
+    case .extendLifecycle(
+      let requestID,
+      let generationID,
+      let presentedAuthorization,
+      let extensionDuration
+    ):
+      guard await isAuthorized(presentedAuthorization) else {
+        return await finish(
+          .rejected(requestID: requestID, reason: .authorizationFailed)
+        )
+      }
+      return await finish(
+        await processCommand(
+          .extendLifecycle(
+            requestID: requestID,
+            generationID: generationID,
+            extensionDuration: extensionDuration
+          ),
+          expectedResult: .extend
+        )
+      )
+
     case .stop(let requestID, let presentedAuthorization):
       guard await isAuthorized(presentedAuthorization) else {
         return await finish(
@@ -118,6 +190,23 @@ public actor ControllerServerSession {
       return await finish(
         await processCommand(
           .stop(requestID: requestID),
+          expectedResult: .stop
+        )
+      )
+
+    case .stopLifecycle(
+      let requestID,
+      let generationID,
+      let presentedAuthorization
+    ):
+      guard await isAuthorized(presentedAuthorization) else {
+        return await finish(
+          .rejected(requestID: requestID, reason: .authorizationFailed)
+        )
+      }
+      return await finish(
+        await processCommand(
+          .stopLifecycle(requestID: requestID, generationID: generationID),
           expectedResult: .stop
         )
       )
@@ -146,6 +235,8 @@ public actor ControllerServerSession {
     switch request {
     case .status:
       return ["command": .text("status")]
+    case .lifecycleStatus:
+      return ["command": .text("lifecycle-status")]
     case .pair:
       // Short-lived pairing codes and generated authorizations never enter the record.
       return ["command": .text("pair")]
@@ -155,8 +246,35 @@ public actor ControllerServerSession {
         "latitude": .number(latitude),
         "longitude": .number(longitude),
       ]
+    case .applyLifecycle(
+      _,
+      let generationID,
+      _,
+      let latitude,
+      let longitude,
+      let requestedLeaseDuration
+    ):
+      return [
+        "command": .text("apply"),
+        "generationID": .text(generationID.uuidString),
+        "latitude": .number(latitude),
+        "longitude": .number(longitude),
+        "requestedLeaseDuration": .number(requestedLeaseDuration),
+      ]
+    case .extendLifecycle(_, let generationID, _, let extensionDuration):
+      return [
+        "command": .text("extend-lease"),
+        "generationID": .text(generationID.uuidString),
+        "extensionDuration": .number(extensionDuration),
+      ]
     case .stop:
       return ["command": .text("stop")]
+    case .stopLifecycle(_, let generationID, _):
+      var fields: SimulationDiagnosticFields = ["command": .text("stop")]
+      if let generationID {
+        fields["generationID"] = .text(generationID.uuidString)
+      }
+      return fields
     }
   }
 
@@ -172,12 +290,32 @@ public actor ControllerServerSession {
           "reason": .text(reason.rawValue),
         ]
       }
+    case .lifecycleStatus(_, let status):
+      return ["outcome": .text(String(describing: status.simulation))]
     case .paired:
       return ["outcome": .text("paired")]
     case .applied:
       return ["outcome": .text("applied")]
+    case .appliedLifecycle(_, let generationID, let leaseExpiresAt):
+      return [
+        "outcome": .text("applied"),
+        "generationID": .text(generationID.uuidString),
+        "leaseExpiresAt": .date(leaseExpiresAt),
+      ]
+    case .extendedLifecycle(_, let generationID, let leaseExpiresAt):
+      return [
+        "outcome": .text("extended"),
+        "generationID": .text(generationID.uuidString),
+        "leaseExpiresAt": .date(leaseExpiresAt),
+      ]
     case .stopped:
       return ["outcome": .text("stopped")]
+    case .stoppedLifecycle(_, let generationID):
+      var fields: SimulationDiagnosticFields = ["outcome": .text("stopped")]
+      if let generationID {
+        fields["generationID"] = .text(generationID.uuidString)
+      }
+      return fields
     case .failed(_, let reason):
       return [
         "outcome": .text("failed"),
@@ -204,7 +342,9 @@ public actor ControllerServerSession {
 
   private enum ExpectedCommandResult {
     case status
+    case lifecycleStatus
     case apply
+    case extend
     case stop
   }
 
@@ -228,19 +368,81 @@ public actor ControllerServerSession {
         requestID: requestID,
         readiness: .unavailable(reason)
       )
+    case (.lifecycleStatus, .lifecycleStatus(let requestID, let status)):
+      return .lifecycleStatus(requestID: requestID, status: status)
+    case (.lifecycleStatus, .failed(let requestID, let reason)):
+      return .lifecycleStatus(
+        requestID: requestID,
+        status: ControllerLifecycleStatus(
+          readiness: .unavailable(reason),
+          cleanupReadiness: .unavailable(reason),
+          simulation: .noActive
+        )
+      )
     case (.apply, .applied(let requestID)):
       return .applied(requestID: requestID)
+    case (
+      .apply,
+      .appliedLifecycle(
+        let requestID,
+        let generationID,
+        let leaseExpiresAt
+      )
+    ):
+      return .appliedLifecycle(
+        requestID: requestID,
+        generationID: generationID,
+        leaseExpiresAt: leaseExpiresAt
+      )
+    case (
+      .extend,
+      .extendedLifecycle(
+        let requestID,
+        let generationID,
+        let leaseExpiresAt
+      )
+    ):
+      return .extendedLifecycle(
+        requestID: requestID,
+        generationID: generationID,
+        leaseExpiresAt: leaseExpiresAt
+      )
     case (.stop, .stopped(let requestID)):
       return .stopped(requestID: requestID)
+    case (.stop, .stoppedLifecycle(let requestID, let generationID)):
+      return .stoppedLifecycle(requestID: requestID, generationID: generationID)
     case (.apply, .failed(let requestID, let reason)),
+      (.extend, .failed(let requestID, let reason)),
       (.stop, .failed(let requestID, let reason)):
       return .failed(requestID: requestID, reason: reason)
     case (.status, .applied),
       (.status, .stopped),
+      (.status, .lifecycleStatus),
+      (.status, .appliedLifecycle),
+      (.status, .extendedLifecycle),
+      (.status, .stoppedLifecycle),
+      (.lifecycleStatus, .ready),
+      (.lifecycleStatus, .applied),
+      (.lifecycleStatus, .appliedLifecycle),
+      (.lifecycleStatus, .extendedLifecycle),
+      (.lifecycleStatus, .stopped),
+      (.lifecycleStatus, .stoppedLifecycle),
       (.apply, .ready),
+      (.apply, .lifecycleStatus),
+      (.apply, .extendedLifecycle),
       (.apply, .stopped),
+      (.apply, .stoppedLifecycle),
+      (.extend, .ready),
+      (.extend, .lifecycleStatus),
+      (.extend, .applied),
+      (.extend, .appliedLifecycle),
+      (.extend, .stopped),
+      (.extend, .stoppedLifecycle),
       (.stop, .ready),
-      (.stop, .applied):
+      (.stop, .lifecycleStatus),
+      (.stop, .applied),
+      (.stop, .appliedLifecycle),
+      (.stop, .extendedLifecycle):
       return .failed(
         requestID: command.requestID,
         reason: .responseIdentityMismatch

@@ -18,7 +18,10 @@ final class ControllerTutorialTests: XCTestCase {
       "rl-start",
       "Apply",
       "Verify",
-      "Stop",
+      "15, 30, or 60 minutes",
+      "active card",
+      "Cleanup Guardian",
+      "server-owner heartbeat",
       "Location",
       "Local Network",
     ] {

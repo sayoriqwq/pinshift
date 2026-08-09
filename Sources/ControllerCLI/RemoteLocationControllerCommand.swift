@@ -25,11 +25,41 @@ public struct RemoteLocationControllerCommand: AsyncParsableCommand {
     abstract: "Control one Static Simulation on an Xcode-connected device.",
     subcommands: [
       Status.self, Apply.self, Stop.self, Reset.self, Doctor.self, Tutorial.self, Link.self,
+      CleanupGuardian.self,
     ],
     defaultSubcommand: Status.self
   )
 
   public init() {}
+
+  public struct CleanupGuardian: AsyncParsableCommand {
+    public static let configuration = CommandConfiguration(
+      commandName: "cleanup-guardian",
+      abstract: "Keep durable Simulation Lease cleanup alive independently of Controller Link."
+    )
+
+    @OptionGroup public var activeDevice: ActiveDeviceOptions
+
+    @Option(name: .long, help: "Journal polling interval in seconds (0.25 through 30).")
+    public var pollSeconds: Double = 1
+
+    public init() {}
+
+    public func validate() throws {
+      guard (0.25...30).contains(pollSeconds) else {
+        throw ValidationError("--poll-seconds must be from 0.25 through 30.")
+      }
+    }
+
+    public func run() async throws {
+      let guardian = ControllerCLIRuntime.makeCleanupGuardian(
+        device: activeDevice.device,
+        developerDirectory: activeDevice.developerDirectory,
+        pollInterval: pollSeconds
+      )
+      try await guardian.run()
+    }
+  }
 
   public struct Doctor: AsyncParsableCommand {
     public static let configuration = CommandConfiguration(
@@ -279,6 +309,12 @@ public struct RemoteLocationControllerCommand: AsyncParsableCommand {
 
       @Option(
         name: .long,
+        help: "Maximum lifetime of each Applied Simulation in seconds (30 through 3600)."
+      )
+      public var leaseSeconds: Double = ControllerCLIRuntime.defaultSimulationLeaseDuration
+
+      @Option(
+        name: .long,
         help: "Pairing-code validity in seconds (60 through 3600). Defaults to 300."
       )
       public var pairingCodeValiditySeconds: Double = 300
@@ -296,6 +332,9 @@ public struct RemoteLocationControllerCommand: AsyncParsableCommand {
       public func validate() throws {
         guard (60...86_400).contains(seconds) else {
           throw ValidationError("--seconds must be from 60 through 86400.")
+        }
+        guard (30...3_600).contains(leaseSeconds) else {
+          throw ValidationError("--lease-seconds must be from 30 through 3600.")
         }
         guard (60...3_600).contains(pairingCodeValiditySeconds) else {
           throw ValidationError(
@@ -333,16 +372,26 @@ public struct RemoteLocationControllerCommand: AsyncParsableCommand {
         let diagnostics = ControllerCLIRuntime.makeDiagnostics()
         await diagnostics.record(
           kind: "controller.lifecycle.startup-attempted",
-          fields: ["developerDirectory": .text(
-            activeDevice.developerDirectory
-              ?? ControllerCLIRuntime.defaultDeveloperDirectory
-          )]
+          fields: [
+            "developerDirectory": .text(
+              activeDevice.developerDirectory
+                ?? ControllerCLIRuntime.defaultDeveloperDirectory
+            )
+          ]
+        )
+        let serverOwnerID = UUID()
+        let serverHeartbeat = ControllerCLIRuntime.makeServerHeartbeatEmitter(
+          ownerID: serverOwnerID
         )
         let simulationController = ControllerCLIRuntime.makeController(
           device: activeDevice.device,
           developerDirectory: activeDevice.developerDirectory,
+          leaseDuration: leaseSeconds,
+          serverOwnerID: serverOwnerID,
           diagnostics: diagnostics
         )
+        _ = await simulationController.reconcileLifecycle()
+        try await serverHeartbeat.recordNow()
         let session = ControllerServerSession(
           identity: identity,
           pairingAuthority: authority,
@@ -387,6 +436,7 @@ public struct RemoteLocationControllerCommand: AsyncParsableCommand {
         try await ControllerCLIRuntime.runServeLifecycle(
           seconds: seconds,
           controller: simulationController,
+          serverHeartbeat: serverHeartbeat,
           diagnostics: diagnostics,
           report: { result in
             print("Controller exit cleanup: \(result.output)")

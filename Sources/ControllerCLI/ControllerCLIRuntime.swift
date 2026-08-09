@@ -1,6 +1,6 @@
 import Foundation
-import SimulationDiagnostics
 import SimulationController
+import SimulationDiagnostics
 
 public struct ControllerRuntimeConfiguration: Equatable, Sendable {
   public let device: String?
@@ -12,6 +12,10 @@ public struct ControllerRuntimeConfiguration: Equatable, Sendable {
   }
 }
 
+public enum ControllerServeLifecycleError: Error, Equatable, Sendable {
+  case cleanupFailed
+}
+
 public enum ControllerCLIRuntime {
   public static let deviceEnvironmentKey = "REMOTE_LOCATION_DEVICE"
   public static let developerDirectoryEnvironmentKey =
@@ -20,10 +24,13 @@ public enum ControllerCLIRuntime {
     "/Applications/Xcode-beta.app/Contents/Developer"
   public static let e2ePairingCodeEnvironmentKey =
     "REMOTE_LOCATION_E2E_PAIRING_CODE"
+  public static let defaultSimulationLeaseDuration: TimeInterval =
+    SimulationLeasePolicy.defaultDuration
 
   public static func makeRunner(
     device: String? = nil,
     developerDirectory: String? = nil,
+    leaseDuration: TimeInterval = defaultSimulationLeaseDuration,
     environment: [String: String] = ProcessInfo.processInfo.environment,
     executor: any DevicectlCommandExecuting = FoundationDevicectlCommandExecutor(),
     diagnostics: SimulationDiagnosticRecorder? = nil
@@ -33,6 +40,7 @@ public enum ControllerCLIRuntime {
       controller: makeController(
         device: device,
         developerDirectory: developerDirectory,
+        leaseDuration: leaseDuration,
         environment: environment,
         executor: executor,
         diagnostics: recorder
@@ -44,6 +52,11 @@ public enum ControllerCLIRuntime {
   public static func makeController(
     device: String? = nil,
     developerDirectory: String? = nil,
+    leaseDuration: TimeInterval = defaultSimulationLeaseDuration,
+    serverOwnerID: UUID? = nil,
+    serverHeartbeatStore: (any SimulationServerHeartbeatStoring)? = nil,
+    cleanupGuardianHealthStore: (any SimulationCleanupGuardianHealthStoring)? = nil,
+    requiresHealthyCleanupGuardian: Bool = true,
     environment: [String: String] = ProcessInfo.processInfo.environment,
     executor: any DevicectlCommandExecuting = FoundationDevicectlCommandExecutor(),
     diagnostics: SimulationDiagnosticRecorder? = nil
@@ -62,7 +75,27 @@ public enum ControllerCLIRuntime {
         executor: executor,
         diagnostics: diagnostics
       ),
-      diagnostics: diagnostics
+      diagnostics: diagnostics,
+      lifecycleStore: FileSimulationLifecycleStore(
+        fileURL: FileSimulationLifecycleStore.defaultFileURL(environment: environment)
+      ),
+      activeDeviceIdentifier: configuration.device ?? "",
+      leaseDuration: leaseDuration,
+      serverOwnerID: serverOwnerID,
+      serverHeartbeatStore: serverHeartbeatStore
+        ?? FileSimulationServerHeartbeatStore(
+          fileURL: FileSimulationServerHeartbeatStore.defaultFileURL(
+            environment: environment
+          )
+        ),
+      cleanupGuardianHealthStore: cleanupGuardianHealthStore
+        ?? FileSimulationCleanupGuardianHealthStore(
+          fileURL: FileSimulationCleanupGuardianHealthStore.defaultFileURL(
+            environment: environment
+          )
+        ),
+      requiresHealthyCleanupGuardian: requiresHealthyCleanupGuardian,
+      recoversLegacySimulation: true
     )
   }
 
@@ -72,6 +105,60 @@ public enum ControllerCLIRuntime {
     SimulationDiagnosticRecorder(
       side: .macController,
       directory: SimulationDiagnosticRecorder.defaultDirectory(environment: environment)
+    )
+  }
+
+  public static func makeCleanupGuardian(
+    device: String? = nil,
+    developerDirectory: String? = nil,
+    environment: [String: String] = ProcessInfo.processInfo.environment,
+    executor: any DevicectlCommandExecuting = FoundationDevicectlCommandExecutor(),
+    diagnostics: SimulationDiagnosticRecorder? = nil,
+    pollInterval: TimeInterval = 1
+  ) -> SimulationCleanupGuardian {
+    let configuration = resolveConfiguration(
+      device: device,
+      developerDirectory: developerDirectory,
+      environment: environment
+    )
+    let recorder = diagnostics ?? makeDiagnostics(environment: environment)
+    return SimulationCleanupGuardian(
+      backend: DevicectlInjectionBackend(
+        device: configuration.device ?? "",
+        developerDirectory: configuration.developerDirectory,
+        executor: executor,
+        diagnostics: recorder
+      ),
+      diagnostics: recorder,
+      lifecycleStore: FileSimulationLifecycleStore(
+        fileURL: FileSimulationLifecycleStore.defaultFileURL(environment: environment)
+      ),
+      activeDeviceIdentifier: configuration.device ?? "",
+      serverHeartbeatStore: FileSimulationServerHeartbeatStore(
+        fileURL: FileSimulationServerHeartbeatStore.defaultFileURL(
+          environment: environment
+        )
+      ),
+      healthStore: FileSimulationCleanupGuardianHealthStore(
+        fileURL: FileSimulationCleanupGuardianHealthStore.defaultFileURL(
+          environment: environment
+        )
+      ),
+      pollInterval: pollInterval
+    )
+  }
+
+  public static func makeServerHeartbeatEmitter(
+    ownerID: UUID,
+    environment: [String: String] = ProcessInfo.processInfo.environment
+  ) -> SimulationServerHeartbeatEmitter {
+    SimulationServerHeartbeatEmitter(
+      ownerID: ownerID,
+      store: FileSimulationServerHeartbeatStore(
+        fileURL: FileSimulationServerHeartbeatStore.defaultFileURL(
+          environment: environment
+        )
+      )
     )
   }
 
@@ -91,19 +178,27 @@ public enum ControllerCLIRuntime {
   static func runServeLifecycle(
     seconds: Double,
     controller: SimulationController,
+    serverHeartbeat: SimulationServerHeartbeatEmitter? = nil,
     sleep: @Sendable (Double) async throws -> Void = { duration in
       try await Task.sleep(for: .seconds(duration))
     },
     diagnostics: SimulationDiagnosticRecorder? = nil,
     report: @Sendable (ControllerCLIResult) async -> Void
   ) async throws {
+    try await serverHeartbeat?.recordNow()
+    let heartbeatTask = serverHeartbeat.map { heartbeat in
+      Task {
+        try? await heartbeat.run()
+      }
+    }
+    defer { heartbeatTask?.cancel() }
     if let diagnostics {
       await diagnostics.record(kind: "controller.lifecycle.serve-started")
     }
     do {
       try await sleep(seconds)
     } catch {
-      await reportServeCleanup(
+      _ = await reportServeCleanup(
         using: controller,
         diagnostics: diagnostics,
         interrupted: true,
@@ -111,12 +206,15 @@ public enum ControllerCLIRuntime {
       )
       throw error
     }
-    await reportServeCleanup(
+    let cleanupResult = await reportServeCleanup(
       using: controller,
       diagnostics: diagnostics,
       interrupted: false,
       report: report
     )
+    guard cleanupResult.exitCode == 0 else {
+      throw ControllerServeLifecycleError.cleanupFailed
+    }
   }
 
   private static func reportServeCleanup(
@@ -124,7 +222,7 @@ public enum ControllerCLIRuntime {
     diagnostics: SimulationDiagnosticRecorder?,
     interrupted: Bool,
     report: @Sendable (ControllerCLIResult) async -> Void
-  ) async {
+  ) async -> ControllerCLIResult {
     await diagnostics?.record(
       kind: interrupted
         ? "controller.lifecycle.interrupted-shutdown-cleanup-started"
@@ -146,6 +244,7 @@ public enum ControllerCLIRuntime {
         "outcome": .text(result.exitCode == 0 ? "success" : "failed"),
       ]
     )
+    return result
   }
 
   private static func nonempty(_ value: String?) -> String? {

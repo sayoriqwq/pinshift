@@ -24,6 +24,10 @@ _Avoid_: Route Movement, Automatic Apply, Manual Coordinate Editing
 The developer-side participant that applies a selected location to the Active Test Device through the current Xcode development environment.
 _Avoid_: iPhone App, GPS Spoofer
 
+**Cleanup Guardian（清理守护者）**:
+A per-user macOS LaunchAgent that owns lease-expiry and retry execution independently of the foreground Simulation Controller and Controller Link. It survives server termination and Mac login-session restarts, but still requires the Mac and matching Active Test Device to become reachable before `devicectl clear` can succeed.
+_Avoid_: Controller Link, iOS Stop Handler, Diagnostic Watcher
+
 **Injection Backend（注入后端）**:
 The replaceable part of the Simulation Controller that translates generic simulation requests into a location-testing mechanism provided by the active developer environment.
 _Avoid_: Simulation Controller, Permanent XCUITest Dependency
@@ -47,6 +51,26 @@ _Avoid_: App Compatibility, Cross-App Guarantee
 **Static Simulation（静态模拟）**:
 A simulation that holds one coordinate until the developer replaces or stops it. Movement, speed, and route progression are outside this concept.
 _Avoid_: Route Playback, Journey Simulation
+
+**Simulation Generation（模拟代次）**:
+The identity of one Static Simulation created by an Apply request. A replacement Apply creates a new generation so late results from an older simulation cannot change the current one.
+_Avoid_: Request Attempt, Coordinate Version
+
+**Simulation Lease（模拟租约）**:
+The bounded maximum lifetime granted to one Applied Simulation before cleanup becomes mandatory. The Learning App offers exactly 15, 30, and 60 minutes, defaults to 15 minutes, and allows acknowledged 15-minute extensions capped at one hour from acknowledgement. The lease is independent of Controller Link duration. It is a safety deadline, not a promise that cleanup can run while the Mac host or Active Test Device is unreachable.
+_Avoid_: Network Timeout, Server Duration
+
+**Cleanup Obligation（清理义务）**:
+The locally retained responsibility to obtain a successful Injection Backend clear for a Simulation Generation. It ends only with a durable clear acknowledgement and survives foreground controller termination and Mac restarts through the Cleanup Guardian.
+_Avoid_: Diagnostic Event, Best-Effort Reset
+
+**Cleanup Pending（等待清理）**:
+A Simulation Generation whose cleanup is required but has not yet received a successful Injection Backend clear acknowledgement. It remains distinct from Stopped Simulation while recovery is temporarily unavailable.
+_Avoid_: Stopped Simulation, Clear Failure
+
+**Stop Intent（停止意图）**:
+A tester's correlated request to end one Simulation Generation. The Learning App retains it until authoritative controller reconciliation proves the generation is stopped.
+_Avoid_: Stop Tap, Transport Attempt
 
 **Stopped Simulation（已停止模拟）**:
 A Static Simulation that its Injection Backend reports is no longer active. It invalidates Applied Simulation and Verified Simulation, while the latest Observed Location may remain as an explicitly identified last observation.

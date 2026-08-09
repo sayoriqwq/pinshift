@@ -1,7 +1,7 @@
 import Foundation
 import LocationDomain
-import SimulationDiagnostics
 import SimulationController
+import SimulationDiagnostics
 
 public enum ControllerCLICommand: Equatable, Sendable {
   case status
@@ -213,6 +213,17 @@ public struct ControllerCLIRunner: Sendable {
     case .clearFailed:
       message =
         "The Injection Backend could not clear the active simulation. Run reset after checking the device connection."
+    case .deviceMismatch:
+      message =
+        "The pending cleanup belongs to a different Active Test Device. Restore that device selection before retrying."
+    case .generationMismatch:
+      message =
+        "The Stop request targets an older simulation generation. Refresh lifecycle status before retrying."
+    case .invalidLeaseDuration:
+      message = "Choose a Simulation Lease of 15, 30, or 60 minutes and retry."
+    case .cleanupGuardianUnavailable:
+      message =
+        "Cleanup Guardian protection is unavailable. Run rl-install, wait for the LaunchAgent to become healthy, and retry."
     }
     return ControllerCLIResult(exitCode: 1, output: message)
   }

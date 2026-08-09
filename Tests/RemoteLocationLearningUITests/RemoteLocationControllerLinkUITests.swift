@@ -91,17 +91,19 @@ final class RemoteLocationControllerLinkUITests: XCTestCase {
     XCTAssertTrue(waitUntilEnabled(stop, timeout: 10))
     stop.tap()
     let cleared = app.staticTexts.matching(identifier: "stop-status")
-      .matching(NSPredicate(format: "label == %@", "Injection Backend cleared"))
+      .matching(NSPredicate(format: "label == %@", "Simulated Location cleared"))
       .firstMatch
     XCTAssertTrue(cleared.waitForExistence(timeout: 20))
   }
 
   private func ensureConnected(_ app: XCUIApplication, pairingCode: String) throws {
     let connected = connectedStatus(in: app)
+    scroll(upTo: connected, in: app)
     if connected.waitForExistence(timeout: 8) {
       return
     }
     let pairingField = app.textFields["controller-pairing-code"]
+    scroll(upTo: pairingField, in: app)
     XCTAssertTrue(pairingField.waitForExistence(timeout: 20))
     pairingField.tap()
     pairingField.typeText(pairingCode)
@@ -139,7 +141,7 @@ final class RemoteLocationControllerLinkUITests: XCTestCase {
 
     let verified = app.staticTexts.matching(identifier: "simulation-status")
       .matching(
-        NSPredicate(format: "label == %@", "Verified Simulation in this Learning App")
+        NSPredicate(format: "label == %@", "Verified by a fresh observation in this app")
       )
       .firstMatch
     scroll(upTo: verified, in: app)

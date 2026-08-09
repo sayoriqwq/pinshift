@@ -137,7 +137,7 @@ final class RemoteLocationLearningUITests: XCTestCase {
     stop.tap()
     let stopStatus = app.staticTexts["stop-status"]
     XCTAssertTrue(stopStatus.waitForExistence(timeout: 5))
-    XCTAssertEqual(stopStatus.label, "Injection Backend cleared")
+    XCTAssertEqual(stopStatus.label, "Simulated Location cleared")
 
     guard let firstArtifact = exportDiagnosticsArtifact(in: app) else { return }
     guard let requestIDs = assertNormalDiagnosticSequence(firstArtifact) else {
@@ -223,20 +223,20 @@ final class RemoteLocationLearningUITests: XCTestCase {
 
     let stopStatus = app.staticTexts["stop-status"]
     XCTAssertTrue(stopStatus.waitForExistence(timeout: 5))
-    XCTAssertEqual(stopStatus.label, "Could not stop the active simulation")
+    XCTAssertEqual(stopStatus.label, "Cleanup is still pending")
     XCTAssertFalse(
       app.staticTexts.matching(
         NSPredicate(
           format: "identifier == %@ AND label == %@",
           "stop-status",
-          "Injection Backend cleared"
+          "Simulated Location cleared"
         )
       ).firstMatch.exists
     )
 
     let simulationStatus = app.staticTexts.matching(identifier: "simulation-status").firstMatch
     XCTAssertTrue(simulationStatus.waitForExistence(timeout: 5))
-    XCTAssertEqual(simulationStatus.label, "Verified Simulation in this Learning App")
+    XCTAssertEqual(simulationStatus.label, "Verified by a fresh observation in this app")
 
     scrollToTop(in: app)
     let controllerStatus = app.staticTexts["controller-link-status"]
@@ -500,7 +500,7 @@ final class RemoteLocationLearningUITests: XCTestCase {
     stop.tap()
 
     let cleared = app.staticTexts.matching(identifier: "stop-status")
-      .matching(NSPredicate(format: "label == %@", "Injection Backend cleared"))
+      .matching(NSPredicate(format: "label == %@", "Simulated Location cleared"))
       .firstMatch
     XCTAssertTrue(cleared.waitForExistence(timeout: 5))
     let inactive = app.staticTexts.matching(identifier: "simulation-status")
@@ -857,7 +857,7 @@ final class RemoteLocationLearningUITests: XCTestCase {
     let app = selectedLocationFixtureApp()
     app.launchEnvironment["REMOTE_LOCATION_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
     app.launch()
-    app.tap()
+    app.navigationBars["Pinshift"].tap()
 
     let apply = app.buttons["apply-selected-location"]
     scrollUp(until: apply, in: app)
@@ -879,6 +879,50 @@ final class RemoteLocationLearningUITests: XCTestCase {
     scrollUp(until: stop, in: app)
     XCTAssertTrue(stop.waitForExistence(timeout: 5))
     XCTAssertTrue(stop.isEnabled)
+  }
+
+  func testTimeBoundedSimulationShowsDurationProtectionCountdownAndActions() {
+    let app = selectedLocationFixtureApp()
+    app.launchEnvironment["REMOTE_LOCATION_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
+    app.launch()
+    app.navigationBars["Pinshift"].tap()
+
+    let durationPicker = app.segmentedControls["simulation-duration-picker"]
+    scrollUp(until: durationPicker, in: app)
+    XCTAssertTrue(durationPicker.waitForExistence(timeout: 5))
+    XCTAssertEqual(durationPicker.buttons.count, 3)
+    durationPicker.buttons["30 min"].tap()
+
+    let apply = app.buttons["apply-selected-location"]
+    scrollUp(until: apply, in: app)
+    XCTAssertTrue(apply.waitForExistence(timeout: 5))
+    XCTAssertTrue(apply.isEnabled)
+    apply.tap()
+
+    let card = app.otherElements["active-simulation-card"]
+    scrollUp(until: card, in: app)
+    XCTAssertTrue(card.waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["simulation-lease-expiry"].exists)
+    XCTAssertTrue(app.staticTexts["simulation-lease-countdown"].exists)
+    XCTAssertTrue(app.staticTexts["cleanup-protection-receipt"].exists)
+    XCTAssertFalse(
+      app.staticTexts.matching(identifier: "stop-status")
+        .matching(NSPredicate(format: "label == %@", "Simulated Location cleared"))
+        .firstMatch.exists
+    )
+
+    let extend = app.buttons["extend-simulation-lease"]
+    XCTAssertTrue(extend.waitForExistence(timeout: 5))
+    extend.tap()
+    XCTAssertTrue(app.staticTexts["simulation-lease-countdown"].waitForExistence(timeout: 5))
+
+    let restore = app.buttons["stop-simulation"]
+    XCTAssertTrue(restore.waitForExistence(timeout: 5))
+    restore.tap()
+    let cleared = app.staticTexts.matching(identifier: "stop-status")
+      .matching(NSPredicate(format: "label == %@", "Simulated Location cleared"))
+      .firstMatch
+    XCTAssertTrue(cleared.waitForExistence(timeout: 5))
   }
 
   func testFineAdjustmentFeedbackIsLocalizedInSimplifiedChinese() {
@@ -1086,7 +1130,7 @@ final class RemoteLocationLearningUITests: XCTestCase {
       .matching(
         NSPredicate(
           format: "label == %@",
-          "Applied Simulation — waiting for a fresh observation"
+          "Applied; waiting for a fresh observation"
         )
       )
       .firstMatch
@@ -1100,7 +1144,7 @@ final class RemoteLocationLearningUITests: XCTestCase {
       .matching(
         NSPredicate(
           format: "label == %@",
-          "Verified Simulation in this Learning App"
+          "Verified by a fresh observation in this app"
         )
       )
       .firstMatch

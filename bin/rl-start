@@ -9,12 +9,13 @@ or exit 1
 function rl_keep_wrapper_for_cleanup --on-signal INT
 end
 
-argparse 'h/help' 's/seconds=' -- $argv
+argparse 'h/help' 's/seconds=' 'l/lease-seconds=' -- $argv
 or exit 2
 
 if set --query _flag_help
-    echo "Usage: rl-start [--seconds 60...86400]"
+    echo "Usage: rl-start [--seconds 60...86400] [--lease-seconds 30...3600]"
     echo "Starts the trusted Controller Link and keeps it open. Stop with Ctrl+C."
+    echo "The Learning App starts each Applied Simulation with 15 minutes by default."
     exit 0
 end
 
@@ -31,7 +32,20 @@ if set --query _flag_seconds
     set seconds $_flag_seconds
 end
 
-$controller link serve --seconds $seconds
+set --local lease_seconds
+if set --query REMOTE_LOCATION_LEASE_SECONDS
+    set lease_seconds $REMOTE_LOCATION_LEASE_SECONDS
+end
+if set --query _flag_lease_seconds
+    set lease_seconds $_flag_lease_seconds
+end
+
+set --local serve_arguments link serve --seconds $seconds
+if set --query lease_seconds[1]
+    set --append serve_arguments --lease-seconds $lease_seconds
+end
+
+$controller $serve_arguments
 set --local serve_status $status
 
 # Normal expiry already performs cleanup inside the controller. A signal or other
