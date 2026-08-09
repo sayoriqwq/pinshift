@@ -2,7 +2,7 @@ import Foundation
 import XCTest
 
 final class AppResigningWorkflowTests: XCTestCase {
-  private let bundleIdentifier = "dev.sayori.remotelocation.learning"
+  private let bundleIdentifier = "dev.sayori.pinshift"
   private let teamIdentifier = "TESTTEAM123"
   private var fixtureRoot: URL!
   private var fakeBin: URL!
@@ -65,7 +65,7 @@ final class AppResigningWorkflowTests: XCTestCase {
     let uiTestProfile = try writeProfile(
       named: "ui-tests.mobileprovision",
       applicationIdentifier:
-        "\(teamIdentifier).dev.sayori.remotelocation.uitests.xctrunner",
+        "\(teamIdentifier).dev.sayori.pinshift.uitests.xctrunner",
       expiration: "2099-08-10T08:49:25Z"
     )
     try writeCandidate(expiration: "2099-08-17T08:49:25Z")
@@ -221,7 +221,7 @@ final class AppResigningWorkflowTests: XCTestCase {
         /usr/bin/printf '%s\n' \\
           '<?xml version="1.0" encoding="UTF-8"?>' \\
           '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \\
-          '<plist version="1.0"><dict><key>CFBundleIdentifier</key><string>dev.sayori.remotelocation.learning</string></dict></plist>' \\
+          '<plist version="1.0"><dict><key>CFBundleIdentifier</key><string>dev.sayori.pinshift</string></dict></plist>' \\
           > "$app/Info.plist"
         """
     )

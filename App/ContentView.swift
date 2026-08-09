@@ -718,7 +718,7 @@ struct ContentView: View {
   }
 
   private var controllerLinkSection: some View {
-    Section("Mac Controller") {
+    Section(localized("Mac Controller")) {
       LabeledContent("Local Network Permission") {
         Text(localNetworkPermissionDescription)
           .accessibilityIdentifier("local-network-permission-status")
@@ -847,7 +847,7 @@ struct ContentView: View {
   }
 
   private var selectionSection: some View {
-    Section("Selected Location") {
+    Section(localized("Selected Location")) {
       TextField("Latitude (-90…90)", text: $model.latitudeText)
         .keyboardType(.numbersAndPunctuation)
         .accessibilityIdentifier("latitude-input")
@@ -1488,7 +1488,7 @@ struct ContentView: View {
   }
 
   private var observationSection: some View {
-    Section("Latest Observed Location") {
+    Section(localized("Latest Observed Location")) {
       LabeledContent("Location Permission") {
         Text(authorizationDescription)
           .accessibilityIdentifier("location-permission-status")
@@ -1576,7 +1576,7 @@ struct ContentView: View {
   }
 
   private var baselineSection: some View {
-    Section("GPX Observation Baseline") {
+    Section(localized("GPX Observation Baseline")) {
       Text(
         "This button does not apply a location. Start the 15-second window, then choose a GPX location from Xcode."
       )
@@ -1651,7 +1651,7 @@ struct ContentView: View {
   }
 
   private var limitationsSection: some View {
-    Section("Scope") {
+    Section(localized("Scope")) {
       Text(
         "A match only proves that Pinshift observed the selected coordinate. It does not prove cross-app propagation."
       )

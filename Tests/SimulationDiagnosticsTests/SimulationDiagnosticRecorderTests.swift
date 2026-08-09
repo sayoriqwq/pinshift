@@ -31,7 +31,7 @@ final class SimulationDiagnosticRecorderTests: XCTestCase {
     XCTAssertEqual(status.eventCount, 1)
     XCTAssertGreaterThan(status.approximateSizeBytes, 0)
     XCTAssertEqual(status.sessionID, sessionID)
-    XCTAssertEqual(status.fileURL.lastPathComponent, "learning-app.jsonl")
+    XCTAssertEqual(status.fileURL.lastPathComponent, "pinshift-app.jsonl")
 
     let decoded = try JSONDecoder.iso8601.decode(
       SimulationDiagnosticExport.self,
@@ -181,7 +181,7 @@ final class SimulationDiagnosticRecorderTests: XCTestCase {
     )
     await first.record(kind: "app.lifecycle.launched", fields: ["value": .integer(1)])
 
-    let fileURL = directory.appendingPathComponent("learning-app.jsonl")
+    let fileURL = directory.appendingPathComponent("pinshift-app.jsonl")
     var tornData = try Data(contentsOf: fileURL)
     XCTAssertEqual(tornData.last, 0x0A)
     tornData.append(contentsOf: Data("{\"truncated\":true}".utf8))

@@ -2,8 +2,6 @@
  English is the source language. These entries make it an explicit bundle
  localization so locale-specific lookups never fall through to zh-Hans.
  */
-"Switch to Simplified Chinese" = "Switch to Simplified Chinese";
-"Switch to English" = "Switch to English";
 "Test Diagnostics" = "Test Diagnostics";
 "Local evidence only. Diagnostics never retries, clears, or changes simulation state." = "Local evidence only. Diagnostics never retries, clears, or changes simulation state.";
 "Record status" = "Record status";
@@ -109,7 +107,7 @@
 "This Mac controller is too old for protected time-bounded sessions. Update it with rl-install." = "This Mac controller is too old for protected time-bounded sessions. Update it with rl-install.";
 "Waiting for the Mac to confirm automatic-cleanup protection." = "Waiting for the Mac to confirm automatic-cleanup protection.";
 
-/* Spatial Calm home and settings */
+/* Pinshift home and settings */
 "Settings" = "Settings";
 "Appearance" = "Appearance";
 "Language" = "Language";

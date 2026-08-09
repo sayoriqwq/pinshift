@@ -166,7 +166,7 @@ final class RepositoryV11RequirementsTests: XCTestCase {
     XCTAssertTrue(contents.contains("-allowProvisioningUpdates"))
     XCTAssertTrue(contents.contains("embedded.mobileprovision"))
     XCTAssertTrue(contents.contains("codesign --verify --deep --strict"))
-    XCTAssertTrue(contents.contains("dev.sayori.remotelocation.learning"))
+    XCTAssertTrue(contents.contains("dev.sayori.pinshift"))
     XCTAssertTrue(contents.contains("devicectl device install app"))
     XCTAssertFalse(contents.contains("device uninstall"))
     XCTAssertTrue(signingHelpers.contains("ApplicationIdentifierPrefix.0"))

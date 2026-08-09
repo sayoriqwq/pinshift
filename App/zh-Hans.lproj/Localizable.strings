@@ -6,8 +6,6 @@
 "%@ km" = "%@ 千米";
 "About %@ m" = "约 %@ 米";
 "About %@ km" = "约 %@ 千米";
-"Switch to Simplified Chinese" = "切换到简体中文";
-"Switch to English" = "切换到英文";
 "Test Diagnostics" = "测试诊断";
 "Local evidence only. Diagnostics never retries, clears, or changes simulation state." = "仅记录本地证据。诊断不会重试、清除或改变模拟状态。";
 "Record status" = "记录状态";
@@ -263,7 +261,7 @@
 "This Mac controller is too old for protected time-bounded sessions. Update it with rl-install." = "此 Mac 控制器版本过旧，无法使用受保护的限时模拟。请使用 rl-install 更新。";
 "Waiting for the Mac to confirm automatic-cleanup protection." = "正在等待 Mac 确认自动清理保护。";
 
-/* Spatial Calm 主页与设置 */
+/* Pinshift 主页与设置 */
 "Settings" = "设置";
 "Appearance" = "外观";
 "Language" = "语言";

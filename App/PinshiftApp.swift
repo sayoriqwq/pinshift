@@ -10,24 +10,6 @@ enum AppLanguage: String, CaseIterable {
   var locale: Locale {
     Locale(identifier: rawValue)
   }
-
-  var alternateButtonTitle: String {
-    switch self {
-    case .english:
-      "中文"
-    case .simplifiedChinese:
-      "EN"
-    }
-  }
-
-  var alternate: AppLanguage {
-    switch self {
-    case .english:
-      .simplifiedChinese
-    case .simplifiedChinese:
-      .english
-    }
-  }
 }
 
 enum AppLocalization {

@@ -27,7 +27,7 @@ end
 rl_prepare_environment
 or exit $status
 
-set --local bundle_identifier dev.sayori.remotelocation.learning
+set --local bundle_identifier dev.sayori.pinshift
 set --local project RemoteLocation.xcodeproj
 set --local scheme Pinshift
 set --local renewal_threshold_seconds (math '24 * 60 * 60')

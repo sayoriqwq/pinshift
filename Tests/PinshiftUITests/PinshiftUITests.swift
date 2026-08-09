@@ -79,7 +79,7 @@ final class PinshiftUITests: XCTestCase {
     XCTAssertTrue(matchStatus.waitForExistence(timeout: 5))
   }
 
-  func testSpatialCalmHomeKeepsMapPrimaryAndSecondaryToolsInSettings() {
+  func testPinshiftMapFirstHomeKeepsSecondaryToolsInSettings() {
     let app = selectedLocationFixtureApp()
     app.launchEnvironment["REMOTE_LOCATION_E2E_LOCATION_PERMISSION"] = "allowed"
     app.launchEnvironment["REMOTE_LOCATION_E2E_LOCAL_NETWORK_PERMISSION"] = "allowed"
@@ -93,7 +93,7 @@ final class PinshiftUITests: XCTestCase {
     XCTAssertTrue(app.buttons["open-settings"].waitForExistence(timeout: 5))
 
     let homeScreenshot = XCTAttachment(screenshot: app.screenshot())
-    homeScreenshot.name = "Spatial Calm home"
+    homeScreenshot.name = "Pinshift home"
     homeScreenshot.lifetime = .keepAlways
     add(homeScreenshot)
 
@@ -111,7 +111,7 @@ final class PinshiftUITests: XCTestCase {
     )
 
     let settingsScreenshot = XCTAttachment(screenshot: app.screenshot())
-    settingsScreenshot.name = "Spatial Calm settings"
+    settingsScreenshot.name = "Pinshift settings"
     settingsScreenshot.lifetime = .keepAlways
     add(settingsScreenshot)
   }
@@ -1464,7 +1464,7 @@ final class PinshiftUITests: XCTestCase {
     _ artifact: ExportedDiagnosticArtifact
   ) -> (apply: UUID, stop: UUID)? {
     XCTAssertEqual(artifact.schemaVersion, 1)
-    XCTAssertEqual(artifact.side, "learning-app")
+    XCTAssertEqual(artifact.side, "pinshift-app")
     XCTAssertFalse(artifact.createdAt.isEmpty)
     guard
       let launchIndex = artifact.events.lastIndex(where: {

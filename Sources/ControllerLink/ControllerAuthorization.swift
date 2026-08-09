@@ -7,8 +7,7 @@ public enum ControllerAuthorizationError: Error, Equatable, Sendable {
 }
 
 public struct ControllerAuthorization: Codable, Equatable, Sendable, CustomStringConvertible {
-  /// Persisted Mac Keychain account retained so existing pairings reconnect.
-  public static let pairedAppKeychainAccount = "paired-learning-app"
+  public static let pairedAppKeychainAccount = "paired-pinshift-app"
 
   private let bytes: Data
 
