@@ -150,6 +150,19 @@ final class RepositoryProductRequirementsTests: XCTestCase {
     XCTAssertLessThan(cleanup.lowerBound, success.lowerBound)
   }
 
+  func testInstallCreatesGeneratedRootBeforeStagingAFirstInstall() throws {
+    let contents = try String(
+      contentsOf: repositoryRoot.appending(path: "bin/pinshift-install"),
+      encoding: .utf8
+    )
+
+    let createRoot = try XCTUnwrap(contents.range(of: "mkdir -p $generated_root"))
+    let createStaging = try XCTUnwrap(
+      contents.range(of: "mktemp -d $generated_root/controller-install.XXXXXX")
+    )
+    XCTAssertLessThan(createRoot.lowerBound, createStaging.lowerBound)
+  }
+
   func testAppResigningWorkflowValidatesBeforeUpdatingTheExistingApp() throws {
     let helperURL = repositoryRoot.appending(path: "bin/pinshift-resign-app")
     XCTAssertTrue(

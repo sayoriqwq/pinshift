@@ -22,7 +22,10 @@ set --local guardian_log $guardian_log_directory/cleanup-guardian.log
 set --local user_id (id -u)
 set --local guardian_was_loaded 0
 set --local guardian_restarted_after_rollback 0
-set --local staging_root (mktemp -d .build/controller-install.XXXXXX)
+set --local generated_root (path resolve .build)
+mkdir -p $generated_root
+or exit 1
+set --local staging_root (mktemp -d $generated_root/controller-install.XXXXXX)
 or exit 1
 set --local build_path $staging_root/build
 
