@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 /// The two local processes intentionally keep separate diagnostic records.
@@ -192,11 +193,16 @@ public actor SimulationDiagnosticRecorder {
   public let maximumBytes: Int
 
   private let metadataURL: URL
+  private let lockURL: URL
   private let fileManager: FileManager
   private var generationID: UUID
   private var createdAt: Date
   private var nextSequence: UInt64 = 1
   private var lastErrorDescription: String?
+
+  /// A target-internal test seam that guards the append path against accidental
+  /// reintroduction of whole-file maintenance scans.
+  internal private(set) var maintenanceFullFileReadCount = 0
 
   public init(
     side: SimulationDiagnosticSide,
@@ -219,6 +225,7 @@ public actor SimulationDiagnosticRecorder {
     self.metadataURL = resolvedFileURL
       .deletingPathExtension()
       .appendingPathExtension("metadata.json")
+    self.lockURL = resolvedFileURL.appendingPathExtension("lock")
 
     if let metadata = try? Self.readMetadata(at: self.metadataURL),
       metadata.schemaVersion == Self.currentSchemaVersion
@@ -230,13 +237,10 @@ public actor SimulationDiagnosticRecorder {
       self.createdAt = Date()
     }
 
-    let existingEvents = Self.decodeEvents(
-      from: (try? Data(contentsOf: resolvedFileURL)) ?? Data()
+    self.nextSequence = Self.nextSequence(
+      for: sessionID,
+      in: (try? Data(contentsOf: resolvedFileURL)) ?? Data()
     )
-    self.nextSequence = (existingEvents
-      .filter { $0.sessionID == sessionID }
-      .map(\.sequence)
-      .max() ?? 0) + 1
   }
 
   public static func defaultDirectory(
@@ -278,20 +282,13 @@ public actor SimulationDiagnosticRecorder {
       return
     }
 
-    let event = SimulationDiagnosticEvent(
-      timestamp: timestamp,
-      sessionID: sessionID,
-      sequence: nextSequence,
-      kind: normalizedKind,
-      requestID: requestID,
-      fields: Self.sanitizedFields(fields)
-    )
-    nextSequence += 1
-
     do {
-      let line = try Self.encoder().encode(event) + Data([0x0A])
-      try append(line)
-      try trimIfNeeded()
+      try append(
+        kind: normalizedKind,
+        timestamp: timestamp,
+        requestID: requestID,
+        fields: Self.sanitizedFields(fields)
+      )
       lastErrorDescription = nil
     } catch {
       lastErrorDescription = String(describing: error)
@@ -299,6 +296,7 @@ public actor SimulationDiagnosticRecorder {
   }
 
   public func status() -> SimulationDiagnosticRecordStatus {
+    refreshMetadataFromDiskIfPresent()
     let data = (try? Data(contentsOf: fileURL)) ?? Data()
     return SimulationDiagnosticRecordStatus(
       side: side,
@@ -317,6 +315,7 @@ public actor SimulationDiagnosticRecorder {
   }
 
   public func exportData() throws -> Data {
+    refreshMetadataFromDiskIfPresent()
     let export = SimulationDiagnosticExport(
       side: side,
       generationID: generationID,
@@ -340,14 +339,16 @@ public actor SimulationDiagnosticRecorder {
   @discardableResult
   public func clear() -> Bool {
     do {
-      if fileManager.fileExists(atPath: fileURL.path) {
-        try fileManager.removeItem(at: fileURL)
+      try withExclusiveFileLock {
+        if fileManager.fileExists(atPath: fileURL.path) {
+          try fileManager.removeItem(at: fileURL)
+        }
+        generationID = UUID()
+        createdAt = Date()
+        nextSequence = 1
+        lastErrorDescription = nil
+        try writeMetadata()
       }
-      generationID = UUID()
-      createdAt = Date()
-      nextSequence = 1
-      lastErrorDescription = nil
-      try writeMetadata()
       return true
     } catch {
       lastErrorDescription = String(describing: error)
@@ -355,45 +356,69 @@ public actor SimulationDiagnosticRecorder {
     }
   }
 
-  private func append(_ data: Data) throws {
+  private func append(
+    kind: String,
+    timestamp: Date,
+    requestID: UUID?,
+    fields: SimulationDiagnosticFields
+  ) throws {
     try fileManager.createDirectory(
       at: fileURL.deletingLastPathComponent(),
       withIntermediateDirectories: true
     )
 
-    if !fileManager.fileExists(atPath: fileURL.path) {
-      try Data().write(to: fileURL, options: .atomic)
+    try withExclusiveFileLock {
+      try synchronizeMetadataFromDisk()
+      let event = SimulationDiagnosticEvent(
+        timestamp: timestamp,
+        sessionID: sessionID,
+        sequence: nextSequence,
+        kind: kind,
+        requestID: requestID,
+        fields: fields
+      )
+      nextSequence += 1
+      let data = try Self.encoder().encode(event) + Data([0x0A])
+      if !fileManager.fileExists(atPath: fileURL.path) {
+        try Data().write(to: fileURL, options: .atomic)
+      }
+
+      let handle = try FileHandle(forUpdating: fileURL)
+      defer { try? handle.close() }
+      try repairTornTail(using: handle)
+      try handle.seekToEnd()
+      try handle.write(contentsOf: data)
+      try handle.synchronize()
+      try trimIfNeeded()
     }
-
-    try repairTornTail()
-
-    let handle = try FileHandle(forWritingTo: fileURL)
-    defer { try? handle.close() }
-    try handle.seekToEnd()
-    try handle.write(contentsOf: data)
-    try handle.synchronize()
-    try writeMetadata()
   }
 
   private func trimIfNeeded() throws {
-    let data = try Data(contentsOf: fileURL)
-    guard data.count > maximumBytes else { return }
+    let attributes = try fileManager.attributesOfItem(atPath: fileURL.path)
+    let fileSize = (attributes[.size] as? NSNumber)?.intValue ?? 0
+    guard fileSize > maximumBytes else { return }
 
+    maintenanceFullFileReadCount &+= 1
+    let data = try Data(contentsOf: fileURL)
+    let retentionTargetBytes = max(1, maximumBytes - maximumBytes / 4)
+
+    // Appends encode complete events and torn-tail repair restores newline
+    // framing, so retention can choose its byte boundary without decoding every
+    // historical JSON object on the write path.
     var retained: [Data] = []
     var retainedBytes = 0
-    for line in data.split(separator: 0x0A, omittingEmptySubsequences: true).reversed() {
-      var candidate = Data(line)
-      candidate.append(0x0A)
-      guard (try? Self.decoder().decode(
-        SimulationDiagnosticEvent.self,
-        from: Data(line)
-      )) != nil else {
-        continue
+    for rawLine in data.split(separator: 0x0A, omittingEmptySubsequences: true).reversed() {
+      var line = Data(rawLine)
+      line.append(0x0A)
+      guard line.count <= maximumBytes else { continue }
+      if retained.isEmpty, line.count > retentionTargetBytes {
+        retained.append(line)
+        retainedBytes = line.count
+        break
       }
-      guard candidate.count <= maximumBytes else { continue }
-      guard retainedBytes + candidate.count <= maximumBytes else { break }
-      retained.append(candidate)
-      retainedBytes += candidate.count
+      guard retainedBytes + line.count <= retentionTargetBytes else { break }
+      retained.append(line)
+      retainedBytes += line.count
     }
 
     var output = Data()
@@ -404,15 +429,61 @@ public actor SimulationDiagnosticRecorder {
     try output.write(to: fileURL, options: .atomic)
   }
 
-  private func repairTornTail() throws {
-    let data = try Data(contentsOf: fileURL)
-    guard !data.isEmpty, data.last != 0x0A else { return }
+  private func repairTornTail(using handle: FileHandle) throws {
+    let fileSize = try handle.seekToEnd()
+    guard fileSize > 0 else { return }
 
-    guard let lastNewline = data.lastIndex(of: 0x0A) else {
-      try Data().write(to: fileURL, options: .atomic)
+    try handle.seek(toOffset: fileSize - 1)
+    if try handle.read(upToCount: 1)?.first == 0x0A {
       return
     }
-    try Data(data.prefix(through: lastNewline)).write(to: fileURL, options: .atomic)
+
+    let chunkSize: UInt64 = 4_096
+    var searchEnd = fileSize
+    while searchEnd > 0 {
+      let searchStart = searchEnd > chunkSize ? searchEnd - chunkSize : 0
+      try handle.seek(toOffset: searchStart)
+      let chunk = try handle.read(upToCount: Int(searchEnd - searchStart)) ?? Data()
+      if let newline = chunk.lastIndex(of: 0x0A) {
+        let newlineOffset = UInt64(chunk.distance(from: chunk.startIndex, to: newline))
+        try handle.truncate(atOffset: searchStart + newlineOffset + 1)
+        return
+      }
+      searchEnd = searchStart
+    }
+    try handle.truncate(atOffset: 0)
+  }
+
+  private func withExclusiveFileLock<T>(_ body: () throws -> T) throws -> T {
+    try fileManager.createDirectory(
+      at: lockURL.deletingLastPathComponent(),
+      withIntermediateDirectories: true
+    )
+    let descriptor = lockURL.path.withCString {
+      Darwin.open($0, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)
+    }
+    guard descriptor >= 0 else {
+      throw posixError()
+    }
+    defer {
+      var unlock = Darwin.flock()
+      unlock.l_type = Int16(F_UNLCK)
+      unlock.l_whence = Int16(SEEK_SET)
+      _ = Darwin.fcntl(descriptor, F_SETLK, &unlock)
+      _ = Darwin.close(descriptor)
+    }
+
+    var lock = Darwin.flock()
+    lock.l_type = Int16(F_WRLCK)
+    lock.l_whence = Int16(SEEK_SET)
+    while Darwin.fcntl(descriptor, F_SETLKW, &lock) != 0 {
+      guard errno == EINTR else { throw posixError() }
+    }
+    return try body()
+  }
+
+  private func posixError() -> NSError {
+    NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
   }
 
   private static func decodeEvents(from data: Data) -> [SimulationDiagnosticEvent] {
@@ -427,6 +498,28 @@ public actor SimulationDiagnosticRecorder {
     return completeData.split(separator: 0x0A, omittingEmptySubsequences: true).compactMap { line in
       try? Self.decoder().decode(SimulationDiagnosticEvent.self, from: Data(line))
     }
+  }
+
+  private static func nextSequence(for sessionID: UUID, in data: Data) -> UInt64 {
+    let completeData: Data
+    if data.last == 0x0A {
+      completeData = data
+    } else if let lastNewline = data.lastIndex(of: 0x0A) {
+      completeData = Data(data.prefix(through: lastNewline))
+    } else {
+      return 1
+    }
+
+    let sessionIDBytes = Data(sessionID.uuidString.utf8)
+    var maximumSequence: UInt64 = 0
+    for line in completeData.split(separator: 0x0A, omittingEmptySubsequences: true) {
+      guard line.range(of: sessionIDBytes) != nil,
+        let event = try? decoder().decode(SimulationDiagnosticEvent.self, from: Data(line)),
+        event.sessionID == sessionID
+      else { continue }
+      maximumSequence = max(maximumSequence, event.sequence)
+    }
+    return maximumSequence + 1
   }
 
   private static func sanitizedFields(
@@ -469,6 +562,31 @@ public actor SimulationDiagnosticRecorder {
       createdAt: createdAt
     )
     try Self.encoder().encode(metadata).write(to: metadataURL, options: .atomic)
+  }
+
+  private func synchronizeMetadataFromDisk() throws {
+    guard let metadata = try? Self.readMetadata(at: metadataURL),
+      metadata.schemaVersion == Self.currentSchemaVersion
+    else {
+      try writeMetadata()
+      return
+    }
+    adopt(metadata)
+  }
+
+  private func refreshMetadataFromDiskIfPresent() {
+    guard let metadata = try? Self.readMetadata(at: metadataURL),
+      metadata.schemaVersion == Self.currentSchemaVersion
+    else { return }
+    adopt(metadata)
+  }
+
+  private func adopt(_ metadata: Metadata) {
+    if generationID != metadata.generationID {
+      nextSequence = 1
+    }
+    generationID = metadata.generationID
+    createdAt = metadata.createdAt
   }
 
   private static func readMetadata(at url: URL) throws -> Metadata {

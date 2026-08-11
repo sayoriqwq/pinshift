@@ -20,7 +20,8 @@ final class ControllerLinkViewModel: ObservableObject {
   private let link: TrustedControllerLink
   private let diagnostics: SimulationDiagnosticPipeline?
   private var discoveryTask: Task<Void, Never>?
-  private var mayAttemptConnection = true
+  private var reconnectTask: Task<Void, Never>?
+  private var discoveryRetryPolicy = ControllerDiscoveryRetryPolicy()
   private var hasPairingCandidate = false
   private var stopDeliveryRequestIDs: Set<UUID> = []
   private var extensionDeliveryRequestIDs: Set<UUID> = []
@@ -95,7 +96,8 @@ final class ControllerLinkViewModel: ObservableObject {
     discovery.stop()
     discoveryTask?.cancel()
     discoveryTask = nil
-    mayAttemptConnection = true
+    cancelScheduledReconnect()
+    discoveryRetryPolicy.reset()
     hasPairingCandidate = false
     pairingCode = ""
     backendReadiness = nil
@@ -379,40 +381,80 @@ final class ControllerLinkViewModel: ObservableObject {
     case .localNetworkReady:
       localNetworkPermission = .allowed
     case .notFound:
+      cancelScheduledReconnect()
+      discoveryRetryPolicy.serviceBecameAbsent()
       if case .connected = state {
         state = await link.disconnected()
         backendReadiness = nil
         lifecycleStatus = nil
-        mayAttemptConnection = false
         record(kind: "app.controller-link.disconnected")
-      } else if mayAttemptConnection {
+      } else {
         state = .notDiscovered
       }
     case .found(let service):
       localNetworkPermission = .allowed
-      guard mayAttemptConnection else { return }
-      mayAttemptConnection = false
-      state = await link.connect(to: service)
-      backendReadiness = await link.currentBackendReadiness()
-      lifecycleStatus = await link.currentLifecycleStatus()
-      record(kind: "app.controller-link.connection-result", fields: stateFields(state))
-      if case .awaitingPairing = state {
-        hasPairingCandidate = true
-      }
+      await attemptConnection(to: service)
     case .localNetworkDenied:
+      cancelScheduledReconnect()
       localNetworkPermission = .denied
-      mayAttemptConnection = false
+      discoveryRetryPolicy.stopRetrying()
       state = await link.localNetworkPermissionDenied()
       backendReadiness = nil
       lifecycleStatus = nil
       record(kind: "app.controller-link.local-network-denied")
     case .failed:
-      mayAttemptConnection = false
+      cancelScheduledReconnect()
+      discoveryRetryPolicy.stopRetrying()
       state = .unavailable(.transportUnavailable)
       backendReadiness = nil
       lifecycleStatus = nil
       record(kind: "app.controller-link.connection-failed")
     }
+  }
+
+  private func attemptConnection(to service: ControllerService) async {
+    guard discoveryRetryPolicy.beginConnectionAttemptIfAllowed() else { return }
+    let connectionState = await link.connect(to: service)
+    guard !Task.isCancelled else { return }
+    state = connectionState
+    backendReadiness = await link.currentBackendReadiness()
+    lifecycleStatus = await link.currentLifecycleStatus()
+    record(kind: "app.controller-link.connection-result", fields: stateFields(state))
+
+    switch state {
+    case .awaitingPairing:
+      reconnectTask = nil
+      discoveryRetryPolicy.connectionAttemptSettled()
+      hasPairingCandidate = true
+    case .connected:
+      reconnectTask = nil
+      discoveryRetryPolicy.connectionAttemptSettled()
+    case .unavailable(.transportUnavailable):
+      scheduleReconnect(to: service)
+    case .notDiscovered, .unavailable, .localNetworkDenied:
+      reconnectTask = nil
+      discoveryRetryPolicy.stopRetrying()
+    }
+  }
+
+  private func scheduleReconnect(to service: ControllerService) {
+    let scheduledRetry = discoveryRetryPolicy.scheduleRetryAfterConnectionFailure()
+    reconnectTask?.cancel()
+    reconnectTask = Task { [weak self] in
+      do {
+        try await Task.sleep(for: .seconds(scheduledRetry.delay))
+      } catch {
+        return
+      }
+      guard let self, !Task.isCancelled else { return }
+      guard discoveryRetryPolicy.retryDelayElapsed(scheduledRetry) else { return }
+      await attemptConnection(to: service)
+    }
+  }
+
+  private func cancelScheduledReconnect() {
+    reconnectTask?.cancel()
+    reconnectTask = nil
   }
 
   private func record(
