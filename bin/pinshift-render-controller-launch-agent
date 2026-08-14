@@ -1,0 +1,57 @@
+#!/usr/bin/env fish
+
+argparse \
+    'template=' \
+    'output=' \
+    'executable=' \
+    'device=' \
+    'developer-directory=' \
+    'pairing-code-file=' \
+    'log-file=' \
+    -- $argv
+or exit 2
+
+if not set --query \
+        _flag_template \
+        _flag_output \
+        _flag_executable \
+        _flag_device \
+        _flag_developer_directory \
+        _flag_pairing_code_file \
+        _flag_log_file
+    echo "Every launch-agent rendering argument is required." >&2
+    exit 2
+end
+
+cp "$_flag_template" "$_flag_output"
+or exit $status
+
+set --local program_arguments (
+    jq --compact-output --null-input \
+        --arg executable "$_flag_executable" \
+        --arg device "$_flag_device" \
+        --arg developer_directory "$_flag_developer_directory" \
+        --arg pairing_code_file "$_flag_pairing_code_file" \
+        '[
+            $executable,
+            "link",
+            "serve",
+            "--device",
+            $device,
+            "--developer-directory",
+            $developer_directory,
+            "--pairing-code-file",
+            $pairing_code_file,
+            "--pairing-code-validity-seconds",
+            "3600"
+        ]'
+)
+or exit $status
+
+plutil -replace ProgramArguments -json "$program_arguments" "$_flag_output"
+or exit $status
+plutil -replace StandardOutPath -string "$_flag_log_file" "$_flag_output"
+or exit $status
+plutil -replace StandardErrorPath -string "$_flag_log_file" "$_flag_output"
+or exit $status
+plutil -lint "$_flag_output"

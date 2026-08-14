@@ -148,6 +148,55 @@ final class RepositoryProductRequirementsTests: XCTestCase {
     XCTAssertTrue(contents.contains("command rm -f -- $legacy_guardian_plist"))
   }
 
+  func testControllerLaunchAgentRendererProducesExactServeArguments() throws {
+    let temporaryDirectory = FileManager.default.temporaryDirectory
+      .appending(path: "pinshift-launch-agent-rendering-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(
+      at: temporaryDirectory,
+      withIntermediateDirectories: true
+    )
+    defer { try? FileManager.default.removeItem(at: temporaryDirectory) }
+
+    let renderedPlist = temporaryDirectory.appending(path: "controller.plist")
+    let process = Process()
+    process.executableURL = repositoryRoot.appending(
+      path: "bin/pinshift-render-controller-launch-agent"
+    )
+    process.arguments = [
+      "--template",
+      repositoryRoot.appending(path: "Support/dev.sayori.pinshift.controller.plist").path,
+      "--output", renderedPlist.path,
+      "--executable", "/tmp/Pinshift Controller/bin/pinshift-controller",
+      "--device", "Private Device Selector",
+      "--developer-directory", "/Applications/Xcode Beta.app/Contents/Developer",
+      "--pairing-code-file", "/tmp/Pinshift State/pairing-code",
+      "--log-file", "/tmp/Pinshift Logs/controller.log",
+    ]
+    try process.run()
+    process.waitUntilExit()
+    XCTAssertEqual(process.terminationStatus, 0)
+
+    let data = try Data(contentsOf: renderedPlist)
+    let value = try PropertyListSerialization.propertyList(from: data, format: nil)
+    let plist = try XCTUnwrap(value as? [String: Any])
+    XCTAssertEqual(
+      plist["ProgramArguments"] as? [String],
+      [
+        "/tmp/Pinshift Controller/bin/pinshift-controller",
+        "link",
+        "serve",
+        "--device",
+        "Private Device Selector",
+        "--developer-directory",
+        "/Applications/Xcode Beta.app/Contents/Developer",
+        "--pairing-code-file",
+        "/tmp/Pinshift State/pairing-code",
+        "--pairing-code-validity-seconds",
+        "3600",
+      ]
+    )
+  }
+
   func testInstallStopsOnlyTheExactSupersededForegroundController() throws {
     let contents = try String(
       contentsOf: repositoryRoot.appending(path: "bin/pinshift-install"),

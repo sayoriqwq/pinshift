@@ -16,6 +16,7 @@ set --local source_file $install_root/source-fingerprint
 
 set --local authority_label dev.sayori.pinshift.controller
 set --local authority_template (path resolve Support/$authority_label.plist)
+set --local authority_renderer $script_dir/pinshift-render-controller-launch-agent
 set --local launch_agents_directory $HOME/Library/LaunchAgents
 set --local authority_plist $launch_agents_directory/$authority_label.plist
 set --local authority_state_directory $HOME/Library/Application\ Support/Pinshift/ControllerLink
@@ -86,21 +87,14 @@ printf '%s\n' $requirement > $staged_requirement
 or exit $status
 printf '%s\n' $source_fingerprint > $staged_source
 or exit $status
-cp $authority_template $staged_authority
-or exit $status
-plutil -replace ProgramArguments.0 -string $executable $staged_authority
-or exit $status
-plutil -replace ProgramArguments.4 -string $PINSHIFT_DEVICE $staged_authority
-or exit $status
-plutil -replace ProgramArguments.6 -string $PINSHIFT_DEVELOPER_DIR $staged_authority
-or exit $status
-plutil -replace ProgramArguments.8 -string $pairing_code_file $staged_authority
-or exit $status
-plutil -replace StandardOutPath -string $authority_log $staged_authority
-or exit $status
-plutil -replace StandardErrorPath -string $authority_log $staged_authority
-or exit $status
-plutil -lint $staged_authority
+"$authority_renderer" \
+    --template "$authority_template" \
+    --output "$staged_authority" \
+    --executable "$executable" \
+    --device "$PINSHIFT_DEVICE" \
+    --developer-directory "$PINSHIFT_DEVELOPER_DIR" \
+    --pairing-code-file "$pairing_code_file" \
+    --log-file "$authority_log"
 or exit $status
 
 if test -f $requirement_file
