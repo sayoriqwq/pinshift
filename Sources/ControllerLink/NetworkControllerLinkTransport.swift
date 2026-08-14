@@ -53,12 +53,7 @@ public struct NetworkControllerLinkTransport: ControllerLinkTransport {
     )
 
     let parameters = NWParameters(tls: tls, tcp: NWProtocolTCP.Options())
-    let endpoint = NWEndpoint.service(
-      name: service.name,
-      type: service.type,
-      domain: service.domain ?? "",
-      interface: nil
-    )
+    let endpoint = Self.endpoint(for: service)
     let connection = NWConnection(to: endpoint, using: parameters)
     let frame = try ControllerLinkFrameCodec.encode(request)
 
@@ -119,6 +114,21 @@ public struct NetworkControllerLinkTransport: ControllerLinkTransport {
         connection.cancel()
       }
     }
+  }
+
+  static func endpoint(for service: ControllerService) -> NWEndpoint {
+    if let host = service.host, let port = service.port {
+      return .hostPort(
+        host: NWEndpoint.Host(host),
+        port: NWEndpoint.Port(rawValue: port)!
+      )
+    }
+    return .service(
+      name: service.name,
+      type: service.type,
+      domain: service.domain ?? "",
+      interface: nil
+    )
   }
 }
 

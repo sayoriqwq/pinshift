@@ -23,16 +23,29 @@ final class RepositoryProductRequirementsTests: XCTestCase {
     }
   }
 
-  func testDailyStartDefersItsDefaultLeaseToTheControllerOwnedPolicy() throws {
+  func testDailyStartOnlyRefreshesThePersistentBackgroundAuthority() throws {
     let contents = try String(
       contentsOf: repositoryRoot.appending(path: "bin/pinshift-start"),
       encoding: .utf8
     )
 
-    XCTAssertFalse(contents.contains("set --local lease_seconds 300"))
-    XCTAssertFalse(contents.contains("after 300 seconds by default"))
-    XCTAssertTrue(contents.contains("15 minutes by default"))
-    XCTAssertTrue(contents.contains("set --append serve_arguments --lease-seconds"))
+    XCTAssertTrue(contents.contains("launchctl kickstart -k"))
+    XCTAssertTrue(contents.contains("no foreground terminal is required"))
+    XCTAssertTrue(contents.contains("clears automatically after 15 minutes"))
+    XCTAssertFalse(contents.contains("link serve"))
+    XCTAssertFalse(contents.contains("lease-seconds"))
+    XCTAssertFalse(contents.contains("--seconds"))
+  }
+
+  func testAppCopyDoesNotExposeTheInjectionBackendImplementation() throws {
+    let contents = try String(
+      contentsOf: repositoryRoot.appending(path: "App/ContentView.swift"),
+      encoding: .utf8
+    )
+
+    XCTAssertFalse(contents.contains("Injection Backend"))
+    XCTAssertTrue(contents.contains("Applying temporary location…"))
+    XCTAssertTrue(contents.contains("Mac location service"))
   }
 
   func testDiagnosticsHelperLocatesOrCopiesTheMacPackageWithoutRunningRecovery() throws {
@@ -107,28 +120,46 @@ final class RepositoryProductRequirementsTests: XCTestCase {
     XCTAssertTrue(contents.contains("codesign --verify"))
   }
 
-  func testInstallRegistersCleanupGuardianOutsideTheControllerLinkProcess() throws {
+  func testInstallRegistersOnePersistentControllerAuthority() throws {
     let contents = try String(
       contentsOf: repositoryRoot.appending(path: "bin/pinshift-install"),
       encoding: .utf8
     )
     let template = try String(
       contentsOf: repositoryRoot.appending(
-        path: "Support/dev.sayori.pinshift.cleanup-guardian.plist"
+        path: "Support/dev.sayori.pinshift.controller.plist"
       ),
       encoding: .utf8
     )
 
     XCTAssertTrue(contents.contains("launchctl bootstrap"))
     XCTAssertTrue(contents.contains("launchctl kickstart -k"))
-    let guardianBootout = try XCTUnwrap(
-      contents.range(of: "launchctl bootout gui/$user_id/$guardian_label")
+    let authorityBootout = try XCTUnwrap(
+      contents.range(of: "launchctl bootout gui/$user_id/$authority_label")
     )
     let executablePublish = try XCTUnwrap(contents.range(of: "cp $candidate $executable"))
-    XCTAssertLessThan(guardianBootout.lowerBound, executablePublish.lowerBound)
-    XCTAssertTrue(template.contains("cleanup-guardian"))
+    XCTAssertLessThan(authorityBootout.lowerBound, executablePublish.lowerBound)
+    XCTAssertTrue(template.contains("<string>link</string>"))
+    XCTAssertTrue(template.contains("<string>serve</string>"))
+    XCTAssertFalse(template.contains("cleanup-guardian"))
     XCTAssertTrue(template.contains("<key>KeepAlive</key>"))
     XCTAssertTrue(template.contains("<key>RunAtLoad</key>"))
+    XCTAssertTrue(contents.contains("legacy_guardian_label"))
+    XCTAssertTrue(contents.contains("command rm -f -- $legacy_guardian_plist"))
+  }
+
+  func testInstallStopsOnlyTheExactSupersededForegroundController() throws {
+    let contents = try String(
+      contentsOf: repositoryRoot.appending(path: "bin/pinshift-install"),
+      encoding: .utf8
+    )
+
+    XCTAssertTrue(contents.contains("ps -p $candidate_pid -o command="))
+    XCTAssertTrue(contents.contains("$executable link serve*"))
+    XCTAssertTrue(contents.contains("kill -TERM $candidate_pid"))
+    XCTAssertTrue(contents.contains("kill -0 $candidate_pid"))
+    XCTAssertFalse(contents.contains("pkill"))
+    XCTAssertFalse(contents.contains("killall"))
   }
 
   func testSuccessfulInstallRemovesOnlyItsValidatedGeneratedStagingDirectory() throws {
@@ -139,14 +170,14 @@ final class RepositoryProductRequirementsTests: XCTestCase {
 
     XCTAssertTrue(contents.contains("path dirname \"$staging_root\""))
     XCTAssertTrue(contents.contains("^controller-install\\.[[:alnum:]]+$"))
-    let guardianStart = try XCTUnwrap(contents.range(of: "launchctl kickstart -k"))
+    let authorityStart = try XCTUnwrap(contents.range(of: "launchctl kickstart -k"))
     let cleanup = try XCTUnwrap(
       contents.range(of: "command rm -rf -- \"$staging_root\"")
     )
     let success = try XCTUnwrap(
-      contents.range(of: "Stable controller and persistent Cleanup Guardian installed")
+      contents.range(of: "Stable controller and one persistent background authority installed")
     )
-    XCTAssertLessThan(guardianStart.lowerBound, cleanup.lowerBound)
+    XCTAssertLessThan(authorityStart.lowerBound, cleanup.lowerBound)
     XCTAssertLessThan(cleanup.lowerBound, success.lowerBound)
   }
 

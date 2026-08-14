@@ -47,7 +47,7 @@ final class PinshiftControllerLinkUITests: XCTestCase {
     XCTAssertTrue(connected.waitForExistence(timeout: 20))
   }
 
-  func testPhysicalMapSearchApplyReplaceVerifyAndStop() throws {
+  func testPhysicalMapSearchApplyReplaceVerifyAndClear() throws {
     if ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"] != nil {
       throw XCTSkip("This end-to-end controller journey runs only on the physical iPhone.")
     }
@@ -86,12 +86,12 @@ final class PinshiftControllerLinkUITests: XCTestCase {
     app.buttons["close-location-picker"].tap()
     applyAndWaitForVerification(in: app)
 
-    let stop = app.buttons["stop-simulation"]
-    scroll(upTo: stop, in: app)
-    XCTAssertTrue(stop.waitForExistence(timeout: 5))
-    XCTAssertTrue(waitUntilEnabled(stop, timeout: 10))
-    stop.tap()
-    let cleared = app.staticTexts.matching(identifier: "stop-status")
+    let clear = app.buttons["clear-simulation"]
+    scroll(upTo: clear, in: app)
+    XCTAssertTrue(clear.waitForExistence(timeout: 5))
+    XCTAssertTrue(waitUntilEnabled(clear, timeout: 10))
+    clear.tap()
+    let cleared = app.staticTexts.matching(identifier: "clear-status")
       .matching(NSPredicate(format: "label == %@", "Simulated Location cleared"))
       .firstMatch
     XCTAssertTrue(cleared.waitForExistence(timeout: 20))
@@ -121,7 +121,7 @@ final class PinshiftControllerLinkUITests: XCTestCase {
 
   private func connectedStatus(in app: XCUIApplication) -> XCUIElement {
     app.staticTexts.matching(identifier: "controller-link-status")
-      .matching(NSPredicate(format: "label == %@", "Trusted controller connected"))
+      .matching(NSPredicate(format: "label == %@", "Mac connected"))
       .firstMatch
   }
 

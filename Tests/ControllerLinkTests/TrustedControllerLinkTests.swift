@@ -1,68 +1,70 @@
+import Foundation
 import XCTest
 
 @testable import ControllerLink
 
 final class TrustedControllerLinkTests: XCTestCase {
   func testPairsOnceThenReusesThePinnedControllerIdentity() async throws {
-    let identity = try ControllerIdentity(fingerprint: Data(repeating: 0x19, count: 32))
-    let authorization = try ControllerAuthorization(bytes: Data(repeating: 0x31, count: 32))
-    let store = InMemoryControllerTrustStore()
+    let identity = try ControllerIdentity(fingerprint: Data(repeating: 0x11, count: 32))
+    let authorization = try ControllerAuthorization(bytes: Data(repeating: 0x12, count: 32))
+    let trustStore = InMemoryControllerTrustStore()
     let authorizationStore = InMemoryControllerAuthorizationStore()
-    let trust = ControllerTrust(store: store)
-    let firstTransport = PairingTransport(identity: identity, authorization: authorization)
-    let service = ControllerService(name: "controller")
-    let firstLink = TrustedControllerLink(
-      trust: trust,
-      authorizationStore: authorizationStore,
-      transport: firstTransport
-    )
-
-    let awaitingPairing = await firstLink.connect(to: service)
-    XCTAssertEqual(awaitingPairing, .awaitingPairing(identity))
-    let paired = await firstLink.pair(code: "123456")
-    XCTAssertEqual(paired, .connected(identity))
-    let storedIdentity = await store.load()
-    XCTAssertEqual(storedIdentity, identity)
-    let storedAuthorization = await authorizationStore.load()
-    XCTAssertEqual(storedAuthorization, authorization)
-
-    let reconnectTransport = TrustedStatusTransport(
+    let transport = PairingControllerTransport(
       identity: identity,
       authorization: authorization
     )
-    let reconnect = TrustedControllerLink(
-      trust: trust,
+    let link = TrustedControllerLink(
+      trust: ControllerTrust(store: trustStore),
       authorizationStore: authorizationStore,
-      transport: reconnectTransport
+      transport: transport
     )
-    let reconnected = await reconnect.connect(to: service)
-    XCTAssertEqual(reconnected, .connected(identity))
-    let expectedIdentity = await reconnectTransport.lastExpectedIdentity()
-    XCTAssertEqual(expectedIdentity, identity)
+
+    let discovered = await link.connect(to: ControllerService(name: "controller"))
+    let paired = await link.pair(code: "123456")
+    let storedIdentity = await trustStore.load()
+    let storedAuthorization = await authorizationStore.load()
+    let refreshed = await link.refresh()
+    XCTAssertEqual(discovered, .awaitingPairing(identity))
+    XCTAssertEqual(paired, .connected(identity))
+    XCTAssertEqual(storedIdentity, identity)
+    XCTAssertEqual(storedAuthorization, authorization)
+    XCTAssertEqual(refreshed, .connected(identity))
   }
 
   func testMismatchedResponseIdentityNeverBecomesTrusted() async throws {
-    let identity = try ControllerIdentity(fingerprint: Data(repeating: 0x27, count: 32))
-    let store = InMemoryControllerTrustStore()
+    let trusted = try ControllerIdentity(fingerprint: Data(repeating: 0x21, count: 32))
+    let presented = try ControllerIdentity(fingerprint: Data(repeating: 0x22, count: 32))
+    let authorization = try ControllerAuthorization(bytes: Data(repeating: 0x23, count: 32))
     let link = TrustedControllerLink(
-      trust: ControllerTrust(store: store),
-      authorizationStore: InMemoryControllerAuthorizationStore(),
-      transport: MismatchedResponseTransport(identity: identity)
+      trust: ControllerTrust(store: InMemoryControllerTrustStore(identity: trusted)),
+      authorizationStore: InMemoryControllerAuthorizationStore(
+        authorization: authorization
+      ),
+      transport: FixedIdentityControllerTransport(identity: presented)
     )
 
-    _ = await link.connect(to: ControllerService(name: "controller"))
-    let pairingResult = await link.pair(code: "123456")
-    XCTAssertEqual(pairingResult, .unavailable(.transportUnavailable))
-    let storedIdentity = await store.load()
-    XCTAssertNil(storedIdentity)
+    let connection = await link.connect(to: ControllerService(name: "controller"))
+    XCTAssertEqual(connection, .unavailable(.tlsIdentityMismatch))
   }
 
-  func testConnectedLinkSendsAuthorizedCorrelatedApplyAndStop() async throws {
-    let identity = try ControllerIdentity(fingerprint: Data(repeating: 0x71, count: 32))
-    let authorization = try ControllerAuthorization(bytes: Data(repeating: 0x72, count: 32))
-    let transport = AuthorizedCommandTransport(
+  func testConnectedLinkAlwaysSubmitsReplacementApplyDespiteHistoricalStatus() async throws {
+    let identity = try ControllerIdentity(fingerprint: Data(repeating: 0x31, count: 32))
+    let authorization = try ControllerAuthorization(bytes: Data(repeating: 0x32, count: 32))
+    let deadline = Date(timeIntervalSince1970: 10_900)
+    let transport = RecordingControllerTransport(
       identity: identity,
-      authorization: authorization
+      authorization: authorization,
+      initialStatus: ControllerStatus(
+        readiness: .unavailable(.clearFailed),
+        simulation: .clearPending(
+          operationID: UUID(),
+          latitude: 1,
+          longitude: 2,
+          automaticClearAt: Date(timeIntervalSince1970: 9_000),
+          reason: .clearFailed
+        )
+      ),
+      applyDeadline: deadline
     )
     let link = TrustedControllerLink(
       trust: ControllerTrust(store: InMemoryControllerTrustStore(identity: identity)),
@@ -71,10 +73,8 @@ final class TrustedControllerLinkTests: XCTestCase {
       ),
       transport: transport
     )
-    let connected = await link.connect(to: ControllerService(name: "controller"))
-    XCTAssertEqual(connected, .connected(identity))
-    let readiness = await link.currentBackendReadiness()
-    XCTAssertEqual(readiness, .ready)
+    let connection = await link.connect(to: ControllerService(name: "controller"))
+    XCTAssertEqual(connection, .connected(identity))
 
     let applyID = UUID()
     let applied = await link.apply(
@@ -84,26 +84,33 @@ final class TrustedControllerLinkTests: XCTestCase {
     )
     XCTAssertEqual(
       applied,
-      .appliedLifecycle(
-        requestID: applyID,
-        generationID: applyID,
-        leaseExpiresAt: Date(timeIntervalSince1970: 3_600)
-      )
+      .applied(requestID: applyID, automaticClearAt: deadline)
     )
-    let stopID = UUID()
-    let stopped = await link.stop(requestID: stopID)
+    let applyCount = await transport.applyCount
+    XCTAssertEqual(applyCount, 1)
+
+    let clearID = UUID()
+    let cleared = await link.clear(
+      requestID: clearID,
+      targetOperationID: applyID
+    )
     XCTAssertEqual(
-      stopped,
-      .stoppedLifecycle(requestID: stopID, generationID: nil)
+      cleared,
+      .cleared(requestID: clearID)
     )
+    let clearTarget = await transport.clearTarget
+    XCTAssertEqual(clearTarget, applyID)
   }
 
-  func testApplyAndStopRefreshTheTrustedLinkAfterTransientDiscoveryLoss() async throws {
-    let identity = try ControllerIdentity(fingerprint: Data(repeating: 0x75, count: 32))
-    let authorization = try ControllerAuthorization(bytes: Data(repeating: 0x76, count: 32))
-    let transport = AuthorizedCommandTransport(
+  func testStaleClearAcknowledgementDoesNotEraseNewerCachedApply() async throws {
+    let identity = try ControllerIdentity(fingerprint: Data(repeating: 0x41, count: 32))
+    let authorization = try ControllerAuthorization(bytes: Data(repeating: 0x42, count: 32))
+    let deadline = Date(timeIntervalSince1970: 20_900)
+    let transport = RecordingControllerTransport(
       identity: identity,
-      authorization: authorization
+      authorization: authorization,
+      initialStatus: ControllerStatus(readiness: .ready, simulation: .idle),
+      applyDeadline: deadline
     )
     let link = TrustedControllerLink(
       trust: ControllerTrust(store: InMemoryControllerTrustStore(identity: identity)),
@@ -112,82 +119,58 @@ final class TrustedControllerLinkTests: XCTestCase {
       ),
       transport: transport
     )
+    _ = await link.connect(to: ControllerService(name: "controller"))
 
-    let connected = await link.connect(to: ControllerService(name: "controller"))
-    XCTAssertEqual(connected, .connected(identity))
-    _ = await link.disconnected()
-
-    let requestID = UUID()
-    let response = await link.apply(
-      requestID: requestID,
+    let olderOperationID = UUID()
+    let newerOperationID = UUID()
+    _ = await link.apply(
+      requestID: newerOperationID,
       latitude: 31.2304,
       longitude: 121.4737
     )
+    let clearResponse = await link.clear(
+      requestID: UUID(),
+      targetOperationID: olderOperationID
+    )
 
+    guard case .cleared = clearResponse else {
+      return XCTFail("The controller should acknowledge a stale Clear as a no-op.")
+    }
+    let status = await link.currentStatus()
     XCTAssertEqual(
-      response,
-      .appliedLifecycle(
-        requestID: requestID,
-        generationID: requestID,
-        leaseExpiresAt: Date(timeIntervalSince1970: 3_600)
+      status,
+      ControllerStatus(
+        readiness: .ready,
+        simulation: .active(
+          operationID: newerOperationID,
+          latitude: 31.2304,
+          longitude: 121.4737,
+          automaticClearAt: deadline
+        )
       )
     )
-    let refreshedState = await link.currentState()
-    XCTAssertEqual(refreshedState, .connected(identity))
-
-    _ = await link.disconnected()
-    let stopID = UUID()
-    let stopResponse = await link.stop(requestID: stopID)
-
-    XCTAssertEqual(
-      stopResponse,
-      .stoppedLifecycle(requestID: stopID, generationID: nil)
-    )
-    let stopRefreshedState = await link.currentState()
-    XCTAssertEqual(stopRefreshedState, .connected(identity))
   }
 
-  func testLegacyControllerCannotReceiveAnUnprotectedApply() async throws {
-    let identity = try ControllerIdentity(fingerprint: Data(repeating: 0x77, count: 32))
-    let authorization = try ControllerAuthorization(bytes: Data(repeating: 0x78, count: 32))
-    let transport = LegacyControllerTransport(
+  func testStatusPollStartedBeforeApplyCannotOverwriteTheNewApply() async throws {
+    let identity = try ControllerIdentity(fingerprint: Data(repeating: 0x51, count: 32))
+    let authorization = try ControllerAuthorization(bytes: Data(repeating: 0x52, count: 32))
+    let olderOperationID = UUID()
+    let newerOperationID = UUID()
+    let oldDeadline = Date(timeIntervalSince1970: 30_900)
+    let newDeadline = Date(timeIntervalSince1970: 31_900)
+    let transport = BlockingRefreshControllerTransport(
       identity: identity,
-      authorization: authorization
-    )
-    let link = TrustedControllerLink(
-      trust: ControllerTrust(
-        store: InMemoryControllerTrustStore(identity: identity)
+      authorization: authorization,
+      status: ControllerStatus(
+        readiness: .ready,
+        simulation: .active(
+          operationID: olderOperationID,
+          latitude: 1,
+          longitude: 2,
+          automaticClearAt: oldDeadline
+        )
       ),
-      authorizationStore: InMemoryControllerAuthorizationStore(
-        authorization: authorization
-      ),
-      transport: transport
-    )
-    let connection = await link.connect(to: ControllerService(name: "controller"))
-    XCTAssertEqual(connection, .connected(identity))
-
-    let requestID = UUID()
-    let response = await link.apply(
-      requestID: requestID,
-      latitude: 31.2304,
-      longitude: 121.4737,
-      requestedLeaseDuration: 900
-    )
-    let applyCount = await transport.applyCount()
-
-    XCTAssertEqual(
-      response,
-      .failed(requestID: requestID, reason: .controllerUpgradeRequired)
-    )
-    XCTAssertEqual(applyCount, 0)
-  }
-
-  func testUnavailableBackendPreventsApplyWithoutSendingACommand() async throws {
-    let identity = try ControllerIdentity(fingerprint: Data(repeating: 0x73, count: 32))
-    let authorization = try ControllerAuthorization(bytes: Data(repeating: 0x74, count: 32))
-    let transport = UnavailableBackendTransport(
-      identity: identity,
-      authorization: authorization
+      applyDeadline: newDeadline
     )
     let link = TrustedControllerLink(
       trust: ControllerTrust(store: InMemoryControllerTrustStore(identity: identity)),
@@ -196,29 +179,37 @@ final class TrustedControllerLinkTests: XCTestCase {
       ),
       transport: transport
     )
-    let state = await link.connect(to: ControllerService(name: "controller"))
-    XCTAssertEqual(state, .connected(identity))
+    _ = await link.connect(to: ControllerService(name: "controller"))
 
-    let requestID = UUID()
-    let response = await link.apply(
-      requestID: requestID,
+    let refresh = Task { await link.refresh() }
+    await transport.waitUntilRefreshIsBlocked()
+    _ = await link.apply(
+      requestID: newerOperationID,
       latitude: 31.2304,
       longitude: 121.4737
     )
+    await transport.releaseRefresh()
+    _ = await refresh.value
 
+    let currentStatus = await link.currentStatus()
     XCTAssertEqual(
-      response,
-      .failed(requestID: requestID, reason: .sessionNotReady)
+      currentStatus,
+      ControllerStatus(
+        readiness: .ready,
+        simulation: .active(
+          operationID: newerOperationID,
+          latitude: 31.2304,
+          longitude: 121.4737,
+          automaticClearAt: newDeadline
+        )
+      )
     )
-    let applyCount = await transport.applyCount()
-    XCTAssertEqual(applyCount, 0)
   }
 }
 
-private actor LegacyControllerTransport: ControllerLinkTransport {
+private actor PairingControllerTransport: ControllerLinkTransport {
   let identity: ControllerIdentity
   let authorization: ControllerAuthorization
-  private var sentApplyCount = 0
 
   init(identity: ControllerIdentity, authorization: ControllerAuthorization) {
     self.identity = identity
@@ -230,114 +221,27 @@ private actor LegacyControllerTransport: ControllerLinkTransport {
     to service: ControllerService,
     expectedIdentity: ControllerIdentity?
   ) -> ControllerTransportReply {
-    XCTAssertEqual(expectedIdentity, identity)
     let response: ControllerLinkResponse
     switch request {
-    case .lifecycleStatus(let requestID, let presentedAuthorization):
-      XCTAssertEqual(presentedAuthorization, authorization)
-      response = .status(requestID: requestID, readiness: .ready)
-    case .apply, .applyLifecycle:
-      sentApplyCount += 1
-      response = .rejected(requestID: request.requestID, reason: .invalidRequest)
-    case .status(let requestID, _):
-      response = .status(requestID: requestID, readiness: .ready)
-    case .pair, .extendLifecycle, .stop, .stopLifecycle:
-      response = .rejected(requestID: request.requestID, reason: .invalidRequest)
-    }
-    return ControllerTransportReply(
-      presentedIdentity: identity,
-      response: response
-    )
-  }
-
-  func applyCount() -> Int {
-    sentApplyCount
-  }
-}
-
-private actor PairingTransport: ControllerLinkTransport {
-  let identity: ControllerIdentity
-  let authorization: ControllerAuthorization
-
-  init(identity: ControllerIdentity, authorization: ControllerAuthorization) {
-    self.identity = identity
-    self.authorization = authorization
-  }
-
-  func send(
-    _ request: ControllerLinkRequest,
-    to service: ControllerService,
-    expectedIdentity: ControllerIdentity?
-  ) throws -> ControllerTransportReply {
-    switch request {
-    case .status(let requestID, let presentedAuthorization):
-      XCTAssertNil(presentedAuthorization)
-      return ControllerTransportReply(
-        presentedIdentity: identity,
-        response: .rejected(requestID: requestID, reason: .pairingRequired)
-      )
-    case .lifecycleStatus(let requestID, _):
-      return ControllerTransportReply(
-        presentedIdentity: identity,
-        response: .rejected(requestID: requestID, reason: .invalidRequest)
+    case .status(let requestID, nil):
+      response = .rejected(requestID: requestID, reason: .pairingRequired)
+    case .status(let requestID, let presented?):
+      XCTAssertEqual(presented, authorization)
+      response = .status(
+        requestID: requestID,
+        status: ControllerStatus(readiness: .ready, simulation: .idle)
       )
     case .pair(let requestID, let code):
       XCTAssertEqual(code, "123456")
-      XCTAssertEqual(expectedIdentity, identity)
-      return ControllerTransportReply(
-        presentedIdentity: identity,
-        response: .paired(requestID: requestID, authorization: authorization)
-      )
-    case .apply, .applyLifecycle, .extendLifecycle, .stop, .stopLifecycle:
-      return ControllerTransportReply(
-        presentedIdentity: identity,
-        response: .rejected(requestID: request.requestID, reason: .invalidRequest)
-      )
+      response = .paired(requestID: requestID, authorization: authorization)
+    case .apply(let requestID, _, _, _), .clear(let requestID, _, _):
+      response = .rejected(requestID: requestID, reason: .invalidRequest)
     }
+    return ControllerTransportReply(presentedIdentity: identity, response: response)
   }
 }
 
-private actor TrustedStatusTransport: ControllerLinkTransport {
-  let identity: ControllerIdentity
-  let authorization: ControllerAuthorization
-  private var expectedIdentity: ControllerIdentity?
-
-  init(identity: ControllerIdentity, authorization: ControllerAuthorization) {
-    self.identity = identity
-    self.authorization = authorization
-  }
-
-  func send(
-    _ request: ControllerLinkRequest,
-    to service: ControllerService,
-    expectedIdentity: ControllerIdentity?
-  ) throws -> ControllerTransportReply {
-    self.expectedIdentity = expectedIdentity
-    guard case .lifecycleStatus(let requestID, let presentedAuthorization) = request else {
-      return ControllerTransportReply(
-        presentedIdentity: identity,
-        response: .rejected(requestID: request.requestID, reason: .invalidRequest)
-      )
-    }
-    XCTAssertEqual(presentedAuthorization, authorization)
-    return ControllerTransportReply(
-      presentedIdentity: identity,
-      response: .lifecycleStatus(
-        requestID: requestID,
-        status: ControllerLifecycleStatus(
-          readiness: .ready,
-          simulation: .noActive
-        )
-      )
-    )
-  }
-
-  func lastExpectedIdentity() -> ControllerIdentity? {
-    expectedIdentity
-  }
-}
-
-private actor MismatchedResponseTransport: ControllerLinkTransport {
+private actor FixedIdentityControllerTransport: ControllerLinkTransport {
   let identity: ControllerIdentity
 
   init(identity: ControllerIdentity) {
@@ -348,123 +252,35 @@ private actor MismatchedResponseTransport: ControllerLinkTransport {
     _ request: ControllerLinkRequest,
     to service: ControllerService,
     expectedIdentity: ControllerIdentity?
-  ) throws -> ControllerTransportReply {
-    switch request {
-    case .status(let requestID, _):
-      return ControllerTransportReply(
-        presentedIdentity: identity,
-        response: .rejected(requestID: requestID, reason: .pairingRequired)
+  ) -> ControllerTransportReply {
+    ControllerTransportReply(
+      presentedIdentity: identity,
+      response: .status(
+        requestID: request.requestID,
+        status: ControllerStatus(readiness: .ready, simulation: .idle)
       )
-    case .pair:
-      return ControllerTransportReply(
-        presentedIdentity: identity,
-        response: .paired(
-          requestID: UUID(),
-          authorization: try ControllerAuthorization(bytes: Data(repeating: 0x55, count: 32))
-        )
-      )
-    case .lifecycleStatus(let requestID, _):
-      return ControllerTransportReply(
-        presentedIdentity: identity,
-        response: .rejected(requestID: requestID, reason: .invalidRequest)
-      )
-    case .apply, .applyLifecycle, .extendLifecycle, .stop, .stopLifecycle:
-      return ControllerTransportReply(
-        presentedIdentity: identity,
-        response: .rejected(requestID: request.requestID, reason: .invalidRequest)
-      )
-    }
+    )
   }
 }
 
-private actor AuthorizedCommandTransport: ControllerLinkTransport {
+private actor RecordingControllerTransport: ControllerLinkTransport {
   let identity: ControllerIdentity
   let authorization: ControllerAuthorization
+  let initialStatus: ControllerStatus
+  let applyDeadline: Date
+  private(set) var applyCount = 0
+  private(set) var clearTarget: UUID?
 
-  init(identity: ControllerIdentity, authorization: ControllerAuthorization) {
+  init(
+    identity: ControllerIdentity,
+    authorization: ControllerAuthorization,
+    initialStatus: ControllerStatus,
+    applyDeadline: Date
+  ) {
     self.identity = identity
     self.authorization = authorization
-  }
-
-  func send(
-    _ request: ControllerLinkRequest,
-    to service: ControllerService,
-    expectedIdentity: ControllerIdentity?
-  ) throws -> ControllerTransportReply {
-    XCTAssertEqual(expectedIdentity, identity)
-    let response: ControllerLinkResponse
-    switch request {
-    case .status(let requestID, let presentedAuthorization):
-      XCTAssertEqual(presentedAuthorization, authorization)
-      response = .status(requestID: requestID, readiness: .ready)
-    case .lifecycleStatus(let requestID, let presentedAuthorization):
-      XCTAssertEqual(presentedAuthorization, authorization)
-      response = .lifecycleStatus(
-        requestID: requestID,
-        status: ControllerLifecycleStatus(
-          readiness: .ready,
-          simulation: .noActive
-        )
-      )
-    case .apply(let requestID, let presentedAuthorization, let latitude, let longitude):
-      XCTAssertEqual(presentedAuthorization, authorization)
-      XCTAssertEqual(latitude, 31.2304)
-      XCTAssertEqual(longitude, 121.4737)
-      response = .applied(requestID: requestID)
-    case .applyLifecycle(
-      let requestID,
-      let generationID,
-      let presentedAuthorization,
-      let latitude,
-      let longitude,
-      let requestedLeaseDuration
-    ):
-      XCTAssertEqual(presentedAuthorization, authorization)
-      XCTAssertEqual(latitude, 31.2304)
-      XCTAssertEqual(longitude, 121.4737)
-      XCTAssertEqual(requestedLeaseDuration, 900)
-      response = .appliedLifecycle(
-        requestID: requestID,
-        generationID: generationID,
-        leaseExpiresAt: Date(timeIntervalSince1970: 3_600)
-      )
-    case .extendLifecycle(
-      let requestID,
-      let generationID,
-      let presentedAuthorization,
-      let extensionDuration
-    ):
-      XCTAssertEqual(presentedAuthorization, authorization)
-      XCTAssertEqual(extensionDuration, 900)
-      response = .extendedLifecycle(
-        requestID: requestID,
-        generationID: generationID,
-        leaseExpiresAt: Date(timeIntervalSince1970: 4_500)
-      )
-    case .stop(let requestID, let presentedAuthorization):
-      XCTAssertEqual(presentedAuthorization, authorization)
-      response = .stopped(requestID: requestID)
-    case .stopLifecycle(let requestID, let generationID, let presentedAuthorization):
-      XCTAssertEqual(presentedAuthorization, authorization)
-      response = .stoppedLifecycle(
-        requestID: requestID,
-        generationID: generationID
-      )
-    case .pair(let requestID, _):
-      response = .rejected(requestID: requestID, reason: .invalidRequest)
-    }
-    return ControllerTransportReply(presentedIdentity: identity, response: response)
-  }
-}
-
-private actor UnavailableBackendTransport: ControllerLinkTransport {
-  let identity: ControllerIdentity
-  let authorization: ControllerAuthorization
-  private var sentApplyCount = 0
-
-  init(identity: ControllerIdentity, authorization: ControllerAuthorization) {
-    self.identity = identity
-    self.authorization = authorization
+    self.initialStatus = initialStatus
+    self.applyDeadline = applyDeadline
   }
 
   func send(
@@ -472,38 +288,90 @@ private actor UnavailableBackendTransport: ControllerLinkTransport {
     to service: ControllerService,
     expectedIdentity: ControllerIdentity?
   ) -> ControllerTransportReply {
+    XCTAssertEqual(expectedIdentity, identity)
     let response: ControllerLinkResponse
     switch request {
-    case .status(let requestID, let presentedAuthorization):
-      XCTAssertEqual(presentedAuthorization, authorization)
-      response = .status(
-        requestID: requestID,
-        readiness: .unavailable(.sessionNotReady)
-      )
-    case .lifecycleStatus(let requestID, let presentedAuthorization):
-      XCTAssertEqual(presentedAuthorization, authorization)
-      response = .lifecycleStatus(
-        requestID: requestID,
-        status: ControllerLifecycleStatus(
-          readiness: .unavailable(.sessionNotReady),
-          simulation: .noActive
-        )
-      )
-    case .apply(let requestID, _, _, _):
-      sentApplyCount += 1
-      response = .applied(requestID: requestID)
-    case .applyLifecycle(let requestID, _, _, _, _, _):
-      sentApplyCount += 1
-      response = .applied(requestID: requestID)
-    case .pair(let requestID, _), .extendLifecycle(let requestID, _, _, _),
-      .stop(let requestID, _),
-      .stopLifecycle(let requestID, _, _):
+    case .status(let requestID, let presented):
+      XCTAssertEqual(presented, authorization)
+      response = .status(requestID: requestID, status: initialStatus)
+    case .apply(let requestID, let presented, let latitude, let longitude):
+      XCTAssertEqual(presented, authorization)
+      XCTAssertEqual(latitude, 31.2304)
+      XCTAssertEqual(longitude, 121.4737)
+      applyCount += 1
+      response = .applied(requestID: requestID, automaticClearAt: applyDeadline)
+    case .clear(let requestID, let presented, let targetOperationID):
+      XCTAssertEqual(presented, authorization)
+      clearTarget = targetOperationID
+      response = .cleared(requestID: requestID)
+    case .pair(let requestID, _):
       response = .rejected(requestID: requestID, reason: .invalidRequest)
     }
     return ControllerTransportReply(presentedIdentity: identity, response: response)
   }
+}
 
-  func applyCount() -> Int {
-    sentApplyCount
+private actor BlockingRefreshControllerTransport: ControllerLinkTransport {
+  let identity: ControllerIdentity
+  let authorization: ControllerAuthorization
+  let status: ControllerStatus
+  let applyDeadline: Date
+  private var statusRequestCount = 0
+  private var blockedRefresh: CheckedContinuation<Void, Never>?
+  private var refreshStartedWaiters: [CheckedContinuation<Void, Never>] = []
+
+  init(
+    identity: ControllerIdentity,
+    authorization: ControllerAuthorization,
+    status: ControllerStatus,
+    applyDeadline: Date
+  ) {
+    self.identity = identity
+    self.authorization = authorization
+    self.status = status
+    self.applyDeadline = applyDeadline
+  }
+
+  func waitUntilRefreshIsBlocked() async {
+    if blockedRefresh != nil { return }
+    await withCheckedContinuation { continuation in
+      refreshStartedWaiters.append(continuation)
+    }
+  }
+
+  func releaseRefresh() {
+    blockedRefresh?.resume()
+    blockedRefresh = nil
+  }
+
+  func send(
+    _ request: ControllerLinkRequest,
+    to service: ControllerService,
+    expectedIdentity: ControllerIdentity?
+  ) async -> ControllerTransportReply {
+    XCTAssertEqual(expectedIdentity, identity)
+    let response: ControllerLinkResponse
+    switch request {
+    case .status(let requestID, let presented):
+      XCTAssertEqual(presented, authorization)
+      statusRequestCount += 1
+      if statusRequestCount == 2 {
+        await withCheckedContinuation { continuation in
+          blockedRefresh = continuation
+          let waiters = refreshStartedWaiters
+          refreshStartedWaiters.removeAll()
+          for waiter in waiters {
+            waiter.resume()
+          }
+        }
+      }
+      response = .status(requestID: requestID, status: status)
+    case .apply(let requestID, let presented, _, _):
+      XCTAssertEqual(presented, authorization)
+      response = .applied(requestID: requestID, automaticClearAt: applyDeadline)
+    case .pair(let requestID, _), .clear(let requestID, _, _):
+      response = .rejected(requestID: requestID, reason: .invalidRequest)
+    }
+    return ControllerTransportReply(presentedIdentity: identity, response: response)
   }
 }

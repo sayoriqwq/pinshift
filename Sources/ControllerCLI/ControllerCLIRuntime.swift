@@ -12,25 +12,16 @@ public struct ControllerRuntimeConfiguration: Equatable, Sendable {
   }
 }
 
-public enum ControllerServeLifecycleError: Error, Equatable, Sendable {
-  case cleanupFailed
-}
-
 public enum ControllerCLIRuntime {
   public static let deviceEnvironmentKey = "PINSHIFT_DEVICE"
-  public static let developerDirectoryEnvironmentKey =
-    "PINSHIFT_DEVELOPER_DIR"
+  public static let developerDirectoryEnvironmentKey = "PINSHIFT_DEVELOPER_DIR"
   public static let defaultDeveloperDirectory =
     "/Applications/Xcode-beta.app/Contents/Developer"
-  public static let e2ePairingCodeEnvironmentKey =
-    "PINSHIFT_E2E_PAIRING_CODE"
-  public static let defaultSimulationLeaseDuration: TimeInterval =
-    SimulationLeasePolicy.defaultDuration
+  public static let e2ePairingCodeEnvironmentKey = "PINSHIFT_E2E_PAIRING_CODE"
 
   public static func makeRunner(
     device: String? = nil,
     developerDirectory: String? = nil,
-    leaseDuration: TimeInterval = defaultSimulationLeaseDuration,
     environment: [String: String] = ProcessInfo.processInfo.environment,
     executor: any DevicectlCommandExecuting = FoundationDevicectlCommandExecutor(),
     diagnostics: SimulationDiagnosticRecorder? = nil
@@ -40,7 +31,6 @@ public enum ControllerCLIRuntime {
       controller: makeController(
         device: device,
         developerDirectory: developerDirectory,
-        leaseDuration: leaseDuration,
         environment: environment,
         executor: executor,
         diagnostics: recorder
@@ -52,50 +42,42 @@ public enum ControllerCLIRuntime {
   public static func makeController(
     device: String? = nil,
     developerDirectory: String? = nil,
-    leaseDuration: TimeInterval = defaultSimulationLeaseDuration,
-    serverOwnerID: UUID? = nil,
-    serverHeartbeatStore: (any SimulationServerHeartbeatStoring)? = nil,
-    cleanupGuardianHealthStore: (any SimulationCleanupGuardianHealthStoring)? = nil,
-    requiresHealthyCleanupGuardian: Bool = true,
+    automaticClearInterval: TimeInterval = TemporarySimulationPolicy.automaticClearInterval,
+    stateStore: (any TemporarySimulationStoring)? = nil,
     environment: [String: String] = ProcessInfo.processInfo.environment,
     executor: any DevicectlCommandExecuting = FoundationDevicectlCommandExecutor(),
-    diagnostics: SimulationDiagnosticRecorder? = nil
+    diagnostics: SimulationDiagnosticRecorder? = nil,
+    now: @escaping @Sendable () -> Date = Date.init,
+    sleep: @escaping @Sendable (TimeInterval) async throws -> Void = { seconds in
+      try await Task.sleep(for: .seconds(seconds))
+    },
+    automaticallySchedulesMaintenance: Bool = true
   ) -> SimulationController {
     let configuration = resolveConfiguration(
       device: device,
       developerDirectory: developerDirectory,
       environment: environment
     )
-
-    let diagnostics = diagnostics ?? makeDiagnostics(environment: environment)
+    let recorder = diagnostics ?? makeDiagnostics(environment: environment)
     return SimulationController(
       backend: DevicectlInjectionBackend(
         device: configuration.device ?? "",
         developerDirectory: configuration.developerDirectory,
         executor: executor,
-        diagnostics: diagnostics
+        diagnostics: recorder
       ),
-      diagnostics: diagnostics,
-      lifecycleStore: FileSimulationLifecycleStore(
-        fileURL: FileSimulationLifecycleStore.defaultFileURL(environment: environment)
-      ),
+      diagnostics: recorder,
+      stateStore: stateStore
+        ?? FileTemporarySimulationStore(
+          fileURL: FileTemporarySimulationStore.defaultFileURL(
+            environment: environment
+          )
+        ),
       activeDeviceIdentifier: configuration.device ?? "",
-      leaseDuration: leaseDuration,
-      serverOwnerID: serverOwnerID,
-      serverHeartbeatStore: serverHeartbeatStore
-        ?? FileSimulationServerHeartbeatStore(
-          fileURL: FileSimulationServerHeartbeatStore.defaultFileURL(
-            environment: environment
-          )
-        ),
-      cleanupGuardianHealthStore: cleanupGuardianHealthStore
-        ?? FileSimulationCleanupGuardianHealthStore(
-          fileURL: FileSimulationCleanupGuardianHealthStore.defaultFileURL(
-            environment: environment
-          )
-        ),
-      requiresHealthyCleanupGuardian: requiresHealthyCleanupGuardian,
-      recoversLegacySimulation: true
+      automaticClearInterval: automaticClearInterval,
+      now: now,
+      sleep: sleep,
+      automaticallySchedulesMaintenance: automaticallySchedulesMaintenance
     )
   }
 
@@ -105,60 +87,6 @@ public enum ControllerCLIRuntime {
     SimulationDiagnosticRecorder(
       side: .macController,
       directory: SimulationDiagnosticRecorder.defaultDirectory(environment: environment)
-    )
-  }
-
-  public static func makeCleanupGuardian(
-    device: String? = nil,
-    developerDirectory: String? = nil,
-    environment: [String: String] = ProcessInfo.processInfo.environment,
-    executor: any DevicectlCommandExecuting = FoundationDevicectlCommandExecutor(),
-    diagnostics: SimulationDiagnosticRecorder? = nil,
-    pollInterval: TimeInterval = 1
-  ) -> SimulationCleanupGuardian {
-    let configuration = resolveConfiguration(
-      device: device,
-      developerDirectory: developerDirectory,
-      environment: environment
-    )
-    let recorder = diagnostics ?? makeDiagnostics(environment: environment)
-    return SimulationCleanupGuardian(
-      backend: DevicectlInjectionBackend(
-        device: configuration.device ?? "",
-        developerDirectory: configuration.developerDirectory,
-        executor: executor,
-        diagnostics: recorder
-      ),
-      diagnostics: recorder,
-      lifecycleStore: FileSimulationLifecycleStore(
-        fileURL: FileSimulationLifecycleStore.defaultFileURL(environment: environment)
-      ),
-      activeDeviceIdentifier: configuration.device ?? "",
-      serverHeartbeatStore: FileSimulationServerHeartbeatStore(
-        fileURL: FileSimulationServerHeartbeatStore.defaultFileURL(
-          environment: environment
-        )
-      ),
-      healthStore: FileSimulationCleanupGuardianHealthStore(
-        fileURL: FileSimulationCleanupGuardianHealthStore.defaultFileURL(
-          environment: environment
-        )
-      ),
-      pollInterval: pollInterval
-    )
-  }
-
-  public static func makeServerHeartbeatEmitter(
-    ownerID: UUID,
-    environment: [String: String] = ProcessInfo.processInfo.environment
-  ) -> SimulationServerHeartbeatEmitter {
-    SimulationServerHeartbeatEmitter(
-      ownerID: ownerID,
-      store: FileSimulationServerHeartbeatStore(
-        fileURL: FileSimulationServerHeartbeatStore.defaultFileURL(
-          environment: environment
-        )
-      )
     )
   }
 
@@ -175,76 +103,23 @@ public enum ControllerCLIRuntime {
     )
   }
 
-  static func runServeLifecycle(
-    seconds: Double,
+  static func runAuthority(
     controller: SimulationController,
-    serverHeartbeat: SimulationServerHeartbeatEmitter? = nil,
-    sleep: @Sendable (Double) async throws -> Void = { duration in
-      try await Task.sleep(for: .seconds(duration))
-    },
-    diagnostics: SimulationDiagnosticRecorder? = nil,
-    report: @Sendable (ControllerCLIResult) async -> Void
+    pollInterval: TimeInterval = 60,
+    runFor duration: TimeInterval? = nil,
+    now: @escaping @Sendable () -> Date = Date.init,
+    sleep: @escaping @Sendable (TimeInterval) async throws -> Void = { seconds in
+      try await Task.sleep(for: .seconds(seconds))
+    }
   ) async throws {
-    try await serverHeartbeat?.recordNow()
-    let heartbeatTask = serverHeartbeat.map { heartbeat in
-      Task {
-        try? await heartbeat.run()
+    let startedAt = now()
+    while !Task.isCancelled {
+      _ = await controller.reconcile()
+      if let duration, now().timeIntervalSince(startedAt) >= duration {
+        return
       }
+      try await sleep(pollInterval)
     }
-    defer { heartbeatTask?.cancel() }
-    if let diagnostics {
-      await diagnostics.record(kind: "controller.lifecycle.serve-started")
-    }
-    do {
-      try await sleep(seconds)
-    } catch {
-      _ = await reportServeCleanup(
-        using: controller,
-        diagnostics: diagnostics,
-        interrupted: true,
-        report: report
-      )
-      throw error
-    }
-    let cleanupResult = await reportServeCleanup(
-      using: controller,
-      diagnostics: diagnostics,
-      interrupted: false,
-      report: report
-    )
-    guard cleanupResult.exitCode == 0 else {
-      throw ControllerServeLifecycleError.cleanupFailed
-    }
-  }
-
-  private static func reportServeCleanup(
-    using controller: SimulationController,
-    diagnostics: SimulationDiagnosticRecorder?,
-    interrupted: Bool,
-    report: @Sendable (ControllerCLIResult) async -> Void
-  ) async -> ControllerCLIResult {
-    await diagnostics?.record(
-      kind: interrupted
-        ? "controller.lifecycle.interrupted-shutdown-cleanup-started"
-        : "controller.lifecycle.shutdown-cleanup-started"
-    )
-    let result = await ControllerCLIRunner(
-      controller: controller,
-      diagnostics: diagnostics
-    ).run(
-      .reset(requestID: UUID())
-    )
-    await report(result)
-    await diagnostics?.record(
-      kind: interrupted
-        ? "controller.lifecycle.interrupted-shutdown-cleanup-finished"
-        : "controller.lifecycle.shutdown-cleanup-finished",
-      fields: [
-        "exitCode": .integer(Int64(result.exitCode)),
-        "outcome": .text(result.exitCode == 0 ? "success" : "failed"),
-      ]
-    )
-    return result
   }
 
   private static func nonempty(_ value: String?) -> String? {

@@ -14,19 +14,18 @@ struct LocationPickerView: View {
   @State private var mapVisibleRangeMeters: Double?
   @State private var selectionConfirmation: String?
   @State private var restorationConfirmation: String?
-  @State private var selectionFailure: String?
   @State private var hasCommittedSelection = false
   @State private var committedLocation: SelectedLocation?
   @FocusState private var searchFieldFocused: Bool
 
   let selected: SelectedLocation?
-  let onSelect: (SelectedLocation, LocationSelectionSource) -> Bool
+  let onSelect: (SelectedLocation, LocationSelectionSource) -> Void
 
   private static let fineAdjustmentRangeMeters = 500.0
 
   init(
     selected: SelectedLocation?,
-    onSelect: @escaping (SelectedLocation, LocationSelectionSource) -> Bool
+    onSelect: @escaping (SelectedLocation, LocationSelectionSource) -> Void
   ) {
     self.selected = selected
     self.onSelect = onSelect
@@ -93,11 +92,6 @@ struct LocationPickerView: View {
             Label(selectionConfirmation, systemImage: "checkmark.circle.fill")
               .foregroundStyle(PinshiftDesign.positive)
               .accessibilityIdentifier("location-selection-confirmation")
-          }
-          if let selectionFailure {
-            Label(selectionFailure, systemImage: "exclamationmark.triangle")
-              .foregroundStyle(PinshiftDesign.destructive)
-              .accessibilityIdentifier("location-selection-failure")
           }
           if let restorationConfirmation {
             Label(restorationConfirmation, systemImage: "arrow.uturn.backward.circle.fill")
@@ -372,19 +366,11 @@ struct LocationPickerView: View {
     source: LocationSelectionSource,
     confirmation: String
   ) {
-    if onSelect(location, source) {
-      hasCommittedSelection = true
-      committedLocation = location
-      selectionConfirmation = confirmation
-      restorationConfirmation = nil
-      selectionFailure = nil
-    } else {
-      selectionConfirmation = nil
-      restorationConfirmation = nil
-      selectionFailure = localized(
-        "Finish the current apply or stop request before changing the selection."
-      )
-    }
+    onSelect(location, source)
+    hasCommittedSelection = true
+    committedLocation = location
+    selectionConfirmation = confirmation
+    restorationConfirmation = nil
   }
 
   private func selectMapCenter() {
@@ -412,25 +398,16 @@ struct LocationPickerView: View {
     guard hasCommittedSelection else {
       restorationConfirmation = localized("Map restored to the opening location.")
       selectionConfirmation = nil
-      selectionFailure = nil
       return
     }
 
-    if onSelect(adjustmentOrigin, .map) {
-      hasCommittedSelection = false
-      committedLocation = adjustmentOrigin
-      selectionConfirmation = nil
-      restorationConfirmation = localized(
-        "Opening location restored as the Selected Location."
-      )
-      selectionFailure = nil
-    } else {
-      selectionConfirmation = nil
-      restorationConfirmation = nil
-      selectionFailure = localized(
-        "Finish the current apply or stop request before changing the selection."
-      )
-    }
+    onSelect(adjustmentOrigin, .map)
+    hasCommittedSelection = false
+    committedLocation = adjustmentOrigin
+    selectionConfirmation = nil
+    restorationConfirmation = localized(
+      "Opening location restored as the Selected Location."
+    )
   }
 
   private func updateMapFeedback(for region: MKCoordinateRegion) {

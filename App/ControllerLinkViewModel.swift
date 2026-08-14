@@ -10,8 +10,7 @@ enum LocalNetworkPermissionState: Equatable {
 @MainActor
 final class ControllerLinkViewModel: ObservableObject {
   @Published private(set) var state: ControllerLinkState = .notDiscovered
-  @Published private(set) var backendReadiness: ControllerBackendReadiness?
-  @Published private(set) var lifecycleStatus: ControllerLifecycleStatus?
+  @Published private(set) var controllerStatus: ControllerStatus?
   @Published private(set) var localNetworkPermission: LocalNetworkPermissionState =
     .notYetConfirmed
   @Published var pairingCode = ""
@@ -23,8 +22,6 @@ final class ControllerLinkViewModel: ObservableObject {
   private var reconnectTask: Task<Void, Never>?
   private var discoveryRetryPolicy = ControllerDiscoveryRetryPolicy()
   private var hasPairingCandidate = false
-  private var stopDeliveryRequestIDs: Set<UUID> = []
-  private var extensionDeliveryRequestIDs: Set<UUID> = []
 
   #if DEBUG
     private static let e2eFixtureIdentity = try! ControllerIdentity(
@@ -37,10 +34,23 @@ final class ControllerLinkViewModel: ObservableObject {
       ] == "1"
     }
 
-    private var usesE2EStopFailureFixture: Bool {
+    private var usesE2EClearFailureFixture: Bool {
       ProcessInfo.processInfo.environment[
         "PINSHIFT_E2E_CONTROLLER_LINK_FAILURE_FIXTURE"
-      ] == "failed-stop"
+      ] == "failed-clear"
+    }
+
+    private var e2eApplyDelayMilliseconds: Int {
+      guard
+        let value = ProcessInfo.processInfo.environment[
+          "PINSHIFT_E2E_APPLY_DELAY_MILLISECONDS"
+        ],
+        let milliseconds = Int(value),
+        milliseconds > 0
+      else {
+        return 0
+      }
+      return milliseconds
     }
   #endif
 
@@ -60,16 +70,12 @@ final class ControllerLinkViewModel: ObservableObject {
 
   func start() {
     guard discoveryTask == nil else { return }
-    record(kind: "app.controller-link.lifecycle-started")
+    record(kind: "app.controller-link.started")
     #if DEBUG
       if usesE2EFixture {
         localNetworkPermission = .allowed
         state = .connected(Self.e2eFixtureIdentity)
-        backendReadiness = .ready
-        lifecycleStatus = ControllerLifecycleStatus(
-          readiness: .ready,
-          simulation: .noActive
-        )
+        controllerStatus = ControllerStatus(readiness: .ready, simulation: .idle)
         record(kind: "app.controller-link.connected", fields: ["source": .text("fixture")])
         return
       }
@@ -81,7 +87,7 @@ final class ControllerLinkViewModel: ObservableObject {
           "PINSHIFT_E2E_RESET_CONTROLLER_TRUST"
         ] == "1" {
           state = await link.forgetController()
-          backendReadiness = nil
+          controllerStatus = nil
         }
       #endif
       for await event in discovery.events() {
@@ -100,8 +106,7 @@ final class ControllerLinkViewModel: ObservableObject {
     discoveryRetryPolicy.reset()
     hasPairingCandidate = false
     pairingCode = ""
-    backendReadiness = nil
-    lifecycleStatus = nil
+    controllerStatus = nil
     localNetworkPermission = .notYetConfirmed
     state = .notDiscovered
     start()
@@ -119,8 +124,7 @@ final class ControllerLinkViewModel: ObservableObject {
         pairingCode = ""
         hasPairingCandidate = false
         state = await link.refresh()
-        backendReadiness = await link.currentBackendReadiness()
-        lifecycleStatus = await link.currentLifecycleStatus()
+        controllerStatus = await link.currentStatus()
         record(kind: "app.controller-link.connected", fields: stateFields(state))
       }
     }
@@ -130,40 +134,14 @@ final class ControllerLinkViewModel: ObservableObject {
     hasPairingCandidate && pairingCode.count == 6 && pairingCode.allSatisfy(\.isNumber)
   }
 
+  /// Historical simulation state and backend readiness never gate a new Apply.
   var canApply: Bool {
-    guard case .connected = state, backendReadiness == .ready,
-      lifecycleStatus?.cleanupReadiness == .ready
-    else {
-      return false
-    }
-    return true
+    if case .connected = state { return true }
+    return false
   }
 
-  var cleanupProtectionMessage: String? {
-    switch lifecycleStatus?.cleanupReadiness {
-    case .ready:
-      return nil
-    case .unavailable(.cleanupGuardianUnavailable):
-      return
-        "Cleanup Guardian protection is unavailable. Run pinshift-install on the Mac, "
-        + "then retry."
-    case .unavailable:
-      return
-        "Automatic cleanup protection is unavailable. Resolve the Mac "
-        + "controller check and retry."
-    case .unsupportedController:
-      return
-        "This Mac controller is too old for protected time-bounded sessions. "
-        + "Update it with pinshift-install."
-    case nil:
-      return "Waiting for the Mac to confirm automatic-cleanup protection."
-    }
-  }
-
-  var canSendStop: Bool {
-    if case .connected = state {
-      return true
-    }
+  var canClear: Bool {
+    if case .connected = state { return true }
     return false
   }
 
@@ -178,37 +156,38 @@ final class ControllerLinkViewModel: ObservableObject {
     )
     #if DEBUG
       if usesE2EFixture {
-        let leaseExpiresAt = Date().addingTimeInterval(request.requestedLeaseDuration)
-        lifecycleStatus = ControllerLifecycleStatus(
+        if e2eApplyDelayMilliseconds > 0 {
+          try? await Task.sleep(for: .milliseconds(e2eApplyDelayMilliseconds))
+        }
+        let automaticClearAt = Date().addingTimeInterval(900)
+        controllerStatus = ControllerStatus(
           readiness: .ready,
-          cleanupReadiness: .ready,
-          simulation: .applied(
-            generationID: request.generationID,
-            leaseExpiresAt: leaseExpiresAt
+          simulation: .active(
+            operationID: request.requestID,
+            latitude: request.location.latitude,
+            longitude: request.location.longitude,
+            automaticClearAt: automaticClearAt
           )
+        )
+        let response = ControllerLinkResponse.applied(
+          requestID: request.requestID,
+          automaticClearAt: automaticClearAt
         )
         record(
           kind: "app.controller-link.apply-response",
           requestID: request.requestID,
-          fields: ["outcome": .text("applied"), "source": .text("fixture")]
+          fields: responseFields(response).merging(["source": .text("fixture")]) { _, new in new }
         )
-        return .appliedLifecycle(
-          requestID: request.requestID,
-          generationID: request.generationID,
-          leaseExpiresAt: leaseExpiresAt
-        )
+        return response
       }
     #endif
     let response = await link.apply(
       requestID: request.requestID,
-      generationID: request.generationID,
       latitude: request.location.latitude,
-      longitude: request.location.longitude,
-      requestedLeaseDuration: request.requestedLeaseDuration
+      longitude: request.location.longitude
     )
     state = await link.currentState()
-    backendReadiness = await link.currentBackendReadiness()
-    lifecycleStatus = await link.currentLifecycleStatus()
+    controllerStatus = await link.currentStatus()
     record(
       kind: "app.controller-link.apply-response",
       requestID: response.requestID,
@@ -217,161 +196,95 @@ final class ControllerLinkViewModel: ObservableObject {
     return response
   }
 
-  func deliverLeaseExtension(
-    _ intent: ManualSimulationLeaseExtensionIntent
-  ) async -> ControllerLinkResponse? {
-    guard extensionDeliveryRequestIDs.insert(intent.requestID).inserted else {
-      return nil
-    }
-    defer { extensionDeliveryRequestIDs.remove(intent.requestID) }
+  func clear(_ request: ManualSimulationClearRequest) async -> ControllerLinkResponse {
+    record(kind: "app.controller-link.clear-started", requestID: request.requestID)
     #if DEBUG
       if usesE2EFixture {
-        let currentExpiry: Date
-        if case .applied(_, let leaseExpiresAt) = lifecycleStatus?.simulation {
-          currentExpiry = leaseExpiresAt
-        } else {
-          currentExpiry = Date()
-        }
-        let extendedExpiry = min(
-          currentExpiry.addingTimeInterval(intent.extensionDuration),
-          Date().addingTimeInterval(3_600)
-        )
-        lifecycleStatus = ControllerLifecycleStatus(
-          readiness: .ready,
-          cleanupReadiness: .ready,
-          simulation: .applied(
-            generationID: intent.generationID,
-            leaseExpiresAt: extendedExpiry
-          )
-        )
-        return .extendedLifecycle(
-          requestID: intent.requestID,
-          generationID: intent.generationID,
-          leaseExpiresAt: extendedExpiry
-        )
-      }
-    #endif
-    let response = await link.extendLease(
-      requestID: intent.requestID,
-      generationID: intent.generationID,
-      extensionDuration: intent.extensionDuration
-    )
-    state = await link.currentState()
-    backendReadiness = await link.currentBackendReadiness()
-    lifecycleStatus = await link.currentLifecycleStatus()
-    record(
-      kind: "app.controller-link.lease-extension-response",
-      requestID: response.requestID,
-      fields: responseFields(response)
-    )
-    return response
-  }
-
-  func deliverStop(
-    _ intent: ManualSimulationStopIntent
-  ) async -> ControllerLinkResponse? {
-    guard stopDeliveryRequestIDs.insert(intent.requestID).inserted else {
-      return nil
-    }
-    defer { stopDeliveryRequestIDs.remove(intent.requestID) }
-    let requestID = intent.requestID
-    record(
-      kind: "app.controller-link.stop-started",
-      requestID: requestID,
-      fields: ["generationID": .text(intent.generationID.uuidString)]
-    )
-    #if DEBUG
-      if usesE2EFixture {
-        if usesE2EStopFailureFixture {
-          state = .unavailable(.transportUnavailable)
-          backendReadiness = nil
-          record(
-            kind: "app.controller-link.unavailable",
-            fields: [
-              "state": .text("unavailable"),
-              "reason": .text("transport-unavailable"),
-              "source": .text("fixture"),
-            ]
-          )
-          record(
-            kind: "app.controller-link.connection-failed",
-            fields: ["source": .text("fixture")]
-          )
+        if usesE2EClearFailureFixture {
+          let existing = controllerStatus?.simulation
+          let fallbackDeadline = Date().addingTimeInterval(900)
+          switch existing {
+          case .active(let operationID, let latitude, let longitude, let deadline):
+            controllerStatus = ControllerStatus(
+              readiness: .unavailable(.clearFailed),
+              simulation: .clearPending(
+                operationID: operationID,
+                latitude: latitude,
+                longitude: longitude,
+                automaticClearAt: deadline,
+                reason: .clearFailed
+              )
+            )
+          default:
+            controllerStatus = ControllerStatus(
+              readiness: .unavailable(.clearFailed),
+              simulation: .clearPending(
+                operationID: request.requestID,
+                latitude: nil,
+                longitude: nil,
+                automaticClearAt: fallbackDeadline,
+                reason: .clearFailed
+              )
+            )
+          }
           let response = ControllerLinkResponse.failed(
-            requestID: requestID,
+            requestID: request.requestID,
             reason: .clearFailed
           )
-          lifecycleStatus = ControllerLifecycleStatus(
-            readiness: .unavailable(.clearFailed),
-            cleanupReadiness: .ready,
-            simulation: .cleanupPending(
-              generationID: intent.generationID,
-              requestID: requestID,
-              reason: .clearFailed
-            )
-          )
           record(
-            kind: "app.controller-link.stop-response",
-            requestID: requestID,
-            fields: responseFields(response)
+            kind: "app.controller-link.clear-response",
+            requestID: request.requestID,
+            fields: responseFields(response).merging(["source": .text("fixture")]) {
+              _, new in new
+            }
           )
           return response
         }
-        lifecycleStatus = ControllerLifecycleStatus(
-          readiness: .ready,
-          cleanupReadiness: .ready,
-          simulation: .stopped(generationID: intent.generationID)
-        )
+        controllerStatus = ControllerStatus(readiness: .ready, simulation: .idle)
+        let response = ControllerLinkResponse.cleared(requestID: request.requestID)
         record(
-          kind: "app.controller-link.stop-response",
-          requestID: requestID,
-          fields: ["outcome": .text("stopped"), "source": .text("fixture")]
+          kind: "app.controller-link.clear-response",
+          requestID: request.requestID,
+          fields: responseFields(response).merging(["source": .text("fixture")]) { _, new in new }
         )
-        return .stopped(requestID: requestID)
+        return response
       }
     #endif
-    let response = await link.stop(
-      requestID: requestID,
-      generationID: intent.generationID
+    let response = await link.clear(
+      requestID: request.requestID,
+      targetOperationID: request.targetOperationID
     )
     state = await link.currentState()
-    backendReadiness = await link.currentBackendReadiness()
-    lifecycleStatus = await link.currentLifecycleStatus()
+    controllerStatus = await link.currentStatus()
     record(
-      kind: "app.controller-link.stop-response",
+      kind: "app.controller-link.clear-response",
       requestID: response.requestID,
       fields: responseFields(response)
     )
     return response
   }
 
-  func reconcileLifecycle() async -> ControllerLifecycleStatus? {
+  func reconcileStatus() async -> ControllerStatus? {
     #if DEBUG
-      if usesE2EFixture {
-        return lifecycleStatus
-      }
+      if usesE2EFixture { return controllerStatus }
     #endif
     state = await link.refresh()
-    backendReadiness = await link.currentBackendReadiness()
-    lifecycleStatus = await link.currentLifecycleStatus()
-    if let lifecycleStatus {
+    controllerStatus = await link.currentStatus()
+    if let controllerStatus {
       record(
-        kind: "app.controller-link.lifecycle-reconciled",
-        fields: [
-          "simulation": .text(String(describing: lifecycleStatus.simulation))
-        ]
+        kind: "app.controller-link.status-reconciled",
+        fields: ["simulation": .text(String(describing: controllerStatus.simulation))]
       )
     }
-    return lifecycleStatus
+    return controllerStatus
   }
 
-  func refreshReadiness() {
+  func refreshStatus() {
     Task { [weak self] in
       guard let self else { return }
       state = await link.refresh()
-      backendReadiness = await link.currentBackendReadiness()
-      lifecycleStatus = await link.currentLifecycleStatus()
-      record(kind: "app.controller-link.readiness-refreshed", fields: stateFields(state))
+      controllerStatus = await link.currentStatus()
+      record(kind: "app.controller-link.status-refreshed", fields: stateFields(state))
     }
   }
 
@@ -385,8 +298,7 @@ final class ControllerLinkViewModel: ObservableObject {
       discoveryRetryPolicy.serviceBecameAbsent()
       if case .connected = state {
         state = await link.disconnected()
-        backendReadiness = nil
-        lifecycleStatus = nil
+        controllerStatus = nil
         record(kind: "app.controller-link.disconnected")
       } else {
         state = .notDiscovered
@@ -399,15 +311,13 @@ final class ControllerLinkViewModel: ObservableObject {
       localNetworkPermission = .denied
       discoveryRetryPolicy.stopRetrying()
       state = await link.localNetworkPermissionDenied()
-      backendReadiness = nil
-      lifecycleStatus = nil
+      controllerStatus = nil
       record(kind: "app.controller-link.local-network-denied")
     case .failed:
       cancelScheduledReconnect()
       discoveryRetryPolicy.stopRetrying()
       state = .unavailable(.transportUnavailable)
-      backendReadiness = nil
-      lifecycleStatus = nil
+      controllerStatus = nil
       record(kind: "app.controller-link.connection-failed")
     }
   }
@@ -417,8 +327,7 @@ final class ControllerLinkViewModel: ObservableObject {
     let connectionState = await link.connect(to: service)
     guard !Task.isCancelled else { return }
     state = connectionState
-    backendReadiness = await link.currentBackendReadiness()
-    lifecycleStatus = await link.currentLifecycleStatus()
+    controllerStatus = await link.currentStatus()
     record(kind: "app.controller-link.connection-result", fields: stateFields(state))
 
     switch state {
@@ -495,8 +404,8 @@ final class ControllerLinkViewModel: ObservableObject {
     case .localNetworkDenied:
       fields = ["state": .text("local-network-denied")]
     }
-    if let backendReadiness {
-      switch backendReadiness {
+    if let readiness = controllerStatus?.readiness {
+      switch readiness {
       case .ready:
         fields["backendReadiness"] = .text("ready")
       case .unavailable(let reason):
@@ -511,34 +420,17 @@ final class ControllerLinkViewModel: ObservableObject {
 
   private func responseFields(_ response: ControllerLinkResponse) -> SimulationDiagnosticFields {
     switch response {
-    case .status(_, let readiness):
-      return ["outcome": .text(String(describing: readiness))]
-    case .lifecycleStatus(_, let status):
+    case .status(_, let status):
       return ["outcome": .text(String(describing: status.simulation))]
     case .paired:
       return ["outcome": .text("paired")]
-    case .applied:
-      return ["outcome": .text("applied")]
-    case .appliedLifecycle(_, let generationID, let leaseExpiresAt):
+    case .applied(_, let automaticClearAt):
       return [
         "outcome": .text("applied"),
-        "generationID": .text(generationID.uuidString),
-        "leaseExpiresAt": .date(leaseExpiresAt),
+        "automaticClearAt": .date(automaticClearAt),
       ]
-    case .extendedLifecycle(_, let generationID, let leaseExpiresAt):
-      return [
-        "outcome": .text("extended"),
-        "generationID": .text(generationID.uuidString),
-        "leaseExpiresAt": .date(leaseExpiresAt),
-      ]
-    case .stopped:
-      return ["outcome": .text("stopped")]
-    case .stoppedLifecycle(_, let generationID):
-      var fields: SimulationDiagnosticFields = ["outcome": .text("stopped")]
-      if let generationID {
-        fields["generationID"] = .text(generationID.uuidString)
-      }
-      return fields
+    case .cleared:
+      return ["outcome": .text("cleared")]
     case .failed(_, let reason):
       return ["outcome": .text("failed"), "reason": .text(reason.rawValue)]
     case .rejected(_, let reason):

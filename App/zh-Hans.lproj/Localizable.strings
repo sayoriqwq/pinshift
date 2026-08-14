@@ -63,6 +63,37 @@
 "The active simulation could not be cleared" = "无法清除当前活动模拟";
 "Controller response mismatch" = "控制器响应不匹配";
 
+/* 面向用户的简化 Mac 文案 */
+"Mac" = "Mac";
+"Mac connection" = "Mac 连接";
+"Test device / Xcode" = "测试设备 / Xcode";
+"Mac location service" = "Mac 位置服务";
+"Current temporary location" = "当前临时位置";
+"Pinshift observation" = "Pinshift 观测";
+"Pair Mac" = "配对 Mac";
+"Retry Mac Connection" = "重试 Mac 连接";
+"Refresh Mac Status" = "刷新 Mac 状态";
+"Applying temporary location…" = "正在应用临时位置…";
+"Applied — waiting for a fresh observation" = "已应用 — 正在等待新的观测";
+"Verified in Pinshift" = "已在 Pinshift 中验证";
+"Searching for your Mac…" = "正在查找你的 Mac…";
+"Mac found — enter the code shown there" = "已找到 Mac — 请输入 Mac 上显示的配对码";
+"Mac connected" = "Mac 已连接";
+"Mac disconnected" = "Mac 连接已断开";
+"Mac identity changed — connection rejected" = "Mac 身份已更改 — 已拒绝连接";
+"Mac unavailable" = "Mac 不可用";
+"Mac reported a workflow failure" = "Mac 报告工作流失败";
+"Waiting for Mac connection" = "正在等待 Mac 连接";
+"Unknown until the Mac reconnects" = "未知——等待 Mac 重新连接";
+"Applied locally — waiting for Mac status" = "本地已应用——正在等待 Mac 状态";
+"The Mac is unavailable. Reconnect and try again." = "Mac 不可用。请重新连接后重试。";
+"The Mac rejected the request (%@). Check Mac status and retry." = "Mac 拒绝了请求（%@）。请检查 Mac 状态后重试。";
+"Mac location service is unavailable" = "Mac 位置服务不可用";
+"Mac location service timed out" = "Mac 位置服务超时";
+"Mac authorization failed" = "Mac 授权失败";
+"Mac response mismatch" = "Mac 响应不匹配";
+"The Mac is connected to a different test device" = "Mac 连接的是另一台测试设备";
+
 /* Selected location */
 "Selected Location" = "待应用位置";
 "Latitude (-90…90)" = "纬度 (-90…90)";
@@ -77,7 +108,6 @@
 "No location selected" = "尚未选择位置";
 "Latitude must be a number from -90 through 90." = "纬度必须是 -90 到 90 之间的数字。";
 "Longitude must be a number from -180 through 180." = "经度必须是 -180 到 180 之间的数字。";
-"Finish the current stop request before changing the Selected Location." = "请等待当前停止请求完成后再更改待应用位置。";
 "Save a valid Selected Location first." = "请先保存有效的待应用位置。";
 "Manual coordinates" = "手动坐标";
 "Map" = "地图";
@@ -111,16 +141,8 @@
 "Saved Locations use an unsupported version." = "已保存地点使用了不支持的版本。";
 "Saved Locations could not be loaded." = "无法加载已保存地点。";
 "Saved Locations could not be saved. Your existing collection is unchanged." = "无法保存已保存地点；现有集合未更改。";
-"Simulation Lease expires" = "模拟租约到期时间";
-"Cleanup pending — retrying automatically…" = "等待清理——正在自动重试…";
-"Cleanup is still pending" = "仍在等待清理";
-"The trusted controller is unavailable. Cleanup remains pending and will retry automatically." = "可信控制器暂时不可用。清理请求会保留，并在恢复后自动重试。";
-"Pending cleanup belongs to a different Active Test Device" = "等待清理的模拟属于另一台活动测试设备";
-"Stop targets an older simulation generation" = "停止请求指向较早的模拟代次";
-"Finish the pending simulation cleanup before applying another location." = "请先完成等待中的模拟清理，再应用其他位置。";
-"The pending simulation cleanup could not be restored." = "无法恢复等待中的模拟清理状态。";
-"The simulation cleanup state could not be saved." = "无法保存模拟清理状态。";
-"Apply outcome unknown — cleanup required" = "应用结果未知——需要清理";
+"The Selected Location could not be restored." = "无法恢复待应用位置。";
+"The Selected Location could not be saved." = "无法保存待应用位置。";
 "Unknown until Controller Link reconnects" = "未知——等待控制器链路重新连接";
 "Acknowledged locally — awaiting reconciliation" = "本地已确认——等待与控制器对账";
 
@@ -131,8 +153,6 @@
 "Apply Selected Location" = "应用待应用位置";
 "Applied Simulation acknowledged" = "已应用模拟已确认";
 "Active Applied Request" = "当前已应用请求";
-"Stopping…" = "正在停止…";
-"Stop Simulation" = "停止模拟";
 "Save a Selected Location to begin." = "请先保存待应用位置。";
 "Selected — waiting to apply" = "已选择 — 等待应用";
 "Applying to the Injection Backend…" = "正在应用到注入后端…";
@@ -142,13 +162,9 @@
 "Elapsed" = "耗时";
 "Distance" = "距离";
 "Simulation request failed" = "模拟请求失败";
-"No Applied Simulation is active." = "当前没有活动的已应用模拟。";
 "Request" = "请求";
-"Stopping the active simulation…" = "正在停止活动模拟…";
-"Stop Request" = "停止请求";
 "Injection Backend cleared" = "注入后端已清除";
 "The simulation proxy is inactive. A fresh physical-location callback is separate and may not arrive immediately." = "模拟代理已停用。新的物理位置回调是独立事件，可能不会立即到达。";
-"Could not stop the active simulation" = "无法停止活动模拟";
 "Inactive" = "未激活";
 "Acknowledged" = "已确认";
 "Verified by a fresh app observation" = "已通过 App 的新观测验证";
@@ -224,42 +240,32 @@
 "Search Fixture" = "搜索测试地点";
 "Deterministic UI test result" = "确定性的 UI 测试结果";
 "%@ is now the Selected Location." = "%@ 已设为待应用位置。";
-"Finish the current apply or stop request before changing the selection." = "请等待当前应用或停止请求完成后再更改选择。";
 "Map center is now the Selected Location." = "地图中心已设为待应用位置。";
 
-/* Time-bounded simulation */
-"Time-Bounded Simulation" = "限时位置模拟";
-"Choose how long this simulation may remain active. After Apply succeeds, automatic cleanup no longer depends on remembering Stop." = "选择本次模拟允许持续的时间。应用成功后，即使忘记停止，也会进入自动清理。";
-"Duration" = "持续时间";
-"%d min" = "%d 分钟";
-"Start Time-Bounded Simulation" = "开始限时模拟";
+/* Temporary simulation */
+"Temporary Simulation" = "临时位置模拟";
+"The selected location applies for 15 minutes. Choose and apply another location at any time to replace it." = "待应用位置会生效 15 分钟。你可以随时选择并应用其他地点来替换它。";
 "Simulated Location" = "模拟位置";
-"Automatic cleanup at" = "自动清理时间";
-"Automatic cleanup in %@" = "%@ 后自动清理";
-"Cleanup due — waiting for Mac confirmation" = "已到清理时间——等待 Mac 确认";
-"Automatic cleanup entrusted to Cleanup Guardian" = "已将自动清理托付给清理守护者";
-"Extending…" = "正在延长…";
-"Extend 15 Minutes" = "延长 15 分钟";
-"Restoring…" = "正在恢复…";
-"Return to Normal Location" = "恢复正常位置";
+"Automatic clear at" = "自动解除时间";
+"Automatic clear in %@" = "%@ 后自动解除";
+"Automatic clear is due. The Mac will retry when the device is reachable." = "已到自动解除时间。设备可连接后，Mac 会自动重试。";
+"Clearing…" = "正在解除…";
+"Clear Now" = "立即解除";
 "Simulation active" = "位置模拟中";
-"Restore requested" = "已请求恢复";
-"Cleanup pending — waiting for Mac confirmation" = "等待清理——正在等待 Mac 确认";
 "Verified by a fresh observation in this app" = "已通过本 App 的新观测验证";
 "Applied; latest observation is not yet verified" = "已应用；最新观测尚未验证";
 "Applied; waiting for a fresh observation" = "已应用；正在等待新的观测";
-"Restore requested — retrying automatically…" = "已请求恢复——正在自动重试…";
+"Clearing simulated location…" = "正在解除模拟位置…";
 "Simulated Location cleared" = "已清除模拟位置";
-"Automatic Cleanup" = "自动清理";
-"Cleanup Guardian ready" = "清理守护者已就绪";
-"Controller update required" = "需要更新控制器";
-"Choose a 15-, 30-, or 60-minute duration" = "请选择 15、30 或 60 分钟";
-"Cleanup Guardian protection is unavailable" = "清理守护者保护不可用";
-"Update the Mac controller to use protected sessions" = "请更新 Mac 控制器以使用受保护的模拟会话";
-"Cleanup Guardian protection is unavailable. Run pinshift-install on the Mac, then retry." = "清理守护者保护不可用。请在 Mac 上运行 pinshift-install 后重试。";
-"Automatic cleanup protection is unavailable. Resolve the Mac controller check and retry." = "自动清理保护不可用。请解决 Mac 控制器检查项后重试。";
-"This Mac controller is too old for protected time-bounded sessions. Update it with pinshift-install." = "此 Mac 控制器版本过旧，无法使用受保护的限时模拟。请使用 pinshift-install 更新。";
-"Waiting for the Mac to confirm automatic-cleanup protection." = "正在等待 Mac 确认自动清理保护。";
+"Clear could not be confirmed" = "未能确认立即解除";
+"Automatic clear remains scheduled. You can choose and apply another location now." = "自动解除仍按原计划执行。你现在仍可选择并应用其他地点。";
+"Automatic Clear" = "自动解除";
+"Every applied location clears automatically after 15 minutes." = "每个已应用地点都会在 15 分钟后自动解除。";
+"Apply outcome unknown; automatic clear remains scheduled" = "应用结果未知；自动解除仍按计划执行";
+"Automatic clear will retry when the device is reachable" = "设备可连接后会重试自动解除";
+"The trusted controller is unavailable. Reconnect and try again." = "可信控制器不可用。请重新连接后重试。";
+"The controller is connected to a different Active Test Device" = "控制器连接的是另一台活动测试设备";
+"Refresh Controller Status" = "刷新控制器状态";
 
 /* Pinshift 主页与设置 */
 "Settings" = "设置";
@@ -273,13 +279,7 @@
 "Ready" = "已就绪";
 "Finding Mac" = "正在查找 Mac";
 "Pairing Required" = "需要配对";
-"Needs Attention" = "需要处理";
 "Mac Unavailable" = "Mac 不可用";
-"Automatic cleanup is protected" = "自动清理已受保护";
-"Automatic cleanup needs attention" = "自动清理需要处理";
-"Cleanup stays pending until the Mac acknowledges a successful devicectl clear." = "在 Mac 确认 devicectl 已成功清除前，清理会始终保持待处理状态。";
-"Update the Mac controller before starting a protected simulation." = "开始受保护的模拟前，请先更新 Mac 控制器。";
-"Connect to the Mac to confirm Cleanup Guardian readiness." = "请连接 Mac，以确认清理守护者已就绪。";
 "Selected via %@" = "选择方式：%@";
 "Coordinates" = "坐标位置";
 "Map Selection" = "地图选点";

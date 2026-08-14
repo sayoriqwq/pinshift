@@ -102,10 +102,10 @@ struct ContentView: View {
         controllerLink.start()
       }
       while !Task.isCancelled {
-        await reconcileSimulationLifecycle()
+        await reconcileControllerStatusFromMac()
         await diagnostics.refreshNow()
         do {
-          try await Task.sleep(for: .seconds(1))
+          try await Task.sleep(for: .seconds(5))
         } catch {
           break
         }
@@ -116,7 +116,7 @@ struct ContentView: View {
     }
     .fullScreenCover(isPresented: $showingLocationPicker) {
       LocationPickerView(selected: model.selection.selected) { location, source in
-        model.select(location, source: source)
+        _ = model.select(location, source: source)
       }
     }
     .sheet(isPresented: $diagnostics.isSharePresented) {
@@ -261,7 +261,7 @@ struct ContentView: View {
         .padding(PinshiftDesign.spaceM)
         .accessibilityLabel(
           Text(
-            "\(homeReadinessTitle). \(controllerLinkStatus). \(cleanupProtectionDescription)"
+            "\(homeReadinessTitle). \(controllerLinkStatus)"
           )
         )
         .accessibilityIdentifier("home-readiness-status")
@@ -293,7 +293,6 @@ struct ContentView: View {
       homeSelectedLocation
       homeSavedLocations
       simulationSection
-      homeCleanupPromise
       homeSettingsLink
     }
     .padding(.horizontal, PinshiftDesign.spaceM)
@@ -424,37 +423,6 @@ struct ContentView: View {
     )
     .accessibilityAddTraits(isSelected ? .isSelected : [])
     .accessibilityIdentifier("saved-location-select-\(savedLocation.id.uuidString)")
-  }
-
-  private var homeCleanupPromise: some View {
-    HStack(alignment: .top, spacing: PinshiftDesign.spaceM) {
-      Image(systemName: homeCleanupIcon)
-        .font(.title3.weight(.semibold))
-        .foregroundStyle(homeCleanupColor)
-        .frame(width: 28, height: 28)
-        .background(homeCleanupBackground, in: Circle())
-        .accessibilityHidden(true)
-
-      VStack(alignment: .leading, spacing: PinshiftDesign.spaceXS) {
-        Text(homeCleanupTitle)
-          .font(.subheadline.weight(.semibold))
-          .foregroundStyle(PinshiftDesign.textPrimary)
-        Text(homeCleanupDetail)
-          .font(.footnote)
-          .foregroundStyle(PinshiftDesign.textSecondary)
-          .fixedSize(horizontal: false, vertical: true)
-      }
-    }
-    .padding(PinshiftDesign.spaceM)
-    .background(PinshiftDesign.surfaceSecondary)
-    .clipShape(
-      RoundedRectangle(
-        cornerRadius: PinshiftDesign.radiusM,
-        style: .continuous
-      )
-    )
-    .accessibilityElement(children: .combine)
-    .accessibilityIdentifier("cleanup-promise")
   }
 
   private var homeSettingsLink: some View {
@@ -608,148 +576,75 @@ struct ContentView: View {
   }
 
   private var homeReadinessTitle: String {
-    if case .connected = controllerLink.state,
-      controllerLink.backendReadiness == .ready,
-      controllerLink.lifecycleStatus?.cleanupReadiness == .ready
-    {
-      return localized("Ready")
-    }
-
     switch controllerLink.state {
     case .notDiscovered:
       return localized("Finding Mac")
     case .awaitingPairing:
       return localized("Pairing Required")
     case .connected:
-      return localized("Needs Attention")
+      return localized("Ready")
     case .unavailable, .localNetworkDenied:
       return localized("Mac Unavailable")
     }
   }
 
   private var homeReadinessIcon: String {
-    if case .connected = controllerLink.state,
-      controllerLink.backendReadiness == .ready,
-      controllerLink.lifecycleStatus?.cleanupReadiness == .ready
-    {
-      return "checkmark.circle.fill"
-    }
-
     switch controllerLink.state {
     case .notDiscovered:
       return "antenna.radiowaves.left.and.right"
     case .awaitingPairing:
       return "link.badge.plus"
     case .connected:
-      return "exclamationmark.circle.fill"
+      return "checkmark.circle.fill"
     case .unavailable, .localNetworkDenied:
       return "xmark.circle.fill"
     }
   }
 
   private var homeReadinessColor: Color {
-    if case .connected = controllerLink.state,
-      controllerLink.backendReadiness == .ready,
-      controllerLink.lifecycleStatus?.cleanupReadiness == .ready
-    {
-      return PinshiftDesign.positive
-    }
-
     switch controllerLink.state {
     case .notDiscovered, .awaitingPairing:
       return PinshiftDesign.primary
-    case .connected, .unavailable, .localNetworkDenied:
+    case .connected:
+      return PinshiftDesign.positive
+    case .unavailable, .localNetworkDenied:
       return PinshiftDesign.destructive
     }
   }
 
-  private var homeCleanupTitle: String {
-    switch controllerLink.lifecycleStatus?.cleanupReadiness {
-    case .ready:
-      return localized("Automatic cleanup is protected")
-    case .unavailable, .unsupportedController:
-      return localized("Automatic cleanup needs attention")
-    case nil:
-      return localized("Automatic cleanup")
-    }
-  }
-
-  private var homeCleanupDetail: String {
-    switch controllerLink.lifecycleStatus?.cleanupReadiness {
-    case .ready:
-      return localized(
-        "Cleanup stays pending until the Mac acknowledges a successful devicectl clear."
-      )
-    case .unavailable(let reason):
-      return controllerFailureDescription(reason)
-    case .unsupportedController:
-      return localized("Update the Mac controller before starting a protected simulation.")
-    case nil:
-      return localized("Connect to the Mac to confirm Cleanup Guardian readiness.")
-    }
-  }
-
-  private var homeCleanupIcon: String {
-    controllerLink.lifecycleStatus?.cleanupReadiness == .ready
-      ? "checkmark.shield.fill"
-      : "shield.lefthalf.filled.badge.checkmark"
-  }
-
-  private var homeCleanupColor: Color {
-    switch controllerLink.lifecycleStatus?.cleanupReadiness {
-    case .ready:
-      PinshiftDesign.positive
-    case .unavailable, .unsupportedController:
-      PinshiftDesign.destructive
-    case nil:
-      PinshiftDesign.primary
-    }
-  }
-
-  private var homeCleanupBackground: Color {
-    switch controllerLink.lifecycleStatus?.cleanupReadiness {
-    case .ready:
-      PinshiftDesign.positiveSoft
-    case .unavailable, .unsupportedController:
-      PinshiftDesign.destructiveSoft
-    case nil:
-      PinshiftDesign.primarySoft
-    }
-  }
-
   private var controllerLinkSection: some View {
-    Section(localized("Mac Controller")) {
+    Section(localized("Mac")) {
       LabeledContent("Local Network Permission") {
         Text(localNetworkPermissionDescription)
           .accessibilityIdentifier("local-network-permission-status")
       }
 
-      LabeledContent("Controller Link") {
+      LabeledContent("Mac connection") {
         Text(controllerLinkStatus)
           .accessibilityIdentifier("controller-link-status")
       }
 
-      LabeledContent("Active Test Device / Xcode") {
+      LabeledContent("Test device / Xcode") {
         Text(xcodeDeviceWorkflowDescription)
           .accessibilityIdentifier("xcode-device-workflow-status")
       }
 
-      LabeledContent("Injection Backend") {
+      LabeledContent("Mac location service") {
         Text(backendReadinessDescription)
           .accessibilityIdentifier("controller-backend-status")
       }
 
-      LabeledContent("Automatic Cleanup") {
-        Text(cleanupProtectionDescription)
-          .accessibilityIdentifier("cleanup-guardian-status")
+      LabeledContent("Automatic Clear") {
+        Text(localized("Every applied location clears automatically after 15 minutes."))
+          .accessibilityIdentifier("automatic-clear-policy")
       }
 
-      LabeledContent("Applied Simulation") {
+      LabeledContent("Current temporary location") {
         Text(appliedSimulationDescription)
           .accessibilityIdentifier("applied-simulation-status")
       }
 
-      LabeledContent("Verified Simulation") {
+      LabeledContent("Pinshift observation") {
         Text(verifiedSimulationDescription)
           .accessibilityIdentifier("verified-simulation-status")
       }
@@ -763,7 +658,7 @@ struct ContentView: View {
           controllerLink.pair()
         } label: {
           ActionButtonLabel(
-            title: Text("Pair Controller"),
+            title: Text("Pair Mac"),
             systemImage: "link.badge.plus"
           )
         }
@@ -820,7 +715,7 @@ struct ContentView: View {
           controllerLink.retry()
         } label: {
           ActionButtonLabel(
-            title: Text("Retry Controller Discovery"),
+            title: Text("Retry Mac Connection"),
             systemImage: "arrow.clockwise"
           )
         }
@@ -828,20 +723,17 @@ struct ContentView: View {
         .accessibilityIdentifier("retry-controller-discovery")
       }
 
-      if case .connected = controllerLink.state,
-        controllerLink.backendReadiness != .ready
-          || controllerLink.lifecycleStatus?.cleanupReadiness != .ready
-      {
+      if case .connected = controllerLink.state {
         Button {
-          controllerLink.refreshReadiness()
+          controllerLink.refreshStatus()
         } label: {
           ActionButtonLabel(
-            title: Text("Refresh Injection Backend Status"),
+            title: Text("Refresh Mac Status"),
             systemImage: "arrow.triangle.2.circlepath"
           )
         }
         .buttonStyle(PinshiftSoftButtonStyle())
-        .accessibilityIdentifier("refresh-controller-readiness")
+        .accessibilityIdentifier("refresh-controller-status")
       }
     }
   }
@@ -1154,69 +1046,45 @@ struct ContentView: View {
 
   private var simulationSection: some View {
     VStack(alignment: .leading, spacing: 12) {
-      Text(localized("Time-Bounded Simulation"))
+      Text(localized("Temporary Simulation"))
         .font(.headline)
         .foregroundStyle(PinshiftDesign.textPrimary)
 
+      Text(
+        "The selected location applies for 15 minutes. Choose and apply another location at any time to replace it."
+      )
+      .font(.footnote)
+      .foregroundStyle(PinshiftDesign.textSecondary)
+      .lineSpacing(2)
+      .fixedSize(horizontal: false, vertical: true)
+
+      Button {
+        guard let request = model.beginManualApply() else { return }
+        Task {
+          let response = await controllerLink.apply(request)
+          model.receiveApplyResponse(response, for: request)
+        }
+      } label: {
+        ActionButtonLabel(
+          title: Text(localized(model.isApplying ? "Applying…" : "Apply Selected Location")),
+          systemImage: "location.circle.fill",
+          isBusy: model.isApplying
+        )
+      }
+      .buttonStyle(PinshiftFilledButtonStyle())
+      .disabled(
+        model.selection.selected == nil
+          || !controllerLink.canApply
+      )
+      .accessibilityIdentifier("apply-selected-location")
+
+      manualSimulationStatus
+
       if let activeRequest = model.manualSession.activeAppliedRequest {
         activeSimulationCard(activeRequest)
-      } else {
-        Text(
-          "Choose how long this simulation may remain active. After Apply succeeds, automatic cleanup no longer depends on remembering Stop."
-        )
-        .font(.footnote)
-        .foregroundStyle(PinshiftDesign.textSecondary)
-        .lineSpacing(2)
-        .fixedSize(horizontal: false, vertical: true)
-
-        Picker("Duration", selection: $model.selectedLeaseDuration) {
-          ForEach(SimulationLeaseDuration.allCases) { duration in
-            Text(localizedFormat("%d min", duration.minutes))
-              .tag(duration)
-          }
-        }
-        .pickerStyle(.segmented)
-        .controlSize(.small)
-        .disabled(model.isApplying)
-        .accessibilityIdentifier("simulation-duration-picker")
-
-        if let protectionMessage = controllerLink.cleanupProtectionMessage,
-          model.selection.selected != nil
-        {
-          Label(localized(protectionMessage), systemImage: "exclamationmark.shield")
-            .font(.footnote)
-            .foregroundStyle(PinshiftDesign.destructive)
-            .accessibilityIdentifier("cleanup-protection-guidance")
-        }
-
-        Button {
-          guard let request = model.beginManualApply() else { return }
-          Task {
-            let response = await controllerLink.apply(request)
-            model.receiveApplyResponse(response, for: request)
-          }
-        } label: {
-          ActionButtonLabel(
-            title: Text(
-              localized(model.isApplying ? "Applying…" : "Start Time-Bounded Simulation")
-            ),
-            systemImage: "location.circle.fill",
-            isBusy: model.isApplying
-          )
-        }
-        .buttonStyle(PinshiftFilledButtonStyle())
-        .disabled(
-          model.selection.selected == nil
-            || model.isApplying
-            || model.pendingStopIntent != nil
-            || !controllerLink.canApply
-        )
-        .accessibilityIdentifier("apply-selected-location")
-
-        manualSimulationStatus
       }
 
-      manualStopStatus
+      manualClearStatus
     }
     .font(.subheadline)
     .padding(PinshiftDesign.spaceM)
@@ -1231,7 +1099,10 @@ struct ContentView: View {
 
   private func activeSimulationCard(_ request: ManualSimulationRequest) -> some View {
     VStack(alignment: .leading, spacing: 12) {
-      activeSimulationLifecycleLabel
+      Label("Simulation active", systemImage: "location.fill")
+        .font(.headline)
+        .foregroundStyle(PinshiftDesign.primary)
+        .accessibilityIdentifier("applied-acknowledgement")
 
       LabeledContent("Simulated Location") {
         Text(activeLocationDescription(request.location))
@@ -1239,85 +1110,51 @@ struct ContentView: View {
           .accessibilityIdentifier("active-simulation-location")
       }
 
-      if let leaseExpiresAt = request.leaseExpiresAt {
-        LabeledContent("Automatic cleanup at", value: formattedDateTime(leaseExpiresAt))
-          .accessibilityIdentifier("simulation-lease-expiry")
+      if let automaticClearAt = request.automaticClearAt {
+        LabeledContent("Automatic clear at", value: formattedDateTime(automaticClearAt))
+          .accessibilityIdentifier("simulation-auto-clear-time")
 
         TimelineView(.periodic(from: .now, by: 1)) { context in
-          if context.date < leaseExpiresAt {
+          if context.date < automaticClearAt {
             Label(
               localizedFormat(
-                "Automatic cleanup in %@",
-                remainingTimeDescription(until: leaseExpiresAt, now: context.date)
+                "Automatic clear in %@",
+                remainingTimeDescription(until: automaticClearAt, now: context.date)
               ),
               systemImage: "timer"
             )
             .font(.headline.monospacedDigit())
-            .accessibilityIdentifier("simulation-lease-countdown")
+            .accessibilityIdentifier("simulation-auto-clear-countdown")
           } else {
             Label(
-              "Cleanup due — waiting for Mac confirmation",
+              "Automatic clear is due. The Mac will retry when the device is reachable.",
               systemImage: "clock.badge.exclamationmark"
             )
             .font(.headline)
-            .foregroundStyle(PinshiftDesign.destructive)
-            .accessibilityIdentifier("simulation-cleanup-due")
+            .foregroundStyle(PinshiftDesign.textSecondary)
+            .accessibilityIdentifier("simulation-auto-clear-due")
           }
         }
       }
-
-      Label(
-        "Automatic cleanup entrusted to Cleanup Guardian",
-        systemImage: "checkmark.shield.fill"
-      )
-      .font(.footnote)
-      .foregroundStyle(PinshiftDesign.positive)
-      .accessibilityIdentifier("cleanup-protection-receipt")
 
       activeVerificationSummary
 
-      VStack(spacing: 8) {
-        Button {
-          guard let intent = model.beginLeaseExtension() else { return }
-          Task {
-            guard let response = await controllerLink.deliverLeaseExtension(intent) else {
-              return
-            }
-            model.receiveLeaseExtensionResponse(response, for: intent)
-          }
-        } label: {
-          ActionButtonLabel(
-            title: Text(localized(model.isExtendingLease ? "Extending…" : "Extend 15 Minutes")),
-            systemImage: "clock.badge.plus",
-            isBusy: model.isExtendingLease
-          )
+      Button {
+        let request = model.beginClear()
+        Task {
+          let response = await controllerLink.clear(request)
+          model.receiveClearResponse(response, for: request)
         }
-        .buttonStyle(PinshiftSoftButtonStyle())
-        .disabled(model.isExtendingLease || model.pendingStopIntent != nil)
-        .accessibilityIdentifier("extend-simulation-lease")
-
-        Button {
-          guard let intent = model.beginStop() else { return }
-          Task {
-            guard let response = await controllerLink.deliverStop(intent) else { return }
-            model.receiveStopResponse(response, for: intent)
-          }
-        } label: {
-          ActionButtonLabel(
-            title: Text(localized(model.isStopping ? "Restoring…" : "Return to Normal Location")),
-            systemImage: "location.slash",
-            isBusy: model.isStopping
-          )
-        }
-        .buttonStyle(
-          PinshiftFilledButtonStyle(
-            color: PinshiftDesign.destructive,
-            foreground: .white
-          )
+      } label: {
+        ActionButtonLabel(
+          title: Text(localized(model.isClearing ? "Clearing…" : "Clear Now")),
+          systemImage: "location.slash",
+          isBusy: model.isClearing
         )
-        .disabled(model.isStopping)
-        .accessibilityIdentifier("stop-simulation")
       }
+      .buttonStyle(PinshiftSoftButtonStyle())
+      .disabled(model.isClearing || model.isApplying || !controllerLink.canClear)
+      .accessibilityIdentifier("clear-simulation")
     }
     .padding(PinshiftDesign.spaceM)
     .background(PinshiftDesign.surfaceSecondary)
@@ -1329,29 +1166,6 @@ struct ContentView: View {
     )
     .accessibilityElement(children: .contain)
     .accessibilityIdentifier("active-simulation-card")
-  }
-
-  @ViewBuilder
-  private var activeSimulationLifecycleLabel: some View {
-    switch model.manualSession.cleanupStatus {
-    case .inactive, .protected:
-      Label("Simulation active", systemImage: "location.fill")
-        .font(.headline)
-        .foregroundStyle(PinshiftDesign.primary)
-        .accessibilityIdentifier("applied-acknowledgement")
-    case .restoreRequested:
-      Label("Restore requested", systemImage: "arrow.uturn.backward.circle")
-        .font(.headline)
-        .foregroundStyle(PinshiftDesign.primary)
-        .accessibilityIdentifier("active-simulation-status")
-    case .pending:
-      Label("Cleanup pending — waiting for Mac confirmation", systemImage: "clock.arrow.circlepath")
-        .font(.headline)
-        .foregroundStyle(PinshiftDesign.destructive)
-        .accessibilityIdentifier("active-simulation-status")
-    case .cleared:
-      EmptyView()
-    }
   }
 
   @ViewBuilder
@@ -1372,7 +1186,7 @@ struct ContentView: View {
         .font(.footnote)
         .foregroundStyle(.secondary)
         .accessibilityIdentifier("simulation-status")
-    case .noSelection, .selected, .applying, .failed, .stopped:
+    case .noSelection, .selected, .applying, .failed:
       EmptyView()
     }
   }
@@ -1389,11 +1203,11 @@ struct ContentView: View {
         .foregroundStyle(PinshiftDesign.primary)
         .accessibilityIdentifier("simulation-status")
     case .applying:
-      Label("Applying to the Injection Backend…", systemImage: "arrow.up.circle")
+      Label("Applying temporary location…", systemImage: "arrow.up.circle")
         .foregroundStyle(PinshiftDesign.primary)
         .accessibilityIdentifier("simulation-status")
     case .applied:
-      Label("Applied Simulation — waiting for a fresh observation", systemImage: "checkmark.circle")
+      Label("Applied — waiting for a fresh observation", systemImage: "checkmark.circle")
         .foregroundStyle(PinshiftDesign.primary)
         .accessibilityIdentifier("simulation-status")
     case .appliedNotVerified(_, let issue):
@@ -1404,7 +1218,7 @@ struct ContentView: View {
         .font(.footnote)
         .accessibilityIdentifier("simulation-diagnostic")
     case .verified(_, let evidence):
-      Label("Verified Simulation in Pinshift", systemImage: "checkmark.seal.fill")
+      Label("Verified in Pinshift", systemImage: "checkmark.seal.fill")
         .foregroundStyle(PinshiftDesign.positive)
         .accessibilityIdentifier("simulation-status")
       LabeledContent("Elapsed") {
@@ -1422,68 +1236,43 @@ struct ContentView: View {
       Text(manualFailureDescription(failure))
         .font(.footnote)
         .accessibilityIdentifier("simulation-diagnostic")
-    case .stopped:
-      Label("No Applied Simulation is active.", systemImage: "stop.circle")
-        .foregroundStyle(.secondary)
-        .accessibilityIdentifier("simulation-status")
     }
   }
 
   @ViewBuilder
-  private var manualStopStatus: some View {
-    switch model.manualSession.stopStatus {
+  private var manualClearStatus: some View {
+    switch model.manualSession.clearStatus {
     case .idle:
       EmptyView()
-    case .stopping:
-      Label("Restore requested — retrying automatically…", systemImage: "stop.circle")
+    case .clearing:
+      Label("Clearing simulated location…", systemImage: "location.slash")
         .foregroundStyle(PinshiftDesign.primary)
-        .accessibilityIdentifier("stop-status")
-    case .stopped:
+        .accessibilityIdentifier("clear-status")
+    case .cleared:
       Label("Simulated Location cleared", systemImage: "stop.circle.fill")
         .foregroundStyle(PinshiftDesign.positive)
-        .accessibilityIdentifier("stop-status")
+        .accessibilityIdentifier("clear-status")
       Text(
         "The simulation proxy is inactive. A fresh physical-location callback is separate and may not arrive immediately."
       )
       .font(.footnote)
       .foregroundStyle(.secondary)
-    case .failed(_, let failure):
-      Label("Cleanup is still pending", systemImage: "exclamationmark.triangle")
-        .foregroundStyle(PinshiftDesign.destructive)
-        .accessibilityIdentifier("stop-status")
-      Text(manualFailureDescription(failure))
+    case .unconfirmed:
+      Label("Clear could not be confirmed", systemImage: "exclamationmark.triangle")
+        .foregroundStyle(PinshiftDesign.textSecondary)
+        .accessibilityIdentifier("clear-status")
+      Text("Automatic clear remains scheduled. You can choose and apply another location now.")
         .font(.footnote)
-        .accessibilityIdentifier("stop-diagnostic")
+        .foregroundStyle(PinshiftDesign.textSecondary)
+        .accessibilityIdentifier("clear-diagnostic")
     }
   }
 
   @MainActor
-  private func reconcileSimulationLifecycle() async {
-    let shouldReconcile: Bool
-    if case .connected = controllerLink.state {
-      shouldReconcile = true
-    } else {
-      shouldReconcile =
-        model.pendingStopIntent != nil
-        || model.manualSession.pendingLeaseExtension != nil
-        || model.manualSession.activeAppliedRequest != nil
-        || model.isApplying
-    }
-    guard shouldReconcile else { return }
-
-    if let lifecycle = await controllerLink.reconcileLifecycle() {
-      model.reconcileControllerLifecycle(lifecycle)
-    }
-    if let intent = model.pendingStopIntent,
-      let response = await controllerLink.deliverStop(intent)
-    {
-      model.receiveStopResponse(response, for: intent)
-      return
-    }
-    if let extensionIntent = model.manualSession.pendingLeaseExtension,
-      let response = await controllerLink.deliverLeaseExtension(extensionIntent)
-    {
-      model.receiveLeaseExtensionResponse(response, for: extensionIntent)
+  private func reconcileControllerStatusFromMac() async {
+    guard case .connected = controllerLink.state else { return }
+    if let status = await controllerLink.reconcileStatus() {
+      model.reconcileControllerStatus(status)
     }
   }
 
@@ -1681,19 +1470,19 @@ struct ContentView: View {
   private var controllerLinkStatus: String {
     switch controllerLink.state {
     case .notDiscovered:
-      localized("Searching for your Mac controller…")
+      localized("Searching for your Mac…")
     case .awaitingPairing:
-      localized("Controller found — enter the code shown on your Mac")
+      localized("Mac found — enter the code shown there")
     case .connected:
-      localized("Trusted controller connected")
+      localized("Mac connected")
     case .unavailable(.disconnected):
-      localized("Controller disconnected")
+      localized("Mac disconnected")
     case .unavailable(.tlsIdentityMismatch):
-      localized("Controller identity changed — connection rejected")
+      localized("Mac identity changed — connection rejected")
     case .unavailable(.pairingFailed):
       localized("Pairing code was rejected")
     case .unavailable(.transportUnavailable):
-      localized("Controller unavailable")
+      localized("Mac unavailable")
     case .localNetworkDenied:
       localized("Local Network access is denied")
     }
@@ -1794,7 +1583,7 @@ struct ContentView: View {
   }
 
   private var xcodeDeviceWorkflowDescription: String {
-    switch controllerLink.backendReadiness {
+    switch controllerLink.controllerStatus?.readiness {
     case .ready:
       localized("Ready")
     case .unavailable(.noActiveDevice):
@@ -1804,14 +1593,14 @@ struct ContentView: View {
     case .unavailable(.backendUnavailable), .unavailable(.timedOut):
       localized("Unavailable — run doctor on the Mac")
     case .unavailable:
-      localized("Controller reported a workflow failure")
+      localized("Mac reported a workflow failure")
     case nil:
-      localized("Waiting for Controller Link")
+      localized("Waiting for Mac connection")
     }
   }
 
   private var backendReadinessDescription: String {
-    switch controllerLink.backendReadiness {
+    switch controllerLink.controllerStatus?.readiness {
     case .ready:
       localized("devicectl ready")
     case .unavailable(let reason):
@@ -1825,36 +1614,21 @@ struct ContentView: View {
     }
   }
 
-  private var cleanupProtectionDescription: String {
-    switch controllerLink.lifecycleStatus?.cleanupReadiness {
-    case .ready:
-      localized("Cleanup Guardian ready")
-    case .unavailable(let reason):
-      controllerFailureDescription(reason)
-    case .unsupportedController:
-      localized("Controller update required")
-    case nil:
-      localized("Waiting for Controller Link")
-    }
-  }
-
   private var appliedSimulationDescription: String {
-    switch controllerLink.lifecycleStatus?.simulation {
-    case .applied:
+    switch controllerLink.controllerStatus?.simulation {
+    case .active:
       localized("Acknowledged")
-    case .applyUncertain:
-      localized("Apply outcome unknown — cleanup required")
-    case .cleanupPending:
-      localized("Cleanup pending — retrying automatically…")
-    case .deviceMismatch:
-      localized("Pending cleanup belongs to a different Active Test Device")
-    case .noActive, .stopped:
+    case .uncertain:
+      localized("Apply outcome unknown; automatic clear remains scheduled")
+    case .clearPending:
+      localized("Automatic clear will retry when the device is reachable")
+    case .idle:
       localized("Inactive")
     case nil:
       localized(
         model.manualSession.activeAppliedRequest == nil
-          ? "Unknown until Controller Link reconnects"
-          : "Acknowledged locally — awaiting reconciliation"
+          ? "Unknown until the Mac reconnects"
+          : "Applied locally — waiting for Mac status"
       )
     }
   }
@@ -1874,11 +1648,11 @@ struct ContentView: View {
       )
     case .controllerUnavailable:
       localized(
-        "The trusted controller is unavailable. Cleanup remains pending and will retry automatically."
+        "The Mac is unavailable. Reconnect and try again."
       )
     case .requestRejected(let stableCode):
       localizedFormat(
-        "The controller rejected the request (%@). Check the backend status and retry.",
+        "The Mac rejected the request (%@). Check Mac status and retry.",
         stableCode
       )
     }
@@ -1912,27 +1686,19 @@ struct ContentView: View {
     case .sessionNotReady:
       localized("Xcode device workflow is not ready")
     case .backendUnavailable:
-      localized("Injection Backend is unavailable")
+      localized("Mac location service is unavailable")
     case .timedOut:
-      localized("Injection Backend timed out")
+      localized("Mac location service timed out")
     case .authenticationFailed:
-      localized("Controller Link authorization failed")
+      localized("Mac authorization failed")
     case .clearFailed:
       localized("The active simulation could not be cleared")
     case .controllerUnavailable:
-      localized("Controller unavailable")
+      localized("Mac unavailable")
     case .responseIdentityMismatch:
-      localized("Controller response mismatch")
+      localized("Mac response mismatch")
     case .deviceMismatch:
-      localized("Pending cleanup belongs to a different Active Test Device")
-    case .generationMismatch:
-      localized("Stop targets an older simulation generation")
-    case .invalidLeaseDuration:
-      localized("Choose a 15-, 30-, or 60-minute duration")
-    case .cleanupGuardianUnavailable:
-      localized("Cleanup Guardian protection is unavailable")
-    case .controllerUpgradeRequired:
-      localized("Update the Mac controller to use protected sessions")
+      localized("The Mac is connected to a different test device")
     }
   }
 

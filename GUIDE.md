@@ -1,82 +1,22 @@
 # Pinshift 使用与审计指南
 
-这份指南面向当前这台 Mac 和已配对的 iPhone。它既说明日常怎么用，也说明如何确认一次位置模拟
-最终真的进入了清理流程。首次配置完成后，日常使用不需要重新编译控制器、重复输入 Keychain 密码
-或重新输入六位配对码。
+这份指南面向当前这台 Mac 和已配对的 iPhone。首次配置完成后，日常使用不需要重新编译控制器、
+重复输入 Keychain 密码，也不需要保持终端窗口运行。
 
-## 先记住这四条
+## 用户只需要记住的模型
 
-1. 每次 Apply 都有明确期限：15、30 或 60 分钟，默认 15 分钟，没有无限模式。
-2. 不管 App 是否仍在前台，清理都由 Mac 上持久化的 Cleanup Obligation 和独立 Guardian 驱动。
-3. 只有公开 `devicectl clear` 成功返回，Pinshift 才会把会话视为已停止；倒计时归零或网络断开都不等于已清除。
-4. Mac 和目标 iPhone 都不可达时，任何公开接口都无法立即清理；义务不会丢失，会在两者恢复可达后继续重试。
+> 选一个地点并 Apply，它会临时生效 15 分钟；即使什么都不做，Pinshift 也会自动解除。
 
-## 日常使用
+- 没有时长设置。每次真正的新 Apply 都固定从头计时 15 分钟。
+- 当前是否已有地点、立即解除是否失败、上一次响应是否丢失，都不能阻止选点或新 Apply。
+- 活动期间选另一个地点并 Apply，新地点立即替换旧地点；旧倒计时和旧 Clear 不能清掉它。
+- **Clear Now** 只是提前解除的便利按钮，不是完成一次使用的必需步骤。
+- App 重启或重连后，以 Mac 返回的当前状态替换本地显示。
+- Mac 或 iPhone 不可达时，公开 `devicectl` 无法立即解除。Mac 会保留自动解除责任，在首次恢复可达时重试；用户操作仍保持可用。
 
-### 1. 启动
+## 首次安装或控制器更新
 
-连接并解锁 iPhone，确认开发者模式已开启，然后在仓库根目录运行：
-
-```fish
-pinshift-start
-```
-
-🚀 启动可信控制器；保持终端窗口运行，并在 iPhone 上打开 Pinshift。
-
-等待 App 中以下状态就绪：
-
-- `Local Network Permission`：`Allowed`
-- `Controller Link`：`Trusted controller connected`
-- `Active Test Device / Xcode`：`Ready`
-- `Injection Backend`：`devicectl ready`
-- `Automatic Cleanup`：`Cleanup Guardian ready`
-
-终端显示新的六位码只是备用配对信息。已信任的 iPhone 会自动连接，无需再次输入。
-
-### 2. 选择并应用位置
-
-1. 打开 **Choose Location**。
-2. 使用地图、地点搜索或经纬度输入找到目标位置。
-3. 在地图模式下点中央蓝色 `+`，把地图中心设为 **Selected Location**，再点 **Done**。
-4. 在 **Time-Bounded Simulation** 中选择 15、30 或 60 分钟。
-5. 点 **Start Time-Bounded Simulation**。
-6. 在活动会话卡中确认结束时间、剩余时间和自动清理保护状态。
-7. 如有需要，点 **Extend 15 Minutes**，或点 **Return to Normal Location** 提前结束。
-
-选点只会更新待应用位置，不会自动修改测试位置。后端 Apply 成功后，可以打开地图、QQ 或其他目标
-App 检查效果；Pinshift 自己的最新位置观测只证明 Pinshift 看到了该坐标，不代表所有 App 都会接受它。
-
-### 3. 结束
-
-Apply 成功后，即使不再进行任何操作，系统也会在以下时刻中最早到达的一个要求清理：
-
-- Simulation Lease 到期；
-- `pinshift-start` 正常退出；
-- 前台 server 崩溃或被强杀后，连续 30 秒没有对应 server-owner heartbeat。
-
-iOS App 进入后台或一次 Controller Link 断开不会触发 30 秒规则；只要 server 仍持续写心跳，会话就会
-继续到已确认的租约期限。
-
-提前结束时，**Return to Normal Location** 会先持久保存 Stop Intent。即使 Mac 暂时离线、连接正在
-重建或 App 随后退出，同一请求也会在恢复连接后自动重试，不需要再次点击。界面只有在 Mac 收到明确
-clear acknowledgement 后才显示 **Simulated Location cleared**。
-
-## 状态应该怎么理解
-
-| 状态 | 含义 | 能否证明已经恢复正常定位 |
-| --- | --- | --- |
-| Selected Location | 只在 App 中选中了坐标 | 不能 |
-| Applied Simulation | `devicectl` 已确认设置测试位置 | 不能，表示模拟可能正在生效 |
-| Verified Simulation | Pinshift 收到了匹配的新 Core Location 观测 | 不能，只是 App 侧证据 |
-| Cleanup Pending | 已要求清理，但还没有成功的后端确认 | 不能，应该等待或恢复设备连接 |
-| Simulated Location cleared | `devicectl clear` 已成功确认 | 可以证明开发者位置模拟已被清除 |
-
-停止后，界面可能仍显示“最后一次观测”的旧坐标。这是 Core Location 的历史观测，不代表模拟仍然活跃；
-权威清理状态以 clear acknowledgement 为准。
-
-## 首次配置或控制器更新
-
-首次使用，或 `pinshift-start` 提示控制器源码已变化时，运行：
+在仓库根目录运行：
 
 ```fish
 direnv allow
@@ -84,32 +24,69 @@ pinshift-install
 pinshift-doctor
 ```
 
-🛠️ 准备仓库环境、安装稳定签名控制器与 Cleanup Guardian，并执行只读健康检查。
+🛠️ 安装稳定签名控制器与单一后台 authority，并执行只读环境检查。
 
-如果 macOS 显示 Keychain 窗口，输入登录密码并选择 **始终允许**。安装器会保留现有控制器身份和
-iPhone 信任；失败时会恢复旧控制器与安装元数据。
+安装器会启动 `dev.sayori.pinshift.controller` LaunchAgent。这个进程同时拥有 Controller Link、当前
+临时地点状态和自动解除计时。升级旧版本时，安装器会停止并移除旧的 Cleanup Guardian LaunchAgent，
+并精确停止旧 `pinshift-start` 留下的前台 Controller Link。Saved Locations、可信控制器身份和配对信任会
+保留；旧 App 控制状态会被丢弃，旧 Mac 状态会先安全解除。
 
-## 签名续期
+如果 macOS 显示 Keychain 窗口，输入登录密码并选择 **始终允许**。安装器不会删除或替换既有 TLS
+身份；如果签名要求发生意外变化，它会在修改信任前停止。
 
-Personal Team 签名临近到期时，让 iPhone 通过 USB 或 Wi-Fi 对 Xcode 可达，然后运行：
+## 配对
 
-```fish
-pinshift-resign-app
-```
-
-🔏 在剩余不超过 24 小时时续签、验证并原位安装 Pinshift。
-
-命令不会卸载 App，因此会尽量保留收藏、设置和控制器信任。需要立即刷新时使用
-`pinshift-resign-app --force`；如果手机锁屏导致启动验证延后，解锁后打开 Pinshift，或运行：
+新 iPhone、App Keychain 被清除或需要刷新六位码时运行：
 
 ```fish
-pinshift-resign-app --launch-only
+pinshift-start
 ```
 
-📱 不重新签名，只在已解锁手机上补做启动验证。
+🔗 重启后台 Controller Link、打印新的六位码，然后立即返回。
 
-Xcode 必须保持 Apple Account 登录。如果登录过期、需要双重验证或开发者协议有更新，请先在
-**Xcode → Settings → Apple Accounts** 中完成交互。
+已信任的 iPhone 会自动重连，不需要每天运行 `pinshift-start`。App 中应看到：
+
+- `Local Network Permission`：已允许；
+- `Controller Link`：已连接；
+- `Automatic Clear`：每个地点 15 分钟后自动解除。
+
+Injection Backend 状态是当前诊断信息，不是历史状态门槛。只要 Controller Link 已连接，选点和 Apply
+入口就保持可用；后端当下确实不可用时，本次 Apply 会明确失败，用户可以继续换点并重试。
+
+## 日常使用
+
+### 选择并应用
+
+1. 打开 **Choose Location**。
+2. 使用地图、地点搜索、经纬度输入或 Saved Locations 选择地点。
+3. 点 **Apply Selected Location**。
+4. 活动卡会显示权威自动解除时间和倒计时。
+5. 想换地点时直接重新选点并 Apply；不需要先 Clear。
+
+选点只改变 **Selected Location**，绝不会自动应用。**Applied** 表示 Mac 的 `devicectl` 后端确认了
+请求；Pinshift 的新 Core Location 观测属于单独的 **Verified** 证据，不能代表所有 App 都会接受该位置。
+
+### 提前解除
+
+点 **Clear Now** 可以提前请求解除。成功后显示 **Simulated Location cleared**。如果响应失败或丢失，
+界面只提示“未能确认，自动解除仍按计划执行”；选点和新 Apply 不会被锁住。
+
+后端 clear 成功也不承诺 iOS 立即产生一条新的物理位置回调。界面中保留的“最后观测位置”是历史证据，
+不是当前模拟状态。
+
+## 状态怎么理解
+
+| 状态 | 含义 | 是否阻止新 Apply |
+| --- | --- | --- |
+| Selected Location | 只在 App 中选中了坐标 | 否 |
+| Applied Simulation | 后端已确认设置临时地点 | 否 |
+| Verified Simulation | Pinshift 收到匹配的新观测 | 否 |
+| Apply outcome unknown | Apply 结果不确定，Mac 仍持有原截止时间 | 否 |
+| Automatic clear retrying | 已到截止时间，但设备暂时不可达或 clear 失败 | 否 |
+| Simulated Location cleared | 后端已确认清除开发者位置模拟 | 否 |
+
+Mac 是唯一状态权威。App 重连后会用 Mac snapshot 覆盖本地显示；不会重放旧的持久 Stop、延长或保护
+确认请求，因为这些概念已经不再存在。
 
 ## 故障恢复
 
@@ -121,87 +98,99 @@ pinshift-doctor
 
 🩺 检查 Xcode、iPhone、签名、控制器身份和设备服务，不修改系统设置。
 
-常见恢复路径：
+常见路径：
 
 - **找不到 iPhone**：重新连接数据线，解锁手机，确认 Mac 与 iPhone 仍互相信任。
-- **Controller Link 未连接**：确认 `pinshift-start` 仍在运行，并让 Pinshift 在前台停留片刻。
-- **Apply 按钮不可用**：先选择位置，等待 Controller Link、Injection Backend 与 Cleanup Guardian 全部就绪。
-- **控制器源码已变化**：运行 `pinshift-install`，不要用 `swift run` 代替日常控制器。
-- **App 无法启动或签名过期**：运行 `pinshift-resign-app --force`；如有账号错误，先恢复 Xcode 登录。
-- **更换手机或清除了 App Keychain**：重新运行 `pinshift-start`，输入当次六位码完成一次新配对。
+- **Controller Link 未连接**：确认后台服务状态；需要新配对码时运行 `pinshift-start`。
+- **Apply 按钮不可用**：先确认已经选点且 Controller Link 已连接；活动或重试状态本身不会禁用按钮。
+- **本次 Apply 失败**：按界面显示恢复 Xcode/设备连接，然后直接重试或应用其他地点。
+- **控制器源码已变化**：运行 `pinshift-install`，不要用 `swift run` 代替已签名控制器。
+- **App 签名过期**：运行 `pinshift-resign-app --force`；账号错误需要先恢复 Xcode 登录。
 
-需要手动加入同一持久清理流程时运行：
+需要紧急幂等解除时运行：
 
 ```fish
 pinshift-reset
 ```
 
-🧹 幂等请求清除可能仍在生效的模拟位置；失败时保留 Cleanup Pending 以便后续重试。
+🧹 暂停后台 authority、执行一次直接 clear，再恢复同一个后台 authority。
 
-## 审计一次清理
+## 签名续期
 
-### 快速检查
+Personal Team 签名剩余不超过 24 小时时运行：
 
-1. 在 App 会话卡确认是否显示 **Simulated Location cleared**，或仍处于 **Cleanup Pending**。
-2. 检查 Guardian 是否由 launchd 保持：
+```fish
+pinshift-resign-app
+```
 
-   ```fish
-   launchctl print gui/(id -u)/dev.sayori.pinshift.cleanup-guardian
-   ```
+🔏 验证新 profile 并原位更新 Pinshift，不卸载 App。
 
-   🛡️ 显示 Cleanup Guardian 的当前 launchd 状态和最近退出结果。
+需要立即刷新时使用：
 
-3. 查看持久生命周期记录中的非敏感摘要：
+```fish
+pinshift-resign-app --force
+```
 
-   ```fish
-   jq '{
-     schemaVersion,
-     active: (
-       .active
-       | if . == null then null else {
-           phase,
-           generationID,
-           leaseExpiresAt,
-           retryAttempt,
-           nextRetryAt,
-           lastFailure
-         } end
-     ),
-     lastStoppedGenerationID
-   }' "$HOME/Library/Application Support/Pinshift/SimulationLifecycle/lifecycle.json"
-   ```
+♻️ 立即请求新 profile、验证并原位安装。
 
-   🔎 `active: null` 表示 Mac 没有未完成的清理义务；非空记录应按 phase 和 retry 字段继续追踪。
+手机锁屏只导致启动验证延后；解锁后可运行：
 
-4. 必要时导出 Mac 侧诊断包：
+```fish
+pinshift-resign-app --launch-only
+```
 
-   ```fish
-   pinshift-diagnostics --copy-to .build/audit/(date +%Y%m%d-%H%M%S)
-   ```
+📱 不重新签名，只补做启动验证。
 
-   📦 复制脱敏的 Mac 诊断事件和元数据，不触发 Apply、Stop 或任何恢复操作。
+## 审计
 
-Pinshift 内的 **Test Diagnostics** 可单独导出 iOS 侧记录。两侧记录通过 request ID、generation ID 和
-时间线关联；不要把只有一侧的“请求已发送”当成 clear acknowledgement。
+检查单一后台 authority：
 
-### 审计判定
+```fish
+launchctl print gui/(id -u)/dev.sayori.pinshift.controller
+```
 
-- **通过**：同一 generation 最终有后端 clear success，持久记录不再有 active obligation，App 重连后显示已清除。
-- **等待恢复**：状态为 Cleanup Pending，且日志显示 Mac、Xcode device service 或目标 iPhone 暂时不可达。
-- **需要处理**：Guardian 未加载、持续崩溃，或恢复设备可达后仍反复出现相同非暂态错误。
+🔎 显示后台 Controller Link 与自动解除 authority 的运行状态。
 
-本轮真机自动清理验证记录见
-[eventual-cleanup-verification-2026-08-09.md](docs/evidence/eventual-cleanup-verification-2026-08-09.md)。
+查看持久状态的非敏感摘要：
+
+```fish
+jq '{
+  schemaVersion,
+  current: (
+    .current
+    | if . == null then null else {
+        operationID,
+        phase,
+        automaticClearAt,
+        retryAttempt,
+        nextClearAttemptAt,
+        lastClearFailure
+      } end
+  )
+}' "$HOME/Library/Application Support/Pinshift/SimulationLifecycle/lifecycle.json"
+```
+
+🧭 `current: null` 表示 Mac 当前没有临时模拟；非空记录显示当前 operation 和自动解除进度。
+
+导出 Mac 侧诊断：
+
+```fish
+pinshift-diagnostics --copy-to .build/audit/(date +%Y%m%d-%H%M%S)
+```
+
+📦 复制脱敏诊断事件和元数据，不触发 Apply、Clear 或恢复操作。
+
+历史真机验证记录保留在 [docs/evidence](docs/evidence/)；其中旧 Lease/Guardian 实验是历史证据，不是
+当前产品协议。
 
 ## 常用命令
 
 | 命令 | 用途 |
 | --- | --- |
-| `pinshift-start` | 启动可信控制器；默认运行一小时 |
-| `pinshift-start --seconds 86400` | 让 Controller Link 最长运行一天；不会延长 App 中选择的 Simulation Lease |
-| `pinshift-reset` | 幂等请求清除模拟位置，并沿用持久重试流程 |
+| `pinshift-install` | 首次安装或源码变化后更新稳定签名控制器与后台 authority |
+| `pinshift-start` | 需要配对时刷新后台进程并打印六位码；立即返回 |
+| `pinshift-reset` | 紧急幂等 clear，并恢复后台 authority |
 | `pinshift-doctor` | 只读检查开发环境和控制器状态 |
-| `pinshift-install` | 首次安装或源码变化后更新稳定签名控制器与 Guardian |
 | `pinshift-resign-app` | 签名临近到期时续签并原位安装 App |
 | `pinshift-resign-app --force` | 立即请求新 profile、验证并原位安装 |
 | `pinshift-resign-app --launch-only` | 不续签，只补做启动验证 |

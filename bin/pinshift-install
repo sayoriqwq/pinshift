@@ -13,15 +13,24 @@ set --local install_bin $install_root/bin
 set --local executable $install_bin/pinshift-controller
 set --local requirement_file $install_root/designated-requirement
 set --local source_file $install_root/source-fingerprint
-set --local guardian_label dev.sayori.pinshift.cleanup-guardian
-set --local guardian_template (path resolve Support/$guardian_label.plist)
-set --local guardian_directory $HOME/Library/LaunchAgents
-set --local guardian_plist $guardian_directory/$guardian_label.plist
-set --local guardian_log_directory $HOME/Library/Logs/Pinshift
-set --local guardian_log $guardian_log_directory/cleanup-guardian.log
+
+set --local authority_label dev.sayori.pinshift.controller
+set --local authority_template (path resolve Support/$authority_label.plist)
+set --local launch_agents_directory $HOME/Library/LaunchAgents
+set --local authority_plist $launch_agents_directory/$authority_label.plist
+set --local authority_state_directory $HOME/Library/Application\ Support/Pinshift/ControllerLink
+set --local pairing_code_file $authority_state_directory/pairing-code
+set --local authority_log_directory $HOME/Library/Logs/Pinshift
+set --local authority_log $authority_log_directory/controller.log
+
+set --local legacy_guardian_label dev.sayori.pinshift.cleanup-guardian
+set --local legacy_guardian_plist $launch_agents_directory/$legacy_guardian_label.plist
 set --local user_id (id -u)
-set --local guardian_was_loaded 0
-set --local guardian_restarted_after_rollback 0
+set --local authority_was_loaded 0
+set --local legacy_guardian_was_loaded 0
+set --local authority_restarted_after_rollback 0
+set --local legacy_guardian_restarted_after_rollback 0
+
 set --local generated_root (path resolve .build)
 mkdir -p $generated_root
 or exit 1
@@ -67,35 +76,31 @@ if not string match --quiet "*identifier \"$identifier\"*" $requirement
     exit 1
 end
 
-# Compute and stage every piece of metadata before replacing the installed controller.
+# Stage every artifact before replacing the installed controller.
 set --local source_fingerprint (pinshift_controller_source_fingerprint)
 or exit $status
 set --local staged_requirement $staging_root/designated-requirement
 set --local staged_source $staging_root/source-fingerprint
-set --local staged_guardian $staging_root/$guardian_label.plist
+set --local staged_authority $staging_root/$authority_label.plist
 printf '%s\n' $requirement > $staged_requirement
 or exit $status
 printf '%s\n' $source_fingerprint > $staged_source
 or exit $status
-cp $guardian_template $staged_guardian
+cp $authority_template $staged_authority
 or exit $status
-plutil -remove ProgramArguments.0 $staged_guardian
+plutil -replace ProgramArguments.0 -string $executable $staged_authority
 or exit $status
-plutil -insert ProgramArguments.0 -string $executable $staged_guardian
+plutil -replace ProgramArguments.4 -string $PINSHIFT_DEVICE $staged_authority
 or exit $status
-plutil -remove ProgramArguments.3 $staged_guardian
+plutil -replace ProgramArguments.6 -string $PINSHIFT_DEVELOPER_DIR $staged_authority
 or exit $status
-plutil -insert ProgramArguments.3 -string $PINSHIFT_DEVICE $staged_guardian
+plutil -replace ProgramArguments.8 -string $pairing_code_file $staged_authority
 or exit $status
-plutil -remove ProgramArguments.5 $staged_guardian
+plutil -replace StandardOutPath -string $authority_log $staged_authority
 or exit $status
-plutil -insert ProgramArguments.5 -string $PINSHIFT_DEVELOPER_DIR $staged_guardian
+plutil -replace StandardErrorPath -string $authority_log $staged_authority
 or exit $status
-plutil -replace StandardOutPath -string $guardian_log $staged_guardian
-or exit $status
-plutil -replace StandardErrorPath -string $guardian_log $staged_guardian
-or exit $status
-plutil -lint $staged_guardian
+plutil -lint $staged_authority
 or exit $status
 
 if test -f $requirement_file
@@ -150,23 +155,90 @@ function rollback_install --no-scope-shadowing
         command rm -f -- $source_file
         or set rollback_status $status
     end
-    if test $guardian_was_loaded -eq 1; and test $guardian_restarted_after_rollback -eq 0
-        launchctl bootstrap gui/$user_id $guardian_plist
+    if test $authority_was_loaded -eq 1; and test $authority_restarted_after_rollback -eq 0
+        launchctl bootstrap gui/$user_id $authority_plist
         or set rollback_status $status
         if test $rollback_status -eq 0
-            set guardian_restarted_after_rollback 1
+            set authority_restarted_after_rollback 1
+        end
+    end
+    if test $legacy_guardian_was_loaded -eq 1; and test $legacy_guardian_restarted_after_rollback -eq 0
+        launchctl bootstrap gui/$user_id $legacy_guardian_plist
+        or set rollback_status $status
+        if test $rollback_status -eq 0
+            set legacy_guardian_restarted_after_rollback 1
         end
     end
     return $rollback_status
 end
 
-# A running process cannot safely share an executable path while that signed
-# executable is replaced. Stop only this exact LaunchAgent and restore it from
-# rollback_install if any later install step fails.
-if launchctl print gui/$user_id/$guardian_label >/dev/null 2>&1
-    set guardian_was_loaded 1
-    launchctl bootout gui/$user_id/$guardian_label
+# There is exactly one authority. Stop either installed generation before replacing
+# its signed executable, and restore it if a later commit step fails.
+if launchctl print gui/$user_id/$authority_label >/dev/null 2>&1
+    set authority_was_loaded 1
+    launchctl bootout gui/$user_id/$authority_label
     or exit $status
+end
+if launchctl print gui/$user_id/$legacy_guardian_label >/dev/null 2>&1
+    set legacy_guardian_was_loaded 1
+    launchctl bootout gui/$user_id/$legacy_guardian_label
+    or begin
+        set --local failure_status $status
+        rollback_install
+        exit $failure_status
+    end
+end
+
+# Older pinshift-start versions kept `link serve` in a foreground terminal.
+# Stop only processes owned by this user whose full command begins with the
+# exact installed executable and subcommand; broad process-name killing is not
+# safe enough for an installer.
+set --local superseded_foreground_pids
+for candidate_pid in (pgrep -u $user_id -f 'pinshift-controller link serve' 2>/dev/null)
+    if not string match --quiet --regex '^[0-9]+$' -- $candidate_pid
+        continue
+    end
+    set --local candidate_command (ps -p $candidate_pid -o command= 2>/dev/null | string trim)
+    if string match --quiet "$executable link serve*" -- $candidate_command
+        set --local parent_pid (ps -p $candidate_pid -o ppid= 2>/dev/null | string trim)
+        if string match --quiet --regex '^[0-9]+$' -- $parent_pid
+            set --local parent_command (ps -p $parent_pid -o command= 2>/dev/null | string trim)
+            if string match --quiet "*$script_dir/pinshift-start*" -- $parent_command
+                kill -TERM $parent_pid 2>/dev/null
+                or if kill -0 $parent_pid 2>/dev/null
+                    rollback_install
+                    echo "The superseded pinshift-start wrapper could not be stopped safely." >&2
+                    exit 1
+                end
+                set --append superseded_foreground_pids $parent_pid
+            end
+        end
+        if kill -0 $candidate_pid 2>/dev/null
+            kill -TERM $candidate_pid 2>/dev/null
+            or if kill -0 $candidate_pid 2>/dev/null
+                rollback_install
+                echo "The superseded foreground controller could not be stopped safely." >&2
+                exit 1
+            end
+            set --append superseded_foreground_pids $candidate_pid
+        end
+    end
+end
+
+for candidate_pid in $superseded_foreground_pids
+    set --local did_exit 0
+    for attempt in (seq 1 50)
+        if not kill -0 $candidate_pid 2>/dev/null
+            set did_exit 1
+            break
+        end
+        sleep 0.1
+    end
+    if test $did_exit -ne 1
+        rollback_install
+        echo "A superseded foreground controller is still running. Close its old pinshift-start terminal and retry." >&2
+        exit 1
+    end
 end
 
 cp $candidate $executable
@@ -183,7 +255,6 @@ or begin
     or echo "Installation rollback failed; inspect $install_root before retrying." >&2
     exit $failure_status
 end
-
 cp $staged_requirement $requirement_file
 or begin
     set --local failure_status $status
@@ -199,8 +270,7 @@ or begin
     exit $failure_status
 end
 
-# Keychain authorization is the final fallible commit. Every filesystem artifact is
-# already published and can be restored if authorization declines or fails.
+# Keychain authorization is the final fallible identity commit.
 $executable link identity authorize-current-executable
 set --local authorization_status $status
 if test $authorization_status -ne 0
@@ -210,25 +280,34 @@ if test $authorization_status -ne 0
     exit $authorization_status
 end
 
-# Cleanup ownership must outlive the foreground Controller Link. Publish the
-# per-user LaunchAgent only after the signed executable and Keychain ACL commit.
-mkdir -p $guardian_directory $guardian_log_directory
+mkdir -p $launch_agents_directory $authority_log_directory $authority_state_directory
 or exit $status
-cp $staged_guardian $guardian_plist
+chmod 700 $authority_state_directory
 or exit $status
-chmod 600 $guardian_plist
+cp $staged_authority $authority_plist
 or exit $status
-launchctl bootout gui/$user_id/$guardian_label >/dev/null 2>&1
-launchctl bootstrap gui/$user_id $guardian_plist
+chmod 600 $authority_plist
+or exit $status
+launchctl bootout gui/$user_id/$authority_label >/dev/null 2>&1
+launchctl bootstrap gui/$user_id $authority_plist
 or begin
-    echo "The controller was installed, but the Cleanup Guardian could not be registered." >&2
-    echo "Run pinshift-install again before applying another Simulated Location." >&2
+    echo "The controller was installed, but its background authority could not be registered." >&2
     exit 1
 end
-launchctl kickstart -k gui/$user_id/$guardian_label
+launchctl kickstart -k gui/$user_id/$authority_label
 or begin
-    echo "The Cleanup Guardian was registered but did not start." >&2
+    echo "The background controller authority was registered but did not start." >&2
     exit 1
+end
+
+# The new authority has taken ownership. Remove only the exact superseded plist.
+launchctl bootout gui/$user_id/$legacy_guardian_label >/dev/null 2>&1
+if test -f $legacy_guardian_plist
+    command rm -f -- $legacy_guardian_plist
+    or begin
+        echo "The new authority is running, but the old Guardian plist could not be removed." >&2
+        exit 1
+    end
 end
 
 set --local staging_name (path basename "$staging_root")
@@ -243,4 +322,4 @@ or begin
     exit 1
 end
 
-echo "Stable controller and persistent Cleanup Guardian installed. Daily pinshift-start, pinshift-doctor, and pinshift-reset are ready."
+echo "Stable controller and one persistent background authority installed. Pinshift is ready without a foreground terminal."

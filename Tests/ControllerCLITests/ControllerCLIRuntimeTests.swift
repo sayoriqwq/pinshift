@@ -1,105 +1,55 @@
 import ControllerLink
 import Foundation
 import SimulationController
-import SimulationDiagnostics
 import XCTest
 
 @testable import ControllerCLI
 
 final class ControllerCLIRuntimeTests: XCTestCase {
-  func testServeLifecycleNormalCompletionResetsOnceAndReportsResult() async throws {
-    let directory = FileManager.default.temporaryDirectory
-      .appendingPathComponent("pinshift-serve-events-(UUID().uuidString)")
-    defer { try? FileManager.default.removeItem(at: directory) }
-    let diagnostics = SimulationDiagnosticRecorder(
-      side: .macController,
-      directory: directory
+  func testBackgroundAuthorityUsesMinuteFallbackPollingByDefault() async throws {
+    let controller = SimulationController(
+      backend: RuntimeCountingBackend(),
+      automaticallySchedulesMaintenance: false
     )
-    let backend = ServeLifecycleRecordingBackend()
-    let controller = SimulationController(backend: backend)
-    let reports = ServeLifecycleReports()
+    let clock = RuntimeTestClock(now: Date(timeIntervalSince1970: 1_000))
+    let intervals = RuntimeIntervalRecorder()
 
-    try await ControllerCLIRuntime.runServeLifecycle(
-      seconds: 60,
+    try await ControllerCLIRuntime.runAuthority(
       controller: controller,
-      sleep: { _ in },
-      diagnostics: diagnostics,
-      report: { result in await reports.append(result) }
+      runFor: 60,
+      now: { clock.now },
+      sleep: { seconds in
+        intervals.record(seconds)
+        clock.advance(by: seconds)
+      }
+    )
+
+    XCTAssertEqual(intervals.values, [60])
+  }
+
+  func testBackgroundAuthorityPollsTheSameControllerWithoutClearingOnShutdown() async throws {
+    let backend = RuntimeCountingBackend()
+    let controller = SimulationController(
+      backend: backend,
+      automaticallySchedulesMaintenance: false
+    )
+    let clock = RuntimeTestClock(now: Date(timeIntervalSince1970: 1_000))
+    let sleeps = RuntimeCounter()
+
+    try await ControllerCLIRuntime.runAuthority(
+      controller: controller,
+      pollInterval: 1,
+      runFor: 1,
+      now: { clock.now },
+      sleep: { _ in
+        sleeps.increment()
+        clock.advance(by: 1)
+      }
     )
 
     let clearCount = await backend.clearCount
-    XCTAssertEqual(clearCount, 1)
-    let reportedResults = await reports.values
-    XCTAssertEqual(reportedResults.count, 1)
-    XCTAssertEqual(reportedResults[0].exitCode, 0)
-    XCTAssertTrue(reportedResults[0].output.hasPrefix("Reset completed for request "))
-    let events = await diagnostics.events()
-    XCTAssertTrue(events.contains { $0.kind == "controller.lifecycle.serve-started" })
-    XCTAssertTrue(events.contains { $0.kind == "controller.lifecycle.shutdown-cleanup-started" })
-    XCTAssertTrue(events.contains { $0.kind == "controller.lifecycle.shutdown-cleanup-finished" })
-  }
-
-  func testServeLifecycleInterruptedCleanupIsRecordedAndStillResetsOnce() async throws {
-    let directory = FileManager.default.temporaryDirectory
-      .appendingPathComponent("pinshift-serve-events-(UUID().uuidString)")
-    defer { try? FileManager.default.removeItem(at: directory) }
-    let diagnostics = SimulationDiagnosticRecorder(
-      side: .macController,
-      directory: directory
-    )
-    let backend = ServeLifecycleRecordingBackend()
-    let controller = SimulationController(backend: backend)
-    let reports = ServeLifecycleReports()
-
-    do {
-      try await ControllerCLIRuntime.runServeLifecycle(
-        seconds: 60,
-        controller: controller,
-        sleep: { _ in throw ServeLifecycleInterruption.cancelled },
-        diagnostics: diagnostics,
-        report: { result in await reports.append(result) }
-      )
-      XCTFail("Expected the interrupted lifecycle to rethrow")
-    } catch is ServeLifecycleInterruption {
-      // The cleanup result is reported before the interruption is rethrown.
-    }
-
-    let clearCount = await backend.clearCount
-    let reportedValues = await reports.values
-    XCTAssertEqual(clearCount, 1)
-    XCTAssertEqual(reportedValues.count, 1)
-    let events = await diagnostics.events()
-    XCTAssertTrue(
-      events.contains { $0.kind == "controller.lifecycle.interrupted-shutdown-cleanup-started" }
-    )
-    XCTAssertTrue(
-      events.contains { $0.kind == "controller.lifecycle.interrupted-shutdown-cleanup-finished" }
-    )
-    XCTAssertTrue(events.contains { $0.kind == "controller.reset.requested" })
-  }
-
-  func testServeLifecycleReportsCleanupFailureThroughExitSemantics() async {
-    let backend = ServeLifecycleFailingClearBackend()
-    let controller = SimulationController(backend: backend)
-    let reports = ServeLifecycleReports()
-
-    do {
-      try await ControllerCLIRuntime.runServeLifecycle(
-        seconds: 60,
-        controller: controller,
-        sleep: { _ in },
-        report: { result in await reports.append(result) }
-      )
-      XCTFail("Expected failed expiry cleanup to make the serve command fail")
-    } catch let error as ControllerServeLifecycleError {
-      XCTAssertEqual(error, .cleanupFailed)
-    } catch {
-      XCTFail("Unexpected error: \(error)")
-    }
-
-    let reportedValues = await reports.values
-    XCTAssertEqual(reportedValues.count, 1)
-    XCTAssertEqual(reportedValues[0].exitCode, 1)
+    XCTAssertEqual(sleeps.value, 1)
+    XCTAssertEqual(clearCount, 0)
   }
 
   func testResolvesExplicitValuesBeforeEnvironmentAndDefaults() {
@@ -127,55 +77,48 @@ final class ControllerCLIRuntimeTests: XCTestCase {
       "/Environment/Xcode.app/Contents/Developer"
     )
     XCTAssertNil(defaults.device)
-    XCTAssertEqual(
-      defaults.developerDirectory,
-      ControllerCLIRuntime.defaultDeveloperDirectory
-    )
+    XCTAssertEqual(defaults.developerDirectory, ControllerCLIRuntime.defaultDeveloperDirectory)
   }
 
-  func testDefaultSimulationLeaseIsIndependentFromServerDuration() {
-    XCTAssertEqual(ControllerCLIRuntime.defaultSimulationLeaseDuration, 900)
-  }
-
-  func testBuildsTheProductionControllerFromDevicectlConfiguration() async {
+  func testBuildsProductionControllerFromDevicectlConfiguration() async {
     let directory = FileManager.default.temporaryDirectory
       .appendingPathComponent("pinshift-runtime-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: directory) }
     let executor = RuntimeRecordingDevicectlExecutor(
-      results: [.exited(0), .exited(0), .exited(0), .exited(0)]
+      results: [.exited(0), .exited(0), .exited(0)]
     )
     let environment = [
       "PINSHIFT_DEVICE": "Active Test Device",
       "PINSHIFT_DEVELOPER_DIR": "/Applications/Xcode-beta.app/Contents/Developer",
-      FileSimulationLifecycleStore.fileEnvironmentKey:
-        directory.appendingPathComponent("lifecycle.json").path,
+      FileTemporarySimulationStore.fileEnvironmentKey:
+        directory.appendingPathComponent("state.json").path,
     ]
-    let guardianHealthStore = InMemorySimulationCleanupGuardianHealthStore(
-      health: SimulationCleanupGuardianHealth(
-        guardianID: UUID(),
-        activeDeviceIdentifier: "Active Test Device",
-        recordedAt: Date()
-      )
-    )
+    let now = Date(timeIntervalSince1970: 1_000)
     let controller = ControllerCLIRuntime.makeController(
-      cleanupGuardianHealthStore: guardianHealthStore,
       environment: environment,
-      executor: executor
+      executor: executor,
+      now: { now },
+      automaticallySchedulesMaintenance: false
     )
     let handler = SimulationControllerCommandHandler(controller: controller)
-
-    let status = await handler.handle(.status(requestID: UUID()))
-    let applyID = UUID(uuidString: "00000000-0000-0000-0000-000000000201")!
+    let applyID = UUID()
     let applied = await handler.handle(
       .apply(requestID: applyID, latitude: 31.2304, longitude: 121.4737)
     )
-    let stopID = UUID(uuidString: "00000000-0000-0000-0000-000000000202")!
-    let stopped = await handler.handle(.stop(requestID: stopID))
+    let clearID = UUID()
+    let cleared = await handler.handle(
+      .clear(requestID: clearID, targetOperationID: nil)
+    )
 
-    XCTAssertEqual(status, .ready(requestID: status.requestID))
-    XCTAssertEqual(applied, .applied(requestID: applyID))
-    XCTAssertEqual(stopped, .stopped(requestID: stopID))
-    XCTAssertEqual(executor.invocations.count, 4)
+    XCTAssertEqual(
+      applied,
+      .applied(
+        requestID: applyID,
+        automaticClearAt: now.addingTimeInterval(900)
+      )
+    )
+    XCTAssertEqual(cleared, .cleared(requestID: clearID))
+    XCTAssertEqual(executor.invocations.count, 3)
     XCTAssertTrue(
       executor.invocations.allSatisfy {
         $0.environmentOverrides["DEVELOPER_DIR"]
@@ -185,37 +128,21 @@ final class ControllerCLIRuntimeTests: XCTestCase {
   }
 
   func testMissingDeviceConfigurationReportsNoActiveDeviceWithoutSpawningAProcess() async {
-    let directory = FileManager.default.temporaryDirectory
-      .appendingPathComponent("pinshift-runtime-\(UUID().uuidString)")
-    defer { try? FileManager.default.removeItem(at: directory) }
     let executor = RuntimeRecordingDevicectlExecutor(results: [])
-    let runner = ControllerCLIRuntime.makeRunner(
-      environment: [
-        FileSimulationLifecycleStore.fileEnvironmentKey:
-          directory.appendingPathComponent("lifecycle.json").path
-      ],
-      executor: executor
-    )
+    let runner = ControllerCLIRuntime.makeRunner(environment: [:], executor: executor)
 
     let result = await runner.run(.status)
 
-    XCTAssertEqual(
-      result,
-      ControllerCLIResult(
-        exitCode: 1,
-        output: "No Active Test Device is configured. Pass --device or set PINSHIFT_DEVICE."
-      )
-    )
+    XCTAssertEqual(result.exitCode, 1)
+    XCTAssertTrue(result.output.contains("No Active Test Device"))
     XCTAssertTrue(executor.invocations.isEmpty)
   }
 }
 
-private actor ServeLifecycleRecordingBackend: InjectionBackend {
+private actor RuntimeCountingBackend: InjectionBackend {
   private(set) var clearCount = 0
 
-  func readiness() -> InjectionBackendReadiness {
-    .ready
-  }
+  func readiness() -> InjectionBackendReadiness { .ready }
 
   func execute(_ command: InjectionBackendCommand) -> InjectionBackendResult {
     switch command {
@@ -228,31 +155,33 @@ private actor ServeLifecycleRecordingBackend: InjectionBackend {
   }
 }
 
-private actor ServeLifecycleFailingClearBackend: InjectionBackend {
-  func readiness() -> InjectionBackendReadiness {
-    .ready
-  }
+private final class RuntimeTestClock: @unchecked Sendable {
+  private let lock = NSLock()
+  private var value: Date
 
-  func execute(_ command: InjectionBackendCommand) -> InjectionBackendResult {
-    switch command {
-    case .apply(let requestID, let location):
-      return .applied(requestID: requestID, location: location)
-    case .clear(let requestID):
-      return .failed(requestID: requestID, reason: .clearFailed)
-    }
+  init(now: Date) { value = now }
+  var now: Date { lock.withLock { value } }
+  func advance(by interval: TimeInterval) {
+    lock.withLock { value = value.addingTimeInterval(interval) }
   }
 }
 
-private actor ServeLifecycleReports {
-  private(set) var values: [ControllerCLIResult] = []
+private final class RuntimeCounter: @unchecked Sendable {
+  private let lock = NSLock()
+  private var count = 0
 
-  func append(_ result: ControllerCLIResult) {
-    values.append(result)
-  }
+  var value: Int { lock.withLock { count } }
+  func increment() { lock.withLock { count += 1 } }
 }
 
-private enum ServeLifecycleInterruption: Error {
-  case cancelled
+private final class RuntimeIntervalRecorder: @unchecked Sendable {
+  private let lock = NSLock()
+  private var intervals: [TimeInterval] = []
+
+  var values: [TimeInterval] { lock.withLock { intervals } }
+  func record(_ interval: TimeInterval) {
+    lock.withLock { intervals.append(interval) }
+  }
 }
 
 private final class RuntimeRecordingDevicectlExecutor:

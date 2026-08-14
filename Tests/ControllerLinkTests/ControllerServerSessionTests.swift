@@ -5,98 +5,10 @@ import XCTest
 @testable import ControllerLink
 
 final class ControllerServerSessionTests: XCTestCase {
-  func testCorrectCodePairsWhenServerPersistsAuthorizationInKeychain() async throws {
-    let identity = try ControllerIdentity(fingerprint: Data(repeating: 0x35, count: 32))
-    let authorization = try ControllerAuthorization(bytes: Data(repeating: 0x53, count: 32))
-    let store = KeychainControllerAuthorizationStore(
-      service: "dev.sayori.pinshift.tests.\(UUID().uuidString)",
-      account: ControllerAuthorization.pairedAppKeychainAccount
-    )
-    let session = ControllerServerSession(
-      identity: identity,
-      pairingAuthority: try PairingCodeAuthority(
-        code: "123456",
-        identity: identity,
-        expiresAt: Date(timeIntervalSince1970: 200)
-      ),
-      authorizationStore: store,
-      now: { Date(timeIntervalSince1970: 100) },
-      makeAuthorization: { authorization }
-    )
-
-    let requestID = UUID()
-    let response = await session.process(.pair(requestID: requestID, code: "123456"))
-    try? await store.remove()
-
-    XCTAssertEqual(response, .paired(requestID: requestID, authorization: authorization))
-  }
-
-  func testRejectsUnpairedStatusThenPersistsOnePairingAuthorization() async throws {
-    let identity = try ControllerIdentity(fingerprint: Data(repeating: 0x42, count: 32))
-    let authorization = try ControllerAuthorization(bytes: Data(repeating: 0x24, count: 32))
+  func testCorrectCodePairsAndAuthorizedStatusUsesTheThreeOperationHandler() async throws {
+    let identity = try ControllerIdentity(fingerprint: Data(repeating: 0x41, count: 32))
+    let authorization = try ControllerAuthorization(bytes: Data(repeating: 0x42, count: 32))
     let store = InMemoryControllerAuthorizationStore()
-    let authority = try PairingCodeAuthority(
-      code: "123456",
-      identity: identity,
-      expiresAt: Date(timeIntervalSince1970: 200)
-    )
-    let session = ControllerServerSession(
-      identity: identity,
-      pairingAuthority: authority,
-      authorizationStore: store,
-      now: { Date(timeIntervalSince1970: 100) },
-      makeAuthorization: { authorization }
-    )
-
-    let statusID = UUID()
-    let unpairedStatus = await session.process(
-      .status(requestID: statusID, authorization: nil)
-    )
-    XCTAssertEqual(unpairedStatus, .rejected(requestID: statusID, reason: .pairingRequired))
-    let pairID = UUID()
-    let paired = await session.process(.pair(requestID: pairID, code: "123456"))
-    XCTAssertEqual(paired, .paired(requestID: pairID, authorization: authorization))
-    let trustedStatusID = UUID()
-    let trustedStatus = await session.process(
-      .status(requestID: trustedStatusID, authorization: authorization)
-    )
-    XCTAssertEqual(
-      trustedStatus,
-      .status(
-        requestID: trustedStatusID,
-        readiness: .unavailable(.backendUnavailable)
-      )
-    )
-
-    let restarted = ControllerServerSession(
-      identity: identity,
-      pairingAuthority: try PairingCodeAuthority(
-        code: "654321",
-        identity: identity,
-        expiresAt: Date(timeIntervalSince1970: 300)
-      ),
-      authorizationStore: store,
-      now: { Date(timeIntervalSince1970: 100) },
-      makeAuthorization: { authorization }
-    )
-    let restartStatusID = UUID()
-    let restartedStatus = await restarted.process(
-      .status(requestID: restartStatusID, authorization: authorization)
-    )
-    XCTAssertEqual(
-      restartedStatus,
-      .status(
-        requestID: restartStatusID,
-        readiness: .unavailable(.backendUnavailable)
-      )
-    )
-  }
-
-  func testAuthorizedApplyAndStopReachHandlerButInvalidAuthorizationDoesNot() async throws {
-    let identity = try ControllerIdentity(fingerprint: Data(repeating: 0x61, count: 32))
-    let authorization = try ControllerAuthorization(bytes: Data(repeating: 0x62, count: 32))
-    let invalidAuthorization = try ControllerAuthorization(bytes: Data(repeating: 0x63, count: 32))
-    let store = InMemoryControllerAuthorizationStore(authorization: authorization)
     let handler = RecordingControllerCommandHandler()
     let session = ControllerServerSession(
       identity: identity,
@@ -107,7 +19,53 @@ final class ControllerServerSessionTests: XCTestCase {
       ),
       authorizationStore: store,
       commandHandler: handler,
-      now: { Date(timeIntervalSince1970: 100) }
+      now: { Date(timeIntervalSince1970: 100) },
+      makeAuthorization: { authorization }
+    )
+
+    let unpairedID = UUID()
+    let unpaired = await session.process(
+      .status(requestID: unpairedID, authorization: nil)
+    )
+    XCTAssertEqual(
+      unpaired,
+      .rejected(requestID: unpairedID, reason: .pairingRequired)
+    )
+    let pairID = UUID()
+    let paired = await session.process(.pair(requestID: pairID, code: "123456"))
+    XCTAssertEqual(
+      paired,
+      .paired(requestID: pairID, authorization: authorization)
+    )
+    let statusID = UUID()
+    let status = await session.process(
+      .status(requestID: statusID, authorization: authorization)
+    )
+    XCTAssertEqual(
+      status,
+      .status(
+        requestID: statusID,
+        status: ControllerStatus(readiness: .ready, simulation: .idle)
+      )
+    )
+  }
+
+  func testAuthorizedApplyAndClearReachHandlerButInvalidInputDoesNot() async throws {
+    let identity = try ControllerIdentity(fingerprint: Data(repeating: 0x51, count: 32))
+    let authorization = try ControllerAuthorization(bytes: Data(repeating: 0x52, count: 32))
+    let invalidAuthorization = try ControllerAuthorization(bytes: Data(repeating: 0x53, count: 32))
+    let handler = RecordingControllerCommandHandler()
+    let session = ControllerServerSession(
+      identity: identity,
+      pairingAuthority: try PairingCodeAuthority(
+        code: "123456",
+        identity: identity,
+        expiresAt: Date(timeIntervalSince1970: 200)
+      ),
+      authorizationStore: InMemoryControllerAuthorizationStore(
+        authorization: authorization
+      ),
+      commandHandler: handler
     )
 
     let rejectedID = UUID()
@@ -123,8 +81,19 @@ final class ControllerServerSessionTests: XCTestCase {
       rejected,
       .rejected(requestID: rejectedID, reason: .authorizationFailed)
     )
-    let commandsAfterRejection = await handler.recordedCommands()
-    XCTAssertEqual(commandsAfterRejection, [])
+    let invalidCoordinateID = UUID()
+    let invalidCoordinate = await session.process(
+      .apply(
+        requestID: invalidCoordinateID,
+        authorization: authorization,
+        latitude: 91,
+        longitude: 0
+      )
+    )
+    XCTAssertEqual(
+      invalidCoordinate,
+      .failed(requestID: invalidCoordinateID, reason: .invalidCoordinate)
+    )
 
     let applyID = UUID()
     let applied = await session.process(
@@ -135,33 +104,42 @@ final class ControllerServerSessionTests: XCTestCase {
         longitude: 121.4737
       )
     )
-    XCTAssertEqual(applied, .applied(requestID: applyID))
-
-    let stopID = UUID()
-    let stopped = await session.process(
-      .stop(requestID: stopID, authorization: authorization)
-    )
-    XCTAssertEqual(stopped, .stopped(requestID: stopID))
-    let recordedCommands = await handler.recordedCommands()
     XCTAssertEqual(
-      recordedCommands,
+      applied,
+      .applied(
+        requestID: applyID,
+        automaticClearAt: Date(timeIntervalSince1970: 1_000)
+      )
+    )
+    let clearID = UUID()
+    let cleared = await session.process(
+      .clear(
+        requestID: clearID,
+        authorization: authorization,
+        targetOperationID: nil
+      )
+    )
+    XCTAssertEqual(
+      cleared,
+      .cleared(requestID: clearID)
+    )
+    let commands = await handler.commands
+    XCTAssertEqual(
+      commands,
       [
         .apply(requestID: applyID, latitude: 31.2304, longitude: 121.4737),
-        .stop(requestID: stopID),
+        .clear(requestID: clearID, targetOperationID: nil),
       ]
     )
   }
 
-  func testPairingAndAuthorizationValuesNeverEnterTheControllerRecord() async throws {
+  func testPairingAndAuthorizationValuesNeverEnterDiagnostics() async throws {
     let directory = FileManager.default.temporaryDirectory
-      .appendingPathComponent("pinshift-link-events-(UUID().uuidString)")
+      .appendingPathComponent("pinshift-link-events-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: directory) }
-    let identity = try ControllerIdentity(fingerprint: Data(repeating: 0x71, count: 32))
-    let authorization = try ControllerAuthorization(bytes: Data(repeating: 0x72, count: 32))
-    let diagnostics = SimulationDiagnosticRecorder(
-      side: .macController,
-      directory: directory
-    )
+    let identity = try ControllerIdentity(fingerprint: Data(repeating: 0x61, count: 32))
+    let authorization = try ControllerAuthorization(bytes: Data(repeating: 0x62, count: 32))
+    let diagnostics = SimulationDiagnosticRecorder(side: .macController, directory: directory)
     let session = ControllerServerSession(
       identity: identity,
       pairingAuthority: try PairingCodeAuthority(
@@ -175,59 +153,32 @@ final class ControllerServerSessionTests: XCTestCase {
       diagnostics: diagnostics
     )
 
-    let response = await session.process(
-      .pair(requestID: UUID(), code: "123456")
-    )
-    XCTAssertEqual(response, .paired(requestID: response.requestID, authorization: authorization))
-
+    _ = await session.process(.pair(requestID: UUID(), code: "123456"))
     let exported = String(data: try await diagnostics.exportData(), encoding: .utf8)!
     XCTAssertFalse(exported.contains("123456"))
     XCTAssertFalse(exported.contains("authorization"))
-    XCTAssertFalse(exported.contains("72727272"))
+    XCTAssertFalse(exported.contains("62626262"))
   }
 }
 
 private actor RecordingControllerCommandHandler: ControllerCommandHandling {
-  private var commands: [ControllerCommand] = []
+  private(set) var commands: [ControllerCommand] = []
 
   func handle(_ command: ControllerCommand) -> ControllerCommandResult {
     commands.append(command)
     switch command {
     case .status(let requestID):
-      return .ready(requestID: requestID)
-    case .lifecycleStatus(let requestID):
-      return .lifecycleStatus(
+      return .status(
         requestID: requestID,
-        status: ControllerLifecycleStatus(
-          readiness: .ready,
-          simulation: .noActive
-        )
+        status: ControllerStatus(readiness: .ready, simulation: .idle)
       )
     case .apply(let requestID, _, _):
-      return .applied(requestID: requestID)
-    case .applyLifecycle(let requestID, let generationID, _, _, _):
-      return .appliedLifecycle(
+      return .applied(
         requestID: requestID,
-        generationID: generationID,
-        leaseExpiresAt: Date(timeIntervalSince1970: 3_600)
+        automaticClearAt: Date(timeIntervalSince1970: 1_000)
       )
-    case .extendLifecycle(let requestID, let generationID, _):
-      return .extendedLifecycle(
-        requestID: requestID,
-        generationID: generationID,
-        leaseExpiresAt: Date(timeIntervalSince1970: 4_500)
-      )
-    case .stop(let requestID):
-      return .stopped(requestID: requestID)
-    case .stopLifecycle(let requestID, let generationID):
-      return .stoppedLifecycle(
-        requestID: requestID,
-        generationID: generationID
-      )
+    case .clear(let requestID, _):
+      return .cleared(requestID: requestID)
     }
-  }
-
-  func recordedCommands() -> [ControllerCommand] {
-    commands
   }
 }

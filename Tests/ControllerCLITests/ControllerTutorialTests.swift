@@ -18,10 +18,11 @@ final class ControllerTutorialTests: XCTestCase {
       "pinshift-start",
       "Apply",
       "Verify",
-      "15, 30, or 60 minutes",
+      "temporary for 15 minutes",
       "active card",
-      "Cleanup Guardian",
-      "server-owner heartbeat",
+      "latest Apply replaces",
+      "Historical state never blocks",
+      "first reachable opportunity",
       "Location",
       "Local Network",
     ] {
@@ -30,6 +31,8 @@ final class ControllerTutorialTests: XCTestCase {
     XCTAssertFalse(output.localizedCaseInsensitiveContains("XCUITest"))
     XCTAssertFalse(output.localizedCaseInsensitiveContains("sudo"))
     XCTAssertFalse(output.localizedCaseInsensitiveContains("xcode-select --switch"))
+    XCTAssertFalse(output.localizedCaseInsensitiveContains("Cleanup Guardian"))
+    XCTAssertFalse(output.localizedCaseInsensitiveContains("Simulation Lease"))
   }
 
   func testDoctorAndTutorialAreRegisteredSubcommands() throws {
@@ -40,6 +43,10 @@ final class ControllerTutorialTests: XCTestCase {
     XCTAssertTrue(
       try PinshiftControllerCommand.parseAsRoot(["tutorial"])
         is PinshiftControllerCommand.Tutorial
+    )
+    XCTAssertTrue(
+      try PinshiftControllerCommand.parseAsRoot(["clear"])
+        is PinshiftControllerCommand.Clear
     )
     XCTAssertTrue(
       try PinshiftControllerCommand.parseAsRoot([

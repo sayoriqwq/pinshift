@@ -1,27 +1,34 @@
+import Foundation
 import SimulationController
 import XCTest
 
 @testable import ControllerCLI
 
 final class ControllerCLIRunnerTests: XCTestCase {
-  func testStatusUsesTheCurrentDevicectlWorkflowAndDoesNotInventPersistentState() async {
+  func testStatusReportsIdleReadyAuthority() async {
     let runner = ControllerCLIRunner(
       controller: SimulationController(backend: InMemoryInjectionBackend())
     )
 
     let result = await runner.run(.status)
-
-    XCTAssertEqual(result.exitCode, 0)
     XCTAssertEqual(
-      result.output,
-      "The Active Test Device and Xcode/devicectl Injection Backend are ready. Applied and Verified state is reported by the active Controller Link and Pinshift app."
+      result,
+      ControllerCLIResult(
+        exitCode: 0,
+        output: "No Simulated Location is active; the Injection Backend is ready."
+      )
     )
-    XCTAssertFalse(result.output.localizedCaseInsensitiveContains("test session"))
   }
 
-  func testApplyReportsBackendAcknowledgementWithoutClaimingVerification() async {
-    let controller = SimulationController(backend: InMemoryInjectionBackend())
-    let runner = ControllerCLIRunner(controller: controller)
+  func testApplyReportsAutomaticClearWithoutClaimingVerification() async {
+    let now = Date(timeIntervalSince1970: 1_000)
+    let runner = ControllerCLIRunner(
+      controller: SimulationController(
+        backend: InMemoryInjectionBackend(),
+        now: { now },
+        automaticallySchedulesMaintenance: false
+      )
+    )
     let requestID = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
 
     let result = await runner.run(
@@ -33,10 +40,9 @@ final class ControllerCLIRunnerTests: XCTestCase {
     )
 
     XCTAssertEqual(result.exitCode, 0)
-    XCTAssertEqual(
-      result.output,
-      "Applied Simulation acknowledged for request 00000000-0000-0000-0000-000000000002 at 31.230400, 121.473700. Pinshift app verification is still required."
-    )
+    XCTAssertTrue(result.output.contains(requestID.uuidString))
+    XCTAssertTrue(result.output.contains("automatic clear is armed"))
+    XCTAssertFalse(result.output.localizedCaseInsensitiveContains("verified"))
   }
 
   func testResetIsIdempotentWithAndWithoutAnActiveSimulation() async {

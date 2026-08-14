@@ -97,9 +97,6 @@ final class PinshiftUITests: XCTestCase {
     homeScreenshot.lifetime = .keepAlways
     add(homeScreenshot)
 
-    let duration = app.descendants(matching: .any)["simulation-duration-picker"]
-    scrollUp(until: duration, in: app)
-    XCTAssertTrue(duration.waitForExistence(timeout: 5))
     let primaryAction = app.buttons["apply-selected-location"]
     scrollUp(until: primaryAction, in: app)
     XCTAssertTrue(primaryAction.waitForExistence(timeout: 5))
@@ -168,7 +165,7 @@ final class PinshiftUITests: XCTestCase {
     export.tap()
   }
 
-  func testDiagnosticsSurviveFixtureApplyObservationStopAndAppRelaunch() {
+  func testDiagnosticsSurviveFixtureApplyObservationClearAndAppRelaunch() {
     let app = pinshiftApp()
     app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
     app.launchEnvironment["PINSHIFT_E2E_DIAGNOSTICS_ARTIFACT_FIXTURE"] = "1"
@@ -180,13 +177,13 @@ final class PinshiftUITests: XCTestCase {
     selectAndBeginObservation(of: coordinate, in: app)
     applyAndVerifySimulation(of: coordinate, in: app)
 
-    let stop = app.buttons["stop-simulation"]
-    scrollUp(until: stop, in: app)
-    XCTAssertTrue(stop.waitForExistence(timeout: 5))
-    stop.tap()
-    let stopStatus = app.staticTexts["stop-status"]
-    XCTAssertTrue(stopStatus.waitForExistence(timeout: 5))
-    XCTAssertEqual(stopStatus.label, "Simulated Location cleared")
+    let clear = app.buttons["clear-simulation"]
+    scrollUp(until: clear, in: app)
+    XCTAssertTrue(clear.waitForExistence(timeout: 5))
+    clear.tap()
+    let clearStatus = app.staticTexts["clear-status"]
+    XCTAssertTrue(clearStatus.waitForExistence(timeout: 5))
+    XCTAssertEqual(clearStatus.label, "Simulated Location cleared")
 
     guard let firstArtifact = exportDiagnosticsArtifact(in: app) else { return }
     guard let requestIDs = assertNormalDiagnosticSequence(firstArtifact) else {
@@ -231,7 +228,7 @@ final class PinshiftUITests: XCTestCase {
     )
     XCTAssertTrue(
       relaunchedArtifact.events.contains {
-        $0.requestID == requestIDs.stop
+        $0.requestID == requestIDs.clear
       }
     )
     if let lastOriginal = firstArtifact.events.last,
@@ -251,10 +248,10 @@ final class PinshiftUITests: XCTestCase {
     }
   }
 
-  func testDiagnosticsRecordUnavailableControllerAndFailedStopWithoutClaimingStopped() {
+  func testFailedClearStaysNonBlockingAndRecordsAutomaticClearFallback() {
     let app = pinshiftApp()
     app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
-    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FAILURE_FIXTURE"] = "failed-stop"
+    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FAILURE_FIXTURE"] = "failed-clear"
     app.launchEnvironment["PINSHIFT_E2E_DIAGNOSTICS_ARTIFACT_FIXTURE"] = "1"
     app.launch()
     app.tap()
@@ -265,71 +262,78 @@ final class PinshiftUITests: XCTestCase {
     selectAndBeginObservation(of: coordinate, in: app)
     applyAndVerifySimulation(of: coordinate, in: app)
 
-    let stop = app.buttons["stop-simulation"]
-    scrollUp(until: stop, in: app)
-    XCTAssertTrue(stop.waitForExistence(timeout: 5))
-    stop.tap()
+    let clear = app.buttons["clear-simulation"]
+    scrollUp(until: clear, in: app)
+    XCTAssertTrue(clear.waitForExistence(timeout: 5))
+    clear.tap()
 
-    let stopStatus = app.staticTexts["stop-status"]
-    XCTAssertTrue(stopStatus.waitForExistence(timeout: 5))
-    XCTAssertEqual(stopStatus.label, "Cleanup is still pending")
+    let clearStatus = app.staticTexts["clear-status"]
+    XCTAssertTrue(clearStatus.waitForExistence(timeout: 5))
+    XCTAssertEqual(clearStatus.label, "Clear could not be confirmed")
     XCTAssertFalse(
       app.staticTexts.matching(
         NSPredicate(
           format: "identifier == %@ AND label == %@",
-          "stop-status",
+          "clear-status",
           "Simulated Location cleared"
         )
       ).firstMatch.exists
     )
 
-    let simulationStatus = app.staticTexts.matching(identifier: "simulation-status").firstMatch
+    let simulationStatus = app.staticTexts.matching(identifier: "simulation-status")
+      .matching(
+        NSPredicate(
+          format: "label == %@",
+          "Verified by a fresh observation in this app"
+        )
+      )
+      .firstMatch
     XCTAssertTrue(simulationStatus.waitForExistence(timeout: 5))
-    XCTAssertEqual(simulationStatus.label, "Verified by a fresh observation in this app")
+
+    openLocationPicker(in: app)
+    XCTAssertTrue(app.buttons["use-map-center"].waitForExistence(timeout: 5))
+    app.buttons["close-location-picker"].tap()
+    let replacementApply = app.buttons["apply-selected-location"]
+    scrollUp(until: replacementApply, in: app)
+    XCTAssertTrue(replacementApply.waitForExistence(timeout: 5))
+    XCTAssertTrue(replacementApply.isEnabled)
 
     openSettings(in: app)
     scrollToTop(in: app)
     let controllerStatus = app.staticTexts["controller-link-status"]
     XCTAssertTrue(controllerStatus.waitForExistence(timeout: 5))
-    XCTAssertTrue(controllerStatus.label.hasSuffix("Controller unavailable"))
+    XCTAssertTrue(controllerStatus.label.hasSuffix("Mac connected"))
 
     guard let artifact = exportDiagnosticsArtifact(in: app) else { return }
     let kinds = artifact.events.map(\.kind)
-    XCTAssertTrue(kinds.contains("app.controller-link.unavailable"))
-    XCTAssertTrue(kinds.contains("app.controller-link.connection-failed"))
-    XCTAssertTrue(kinds.contains("app.stop.failed"))
-    XCTAssertFalse(kinds.contains("app.stop.clear-acknowledged"))
+    XCTAssertTrue(kinds.contains("app.controller-link.clear-started"))
+    XCTAssertTrue(kinds.contains("app.controller-link.clear-response"))
+    XCTAssertTrue(kinds.contains("app.clear.unconfirmed"))
+    XCTAssertFalse(kinds.contains("app.clear.acknowledged"))
     guard
-      let stopStartedIndex = artifact.events.lastIndex(where: {
-        $0.kind == "app.stop.started"
+      let clearStartedIndex = artifact.events.lastIndex(where: {
+        $0.kind == "app.clear.started"
       }),
-      let unavailableIndex = index(
-        of: "app.controller-link.unavailable",
-        after: stopStartedIndex,
+      let linkResponseIndex = index(
+        of: "app.controller-link.clear-response",
+        after: clearStartedIndex,
         in: artifact.events
       ),
       let failedIndex = index(
-        of: "app.stop.failed",
-        after: unavailableIndex,
+        of: "app.clear.unconfirmed",
+        after: linkResponseIndex,
         in: artifact.events
       ),
-      let stopRequestID = artifact.events[stopStartedIndex].requestID
+      let clearRequestID = artifact.events[clearStartedIndex].requestID
     else {
-      XCTFail("The exported failure artifact did not contain the ordered Stop failure.")
+      XCTFail("The exported artifact did not contain the ordered Clear failure.")
       return
     }
-    XCTAssertLessThan(stopStartedIndex, unavailableIndex)
-    XCTAssertLessThan(unavailableIndex, failedIndex)
+    XCTAssertLessThan(clearStartedIndex, linkResponseIndex)
+    XCTAssertLessThan(linkResponseIndex, failedIndex)
     XCTAssertTrue(
       artifact.events.contains {
-        $0.kind == "app.stop.response" && $0.requestID == stopRequestID
-      }
-    )
-    XCTAssertFalse(
-      artifact.events.contains {
-        ($0.kind == "app.controller-link.stop-response"
-          || $0.kind == "app.stop.response")
-          && stringValue("outcome", in: $0.fields) == "stopped"
+        $0.kind == "app.clear.response" && $0.requestID == clearRequestID
       }
     )
   }
@@ -488,7 +492,7 @@ final class PinshiftUITests: XCTestCase {
     )
   }
 
-  func testSavedLocationSelectionAndDeletionPreserveAcknowledgedAppliedSimulationUntilExplicitStop()
+  func testSavedLocationSelectionAndDeletionPreserveAppliedSimulationUntilReplacementOrClear()
   {
     let app = savedLocationsFixtureApp()
     app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
@@ -543,18 +547,18 @@ final class PinshiftUITests: XCTestCase {
     assertSelectedCoordinate(coordinateB, source: "Saved Location", in: app)
     assertAppliedSimulationRemainsActive(in: app)
 
-    let stop = app.buttons["stop-simulation"]
-    scrollUp(until: stop, in: app)
-    XCTAssertTrue(stop.waitForExistence(timeout: 5))
-    XCTAssertTrue(stop.isEnabled)
-    stop.tap()
+    let clear = app.buttons["clear-simulation"]
+    scrollUp(until: clear, in: app)
+    XCTAssertTrue(clear.waitForExistence(timeout: 5))
+    XCTAssertTrue(clear.isEnabled)
+    clear.tap()
 
-    let cleared = app.staticTexts.matching(identifier: "stop-status")
+    let cleared = app.staticTexts.matching(identifier: "clear-status")
       .matching(NSPredicate(format: "label == %@", "Simulated Location cleared"))
       .firstMatch
     XCTAssertTrue(cleared.waitForExistence(timeout: 5))
     let inactive = app.staticTexts.matching(identifier: "simulation-status")
-      .matching(NSPredicate(format: "label == %@", "No Applied Simulation is active."))
+      .matching(NSPredicate(format: "label == %@", "Selected — waiting to apply"))
       .firstMatch
     XCTAssertTrue(inactive.waitForExistence(timeout: 5))
     openSettings(in: app)
@@ -637,7 +641,7 @@ final class PinshiftUITests: XCTestCase {
     XCTAssertEqual(secondAfterFailure.label, secondLabelBeforeFailure)
     assertSelectedCoordinate(coordinateB, source: "已保存地点", in: app)
     assertAppliedSimulationRemainsActive(in: app, acknowledgedLabelSuffix: "已确认")
-    stopFixtureSimulation(in: app)
+    clearFixtureSimulation(in: app)
   }
 
   func testPermissionFixturesKeepDeniedAndRestrictedRecoveryDistinct() {
@@ -736,7 +740,7 @@ final class PinshiftUITests: XCTestCase {
     XCTAssertTrue(selectedLatitude.label.hasSuffix("31.230400"))
     XCTAssertTrue(selectedLongitude.label.hasSuffix("121.473700"))
     applyAndVerifySimulation(of: coordinate, in: app)
-    stopFixtureSimulation(in: app)
+    clearFixtureSimulation(in: app)
   }
 
   func testLocationPickerKeepsMapActionsVisibleAndRequiresExplicitDismissal() {
@@ -908,7 +912,7 @@ final class PinshiftUITests: XCTestCase {
     XCTAssertTrue(selectedLongitude.label.hasSuffix("121.473700"))
   }
 
-  func testFineAdjustmentDoesNotReplaceAnAppliedSimulationUntilExplicitStop() {
+  func testFineAdjustmentCanReplaceAnAppliedSimulationWithoutClearingFirst() {
     let app = selectedLocationFixtureApp()
     app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
     app.launch()
@@ -930,24 +934,20 @@ final class PinshiftUITests: XCTestCase {
 
     let acknowledgement = app.staticTexts["applied-acknowledgement"]
     XCTAssertTrue(acknowledgement.waitForExistence(timeout: 5))
-    let stop = app.buttons["stop-simulation"]
-    scrollUp(until: stop, in: app)
-    XCTAssertTrue(stop.waitForExistence(timeout: 5))
-    XCTAssertTrue(stop.isEnabled)
-    stopFixtureSimulation(in: app)
+    let replacementApply = app.buttons["apply-selected-location"]
+    scrollUp(until: replacementApply, in: app)
+    XCTAssertTrue(replacementApply.waitForExistence(timeout: 5))
+    XCTAssertTrue(replacementApply.isEnabled)
+    replacementApply.tap()
+    XCTAssertTrue(acknowledgement.waitForExistence(timeout: 5))
+    clearFixtureSimulation(in: app)
   }
 
-  func testTimeBoundedSimulationShowsDurationProtectionCountdownAndActions() {
+  func testTemporarySimulationHasFixedCountdownReplacementAndClearNow() {
     let app = selectedLocationFixtureApp()
     app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
     app.launch()
     app.navigationBars["Pinshift"].tap()
-
-    let durationPicker = app.segmentedControls["simulation-duration-picker"]
-    scrollUp(until: durationPicker, in: app)
-    XCTAssertTrue(durationPicker.waitForExistence(timeout: 5))
-    XCTAssertEqual(durationPicker.buttons.count, 3)
-    durationPicker.buttons["30 min"].tap()
 
     let apply = app.buttons["apply-selected-location"]
     scrollUp(until: apply, in: app)
@@ -958,27 +958,57 @@ final class PinshiftUITests: XCTestCase {
     let card = app.otherElements["active-simulation-card"]
     scrollUp(until: card, in: app)
     XCTAssertTrue(card.waitForExistence(timeout: 5))
-    XCTAssertTrue(app.staticTexts["simulation-lease-expiry"].exists)
-    XCTAssertTrue(app.staticTexts["simulation-lease-countdown"].exists)
-    XCTAssertTrue(app.staticTexts["cleanup-protection-receipt"].exists)
+    XCTAssertTrue(app.staticTexts["simulation-auto-clear-time"].exists)
+    XCTAssertTrue(app.staticTexts["simulation-auto-clear-countdown"].exists)
+    XCTAssertTrue(app.buttons["apply-selected-location"].exists)
+    XCTAssertTrue(app.buttons["apply-selected-location"].isEnabled)
     XCTAssertFalse(
-      app.staticTexts.matching(identifier: "stop-status")
+      app.staticTexts.matching(identifier: "clear-status")
         .matching(NSPredicate(format: "label == %@", "Simulated Location cleared"))
         .firstMatch.exists
     )
 
-    let extend = app.buttons["extend-simulation-lease"]
-    XCTAssertTrue(extend.waitForExistence(timeout: 5))
-    extend.tap()
-    XCTAssertTrue(app.staticTexts["simulation-lease-countdown"].waitForExistence(timeout: 5))
-
-    let restore = app.buttons["stop-simulation"]
-    XCTAssertTrue(restore.waitForExistence(timeout: 5))
-    restore.tap()
-    let cleared = app.staticTexts.matching(identifier: "stop-status")
+    let clear = app.buttons["clear-simulation"]
+    XCTAssertTrue(clear.waitForExistence(timeout: 5))
+    clear.tap()
+    let cleared = app.staticTexts.matching(identifier: "clear-status")
       .matching(NSPredicate(format: "label == %@", "Simulated Location cleared"))
       .firstMatch
     XCTAssertTrue(cleared.waitForExistence(timeout: 5))
+  }
+
+  func testReplacementApplyRemainsEnabledWhileEarlierResponseIsPending() {
+    let app = selectedLocationFixtureApp()
+    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
+    app.launchEnvironment["PINSHIFT_E2E_APPLY_DELAY_MILLISECONDS"] = "2000"
+    app.launch()
+    app.navigationBars["Pinshift"].tap()
+
+    let apply = app.buttons["apply-selected-location"]
+    scrollUp(until: apply, in: app)
+    XCTAssertTrue(apply.waitForExistence(timeout: 5))
+    XCTAssertTrue(apply.isEnabled)
+    apply.tap()
+
+    let applying = app.staticTexts.matching(identifier: "simulation-status")
+      .matching(
+        NSPredicate(
+          format: "label == %@",
+          "Applying temporary location…"
+        )
+      )
+      .firstMatch
+    XCTAssertTrue(applying.waitForExistence(timeout: 5))
+    XCTAssertTrue(
+      apply.isEnabled,
+      "An earlier in-flight Apply must not disable replacement Apply."
+    )
+
+    apply.tap()
+    let card = app.otherElements["active-simulation-card"]
+    scrollUp(until: card, in: app)
+    XCTAssertTrue(card.waitForExistence(timeout: 8))
+    clearFixtureSimulation(in: app)
   }
 
   func testFineAdjustmentFeedbackIsLocalizedInSimplifiedChinese() {
@@ -1462,7 +1492,7 @@ final class PinshiftUITests: XCTestCase {
 
   private func assertNormalDiagnosticSequence(
     _ artifact: ExportedDiagnosticArtifact
-  ) -> (apply: UUID, stop: UUID)? {
+  ) -> (apply: UUID, clear: UUID)? {
     XCTAssertEqual(artifact.schemaVersion, 1)
     XCTAssertEqual(artifact.side, "pinshift-app")
     XCTAssertFalse(artifact.createdAt.isEmpty)
@@ -1490,14 +1520,14 @@ final class PinshiftUITests: XCTestCase {
         after: applyIndex,
         in: artifact.events
       ),
-      let stopIndex = index(
-        of: "app.stop.started",
+      let clearStartedIndex = index(
+        of: "app.clear.started",
         after: observationIndex,
         in: artifact.events
       ),
-      let clearIndex = index(
-        of: "app.stop.clear-acknowledged",
-        after: stopIndex,
+      let clearAcknowledgedIndex = index(
+        of: "app.clear.acknowledged",
+        after: clearStartedIndex,
         in: artifact.events
       )
     else {
@@ -1507,8 +1537,8 @@ final class PinshiftUITests: XCTestCase {
     XCTAssertLessThan(launchIndex, selectionIndex)
     XCTAssertLessThan(selectionIndex, applyIndex)
     XCTAssertLessThan(applyIndex, observationIndex)
-    XCTAssertLessThan(observationIndex, stopIndex)
-    XCTAssertLessThan(stopIndex, clearIndex)
+    XCTAssertLessThan(observationIndex, clearStartedIndex)
+    XCTAssertLessThan(clearStartedIndex, clearAcknowledgedIndex)
 
     guard let applyRequestID = artifact.events[applyIndex].requestID else {
       XCTFail("The Apply event did not contain a request ID.")
@@ -1531,22 +1561,22 @@ final class PinshiftUITests: XCTestCase {
       }
     )
 
-    guard let stopRequestID = artifact.events[stopIndex].requestID else {
-      XCTFail("The Stop event did not contain a request ID.")
+    guard let clearRequestID = artifact.events[clearStartedIndex].requestID else {
+      XCTFail("The Clear event did not contain a request ID.")
       return nil
     }
     XCTAssertTrue(
       artifact.events.contains {
-        $0.kind == "app.stop.response" && $0.requestID == stopRequestID
+        $0.kind == "app.clear.response" && $0.requestID == clearRequestID
       }
     )
     XCTAssertTrue(
       artifact.events.contains {
-        $0.kind == "app.stop.clear-acknowledged"
-          && $0.requestID == stopRequestID
+        $0.kind == "app.clear.acknowledged"
+          && $0.requestID == clearRequestID
       }
     )
-    return (applyRequestID, stopRequestID)
+    return (applyRequestID, clearRequestID)
   }
 
   private func index(
@@ -1637,19 +1667,19 @@ final class PinshiftUITests: XCTestCase {
     XCTAssertTrue(appliedStatus.label.hasSuffix(acknowledgedLabelSuffix))
 
     returnHome(in: app)
-    let stop = app.buttons["stop-simulation"]
-    scrollUp(until: stop, in: app)
-    XCTAssertTrue(stop.waitForExistence(timeout: 5))
-    XCTAssertTrue(stop.isEnabled)
+    let clear = app.buttons["clear-simulation"]
+    scrollUp(until: clear, in: app)
+    XCTAssertTrue(clear.waitForExistence(timeout: 5))
+    XCTAssertTrue(clear.isEnabled)
   }
 
-  private func stopFixtureSimulation(in app: XCUIApplication) {
+  private func clearFixtureSimulation(in app: XCUIApplication) {
     returnHome(in: app)
-    let stop = app.buttons["stop-simulation"]
-    scrollUp(until: stop, in: app)
-    XCTAssertTrue(stop.waitForExistence(timeout: 5))
-    stop.tap()
-    let cleared = app.staticTexts.matching(identifier: "stop-status")
+    let clear = app.buttons["clear-simulation"]
+    scrollUp(until: clear, in: app)
+    XCTAssertTrue(clear.waitForExistence(timeout: 5))
+    clear.tap()
+    let cleared = app.staticTexts.matching(identifier: "clear-status")
       .matching(
         NSPredicate(
           format: "label == %@ OR label == %@",
@@ -1684,7 +1714,7 @@ final class PinshiftUITests: XCTestCase {
     XCTAssertTrue(appliedStatus.waitForExistence(timeout: 5))
     XCTAssertTrue(
       appliedStatus.label.hasSuffix("Inactive")
-        || appliedStatus.label.hasSuffix("Unknown until Controller Link reconnects")
+        || appliedStatus.label.hasSuffix("Unknown until the Mac reconnects")
     )
 
     returnHome(in: app)

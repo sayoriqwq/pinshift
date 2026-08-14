@@ -4,18 +4,13 @@ set --local script_dir (path resolve (path dirname (status filename)))
 source $script_dir/_pinshift-common.fish
 or exit 1
 
-# Keep the wrapper alive when the foreground controller receives Control-C so
-# the abnormal-exit reset below can run.
-function pinshift_keep_wrapper_for_cleanup --on-signal INT
-end
-
-argparse 'h/help' 's/seconds=' 'l/lease-seconds=' -- $argv
+argparse 'h/help' -- $argv
 or exit 2
 
 if set --query _flag_help
-    echo "Usage: pinshift-start [--seconds 60...86400] [--lease-seconds 30...3600]"
-    echo "Starts the trusted Controller Link and keeps it open. Stop with Ctrl+C."
-    echo "The Pinshift app starts each Applied Simulation with 15 minutes by default."
+    echo "Usage: pinshift-start"
+    echo "Restarts the installed background controller and prints a fresh pairing code."
+    echo "The command returns immediately; no foreground terminal is required."
     exit 0
 end
 
@@ -24,34 +19,41 @@ or exit $status
 set --local controller (pinshift_controller_executable)
 or exit $status
 
-set --local seconds 3600
-if set --query PINSHIFT_SECONDS
-    set seconds $PINSHIFT_SECONDS
-end
-if set --query _flag_seconds
-    set seconds $_flag_seconds
+set --local authority_label dev.sayori.pinshift.controller
+set --local authority_plist $HOME/Library/LaunchAgents/$authority_label.plist
+set --local pairing_code_file $HOME/Library/Application\ Support/Pinshift/ControllerLink/pairing-code
+set --local user_id (id -u)
+
+if not test -x $controller; or not test -f $authority_plist
+    echo "The background controller is not installed. Run pinshift-install once." >&2
+    exit 1
 end
 
-set --local lease_seconds
-if set --query PINSHIFT_LEASE_SECONDS
-    set lease_seconds $PINSHIFT_LEASE_SECONDS
+if not launchctl print gui/$user_id/$authority_label >/dev/null 2>&1
+    launchctl bootstrap gui/$user_id $authority_plist
+    or begin
+        echo "The background controller could not be registered. Run pinshift-install again." >&2
+        exit 1
+    end
 end
-if set --query _flag_lease_seconds
-    set lease_seconds $_flag_lease_seconds
-end
-
-set --local serve_arguments link serve --seconds $seconds
-if set --query lease_seconds[1]
-    set --append serve_arguments --lease-seconds $lease_seconds
-end
-
-$controller $serve_arguments
-set --local serve_status $status
-
-# Normal expiry already performs cleanup inside the controller. A signal or other
-# abnormal exit may bypass that lifecycle, so make the reset explicit and idempotent.
-if test $serve_status -ne 0
-    $controller reset
+launchctl kickstart -k gui/$user_id/$authority_label
+or begin
+    echo "The background controller could not be started." >&2
+    exit 1
 end
 
-exit $serve_status
+for attempt in (seq 1 50)
+    if test -s $pairing_code_file
+        set --local pairing_code (string trim < $pairing_code_file)
+        if test (string length $pairing_code) -eq 6; and string match --quiet --regex '^[0-9]{6}$' $pairing_code
+            echo "Background Controller Link is ready. Pairing code: $pairing_code"
+            echo "Every applied location clears automatically after 15 minutes."
+            exit 0
+        end
+    end
+    sleep 0.1
+end
+
+echo "The background controller started, but a fresh pairing code was not available." >&2
+echo "Inspect $HOME/Library/Logs/Pinshift/controller.log, then run pinshift-start again." >&2
+exit 1

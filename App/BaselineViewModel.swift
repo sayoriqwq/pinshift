@@ -4,7 +4,6 @@ import Foundation
 final class BaselineViewModel: ObservableObject {
   @Published var latitudeText = ""
   @Published var longitudeText = ""
-  @Published var selectedLeaseDuration: SimulationLeaseDuration = .defaultDuration
   @Published private(set) var session = GPXBaselineSession()
   @Published private(set) var manualSession = ManualSimulationSession()
   @Published private(set) var selection = LocationSelectionState()
@@ -79,7 +78,7 @@ final class BaselineViewModel: ObservableObject {
         }
       }
     } catch {
-      inputError = "The pending simulation cleanup could not be restored."
+      inputError = "The Selected Location could not be restored."
     }
   }
 
@@ -166,11 +165,6 @@ final class BaselineViewModel: ObservableObject {
     _ location: SelectedLocation,
     source: LocationSelectionSource
   ) -> Bool {
-    guard !isStopping else {
-      inputError = "Finish the current stop request before changing the Selected Location."
-      return false
-    }
-
     selection.select(location, source: source)
     session.select(location)
     manualSession.select(location)
@@ -256,7 +250,6 @@ final class BaselineViewModel: ObservableObject {
     do {
       let request = try manualSession.beginApply(
         requestID: UUID(),
-        leaseDuration: selectedLeaseDuration,
         at: date
       )
       persistManualSession()
@@ -268,14 +261,13 @@ final class BaselineViewModel: ObservableObject {
           "latitude": .number(request.location.latitude),
           "longitude": .number(request.location.longitude),
           "requestedAt": .date(request.requestedAt),
-          "requestedLeaseDuration": .number(request.requestedLeaseDuration),
         ]
       )
       manualExpirationTask?.cancel()
       manualExpirationTask = Task { [weak self] in
         try? await Task.sleep(for: .milliseconds(15_001))
         guard !Task.isCancelled else { return }
-        self?.manualSession.expire(at: date.addingTimeInterval(15.001))
+        self?.manualSession.expireVerification(at: date.addingTimeInterval(15.001))
         self?.persistManualSession()
         if case .appliedNotVerified(let request, .timedOut) = self?.manualSession.status {
           self?.record(
@@ -286,10 +278,6 @@ final class BaselineViewModel: ObservableObject {
         }
       }
       return request
-    } catch ManualSimulationSessionError.cleanupPending {
-      inputError = "Finish the pending simulation cleanup before applying another location."
-      record(kind: "app.apply.rejected", fields: ["reason": .text("cleanup-pending")])
-      return nil
     } catch {
       inputError = "Save a valid Selected Location first."
       record(kind: "app.apply.rejected")
@@ -308,38 +296,24 @@ final class BaselineViewModel: ObservableObject {
       fields: responseFields(response)
     )
     guard response.requestID == request.requestID else {
-      _ = manualSession.fail(
-        requestID: request.requestID,
-        reason: .responseIdentityMismatch
+      record(
+        kind: "app.apply.stale-response-ignored",
+        requestID: response.requestID
       )
-      persistManualSession()
       return
     }
 
     switch response {
-    case .applied(let responseID):
-      _ = manualSession.fail(
-        requestID: responseID,
-        reason: .requestRejected(stableCode: "controllerUpgradeRequired")
-      )
-    case .appliedLifecycle(
-      let responseID,
-      let generationID,
-      let leaseExpiresAt
-    ):
+    case .applied(let responseID, let automaticClearAt):
       _ = manualSession.acknowledgeApplied(
         requestID: responseID,
-        generationID: generationID,
-        leaseExpiresAt: leaseExpiresAt
+        automaticClearAt: automaticClearAt
       )
-      manualSession.expire(at: date)
+      manualSession.expireVerification(at: date)
       record(
         kind: "app.apply.acknowledged",
         requestID: responseID,
-        fields: [
-          "generationID": .text(generationID.uuidString),
-          "leaseExpiresAt": .date(leaseExpiresAt),
-        ]
+        fields: ["automaticClearAt": .date(automaticClearAt)]
       )
     case .failed(let responseID, let reason):
       _ = manualSession.fail(
@@ -361,8 +335,7 @@ final class BaselineViewModel: ObservableObject {
         requestID: responseID,
         fields: ["reason": .text(reason.rawValue)]
       )
-    case .status, .lifecycleStatus, .paired, .extendedLifecycle, .stopped,
-      .stoppedLifecycle:
+    case .status, .paired, .cleared:
       _ = manualSession.fail(
         requestID: request.requestID,
         reason: .responseIdentityMismatch
@@ -376,180 +349,118 @@ final class BaselineViewModel: ObservableObject {
     persistManualSession()
   }
 
-  func beginLeaseExtension(
-    at date: Date = Date()
-  ) -> ManualSimulationLeaseExtensionIntent? {
-    guard let intent = manualSession.beginLeaseExtension(requestID: UUID(), at: date) else {
-      return nil
-    }
-    persistManualSession()
+  func beginClear(at date: Date = Date()) -> ManualSimulationClearRequest {
+    let request = manualSession.beginClear(requestID: UUID(), at: date)
     record(
-      kind: "app.lease-extension.started",
-      requestID: intent.requestID,
-      fields: [
-        "generationID": .text(intent.generationID.uuidString),
-        "extensionDuration": .number(intent.extensionDuration),
-      ]
+      kind: "app.clear.started",
+      requestID: request.requestID
     )
-    return intent
+    return request
   }
 
-  func receiveLeaseExtensionResponse(
+  func receiveClearResponse(
     _ response: ControllerLinkResponse,
-    for intent: ManualSimulationLeaseExtensionIntent
+    for request: ManualSimulationClearRequest
   ) {
-    guard response.requestID == intent.requestID else {
-      _ = manualSession.failLeaseExtension(
-        requestID: intent.requestID,
-        reason: .responseIdentityMismatch
-      )
-      persistManualSession()
-      return
-    }
-
-    switch response {
-    case .extendedLifecycle(
-      let requestID,
-      let generationID,
-      let leaseExpiresAt
-    ):
-      _ = manualSession.acknowledgeLeaseExtension(
-        requestID: requestID,
-        generationID: generationID,
-        leaseExpiresAt: leaseExpiresAt
-      )
-      record(
-        kind: "app.lease-extension.acknowledged",
-        requestID: requestID,
-        fields: ["leaseExpiresAt": .date(leaseExpiresAt)]
-      )
-    case .failed(let requestID, let reason):
-      _ = manualSession.failLeaseExtension(
-        requestID: requestID,
-        reason: map(reason)
-      )
-    case .rejected(let requestID, let reason):
-      _ = manualSession.failLeaseExtension(
-        requestID: requestID,
-        reason: .requestRejected(stableCode: reason.rawValue)
-      )
-    case .status, .lifecycleStatus, .paired, .applied, .appliedLifecycle,
-      .stopped, .stoppedLifecycle:
-      _ = manualSession.failLeaseExtension(
-        requestID: intent.requestID,
-        reason: .responseIdentityMismatch
-      )
-    }
-    persistManualSession()
-  }
-
-  func beginStop(at date: Date = Date()) -> ManualSimulationStopIntent? {
-    guard
-      manualSession.activeAppliedRequest != nil
-        || manualSession.pendingStopIntent != nil
-        || isApplying
-    else {
-      record(kind: "app.stop.rejected", fields: ["reason": .text("no-active-simulation")])
-      return nil
-    }
-    guard let intent = manualSession.beginStop(requestID: UUID(), at: date) else {
-      return nil
-    }
-    persistManualSession()
     record(
-      kind: "app.stop.started",
-      requestID: intent.requestID,
-      fields: ["generationID": .text(intent.generationID.uuidString)]
-    )
-    return intent
-  }
-
-  func receiveStopResponse(
-    _ response: ControllerLinkResponse,
-    for intent: ManualSimulationStopIntent
-  ) {
-    let requestID = intent.requestID
-    record(
-      kind: "app.stop.response",
+      kind: "app.clear.response",
       requestID: response.requestID,
       fields: responseFields(response)
     )
-    guard response.requestID == requestID else {
-      _ = manualSession.failStop(
-        requestID: requestID,
-        reason: .responseIdentityMismatch
+    guard response.requestID == request.requestID else {
+      record(
+        kind: "app.clear.stale-response-ignored",
+        requestID: response.requestID
       )
-      persistManualSession()
       return
     }
 
     switch response {
-    case .stopped(let responseID):
-      _ = manualSession.acknowledgeStopped(requestID: responseID)
-      record(kind: "app.stop.clear-acknowledged", requestID: responseID)
-    case .stoppedLifecycle(let responseID, let generationID):
-      _ = manualSession.acknowledgeStopped(
-        requestID: responseID,
-        generationID: generationID
-      )
-      record(kind: "app.stop.clear-acknowledged", requestID: responseID)
+    case .cleared(let responseID):
+      _ = manualSession.acknowledgeCleared(requestID: responseID)
+      record(kind: "app.clear.acknowledged", requestID: responseID)
     case .failed(let responseID, let reason):
-      _ = manualSession.failStop(
+      _ = manualSession.failClear(
         requestID: responseID,
         reason: map(reason)
       )
       record(
-        kind: "app.stop.failed",
+        kind: "app.clear.unconfirmed",
         requestID: responseID,
         fields: ["reason": .text(reason.rawValue)]
       )
     case .rejected(let responseID, let reason):
-      _ = manualSession.failStop(
+      _ = manualSession.failClear(
         requestID: responseID,
         reason: .requestRejected(stableCode: reason.rawValue)
       )
       record(
-        kind: "app.stop.failed",
+        kind: "app.clear.unconfirmed",
         requestID: responseID,
         fields: ["reason": .text(reason.rawValue)]
       )
-    case .status, .lifecycleStatus, .paired, .applied, .appliedLifecycle,
-      .extendedLifecycle:
-      _ = manualSession.failStop(
-        requestID: requestID,
+    case .status, .paired, .applied:
+      _ = manualSession.failClear(
+        requestID: request.requestID,
         reason: .responseIdentityMismatch
       )
       record(
-        kind: "app.stop.failed",
-        requestID: requestID,
+        kind: "app.clear.unconfirmed",
+        requestID: request.requestID,
         fields: ["reason": .text("responseIdentityMismatch")]
       )
     }
+  }
+
+  func reconcileControllerStatus(
+    _ status: ControllerStatus,
+    at date: Date = Date()
+  ) {
+    let snapshot: ManualSimulationControllerSnapshot
+    switch status.simulation {
+    case .idle:
+      snapshot = .idle
+    case .active(let operationID, let latitude, let longitude, let automaticClearAt):
+      guard let location = try? SelectedLocation(latitude: latitude, longitude: longitude) else {
+        return
+      }
+      snapshot = .active(
+        operationID: operationID,
+        location: location,
+        automaticClearAt: automaticClearAt
+      )
+    case .uncertain(
+      let operationID,
+      let latitude,
+      let longitude,
+      let automaticClearAt,
+      _
+    ):
+      snapshot = .uncertain(
+        operationID: operationID,
+        location: makeLocation(latitude: latitude, longitude: longitude),
+        automaticClearAt: automaticClearAt
+      )
+    case .clearPending(
+      let operationID,
+      let latitude,
+      let longitude,
+      let automaticClearAt,
+      _
+    ):
+      snapshot = .clearPending(
+        operationID: operationID,
+        location: makeLocation(latitude: latitude, longitude: longitude),
+        automaticClearAt: automaticClearAt
+      )
+    }
+    manualSession.replaceWithControllerSnapshot(snapshot, at: date)
     persistManualSession()
   }
 
-  func reconcileControllerLifecycle(_ status: ControllerLifecycleStatus) {
-    switch status.simulation {
-    case .noActive:
-      break
-    case .applyUncertain:
-      break
-    case .applied(let generationID, let leaseExpiresAt):
-      _ = manualSession.reconcileApplied(
-        generationID: generationID,
-        leaseExpiresAt: leaseExpiresAt
-      )
-    case .cleanupPending(let generationID, _, let reason):
-      manualSession.reconcileCleanupPending(
-        generationID: generationID,
-        reason: reason.map(map)
-      )
-    case .stopped(let generationID):
-      manualSession.reconcileStopped(generationID: generationID)
-    case .deviceMismatch:
-      break
-    }
-    persistManualSession()
+  private func makeLocation(latitude: Double?, longitude: Double?) -> SelectedLocation? {
+    guard let latitude, let longitude else { return nil }
+    return try? SelectedLocation(latitude: latitude, longitude: longitude)
   }
 
   private func record(
@@ -563,34 +474,17 @@ final class BaselineViewModel: ObservableObject {
 
   private func responseFields(_ response: ControllerLinkResponse) -> SimulationDiagnosticFields {
     switch response {
-    case .status(_, let readiness):
-      return ["outcome": .text(String(describing: readiness))]
-    case .lifecycleStatus(_, let status):
+    case .status(_, let status):
       return ["outcome": .text(String(describing: status.simulation))]
     case .paired:
       return ["outcome": .text("paired")]
-    case .applied:
-      return ["outcome": .text("applied")]
-    case .appliedLifecycle(_, let generationID, let leaseExpiresAt):
+    case .applied(_, let automaticClearAt):
       return [
         "outcome": .text("applied"),
-        "generationID": .text(generationID.uuidString),
-        "leaseExpiresAt": .date(leaseExpiresAt),
+        "automaticClearAt": .date(automaticClearAt),
       ]
-    case .extendedLifecycle(_, let generationID, let leaseExpiresAt):
-      return [
-        "outcome": .text("extended"),
-        "generationID": .text(generationID.uuidString),
-        "leaseExpiresAt": .date(leaseExpiresAt),
-      ]
-    case .stopped:
-      return ["outcome": .text("stopped")]
-    case .stoppedLifecycle(_, let generationID):
-      var fields: SimulationDiagnosticFields = ["outcome": .text("stopped")]
-      if let generationID {
-        fields["generationID"] = .text(generationID.uuidString)
-      }
-      return fields
+    case .cleared:
+      return ["outcome": .text("cleared")]
     case .failed(_, let reason):
       return ["outcome": .text("failed"), "reason": .text(reason.rawValue)]
     case .rejected(_, let reason):
@@ -632,7 +526,7 @@ final class BaselineViewModel: ObservableObject {
         request.requestID,
         ["verificationResult": .text("awaiting-observation")]
       )
-    case .noSelection, .selected, .applying, .failed, .stopped:
+    case .noSelection, .selected, .applying, .failed:
       return (nil, ["verificationResult": .text("not-applicable")])
     }
   }
@@ -644,16 +538,8 @@ final class BaselineViewModel: ObservableObject {
     return false
   }
 
-  var isStopping: Bool {
-    manualSession.pendingStopIntent != nil
-  }
-
-  var isExtendingLease: Bool {
-    manualSession.pendingLeaseExtension != nil
-  }
-
-  var pendingStopIntent: ManualSimulationStopIntent? {
-    manualSession.pendingStopIntent
+  var isClearing: Bool {
+    manualSession.currentClearRequest != nil
   }
 
   func savedLocationName(for location: SelectedLocation) -> String? {
@@ -664,7 +550,7 @@ final class BaselineViewModel: ObservableObject {
     do {
       try manualSessionStore.save(manualSession)
     } catch {
-      inputError = "The simulation cleanup state could not be saved."
+      inputError = "The Selected Location could not be saved."
     }
   }
 

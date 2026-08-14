@@ -1,10 +1,10 @@
 # Pinshift development tutorial
 
-This tutorial covers the current personal environment only. The production Injection Backend is Xcode 27's public `devicectl device simulate location` workflow; there is no production test runner or second backend.
+This tutorial covers the current personal environment. The sole production Injection Backend is Xcode 27's public `devicectl device simulate location` workflow.
 
-## Repository-local quick start
+## Repository environment
 
-The repository contains a Nix Flake and direnv setup. It supplies Fish, jq, and XcodeGen while deliberately leaving Swift to the approved Xcode Beta toolchain. Approve the environment once after cloning or whenever `.envrc` changes:
+The Nix Flake and direnv environment provide Fish, jq, and XcodeGen while using the approved Xcode Beta Swift toolchain:
 
 ```fish
 direnv allow
@@ -12,97 +12,92 @@ direnv allow
 
 🌱 允许仓库加载声明式 Nix 开发环境。
 
-After that, the normal startup flow is:
+Install once, then run the read-only checks:
 
 ```fish
-pinshift-install # once, and again only after controller source changes
+pinshift-install
 pinshift-doctor
-pinshift-start
 ```
 
-🚀 安装稳定控制器、检查环境并启动日常 Controller Link。
+🛠️ 构建并签名稳定控制器，安装单一后台 authority，然后检查环境。
 
-`pinshift-install` creates a stable, signed controller executable, installs its per-user launchd Cleanup Guardian, and conservatively authorizes that exact executable to use the existing controller private key. The first migration can show one macOS Keychain approval; approve the signed controller permanently. It does not delete or replace the existing TLS identity, and it stops before changing Keychain if the signing requirement differs from the previous installation.
+`pinshift-install` installs one per-user LaunchAgent. The same process owns Controller Link, durable current-operation state, backend serialization, and automatic clear. It runs at login and restarts after failure, so daily use does not need a foreground terminal. The installer preserves the existing Keychain TLS identity and refuses an unexpected designated-requirement change before modifying trust.
 
-Daily commands never rebuild or re-sign the controller. `pinshift-start` keeps the trusted Controller Link open for one hour by default, while every Pinshift app Apply starts its own visible Simulation Lease. The App offers exactly 15, 30, and 60 minutes and defaults to 15 minutes. Server duration never extends that lease. Immediate restore, lease expiry, orderly server shutdown, 30 seconds of continuous server-owner heartbeat loss, startup reconciliation, and `pinshift-reset` all converge on the same durable, idempotent cleanup workflow.
-
-When exactly one paired physical iPhone is known to Xcode, these commands select it automatically without printing its private identifier. If discovery is ambiguous, copy `.env.example` to the Git-ignored `.env.local` and set `PINSHIFT_DEVICE` there.
+When upgrading from the former lifecycle design, the installer stops and removes the legacy Guardian LaunchAgent. The new authority reads the existing state-file path, turns legacy Mac state into an immediate safe clear attempt, and writes schema 2 in place. Saved Locations and Trusted Controller data survive; old iOS control state does not.
 
 ## Prepare Xcode and the iPhone
 
 1. Install the approved full Xcode and open it once to finish first-launch setup.
 2. Connect and unlock the iPhone. Confirm **Trust** on both devices if prompted.
-3. Enable **Developer Mode** in **Settings → Privacy & Security**, restart if prompted, and confirm it after restart.
-4. Open the app project in Xcode and select automatic signing for an available development team. A Personal Team build can require rebuilding and reprovisioning every seven days.
+3. Enable **Developer Mode** in **Settings → Privacy & Security** and finish the restart confirmation.
+4. Open the app project in Xcode and enable automatic signing for a development team.
 5. Build, install, and launch **Pinshift** on the iPhone.
 
-After that first signed build, renew the Personal Team app from the repository with:
+Keep the Active Test Device selector private in `PINSHIFT_DEVICE` or pass `--device`. Set the approved Xcode `Contents/Developer` path through `PINSHIFT_DEVELOPER_DIR` or `--developer-directory`; the project never changes global `xcode-select` state.
+
+## App signing renewal
+
+A Personal Team app may require renewal every seven days. Renew only when 24 hours or less remain:
 
 ```fish
 pinshift-resign-app
 ```
 
-🔏 Renews only when 24 hours or less remain, verifies the new profile, and updates the existing app.
+🔏 验证新 profile 并原位更新现有 App。
 
-Use `pinshift-resign-app --force` to request a newer profile immediately. The command temporarily moves
-only profiles whose application identifier exactly matches the Pinshift bundle identifier
-declared in `project.yml`, then asks Xcode automatic signing for a replacement. Before installation it verifies the candidate
-code signature, bundle identifier, signing team, application prefix, and a strictly later expiration
-date. It never uninstalls the device app. A pre-install failure restores the old cached profile;
-successful renewals retain the old profile in a private repository-local backup under `.build/`.
-Once installation begins, a timeout or disconnect is an uncertain remote outcome rather than a safe
-rollback point. In that case the command keeps the new profile, signed candidate, and private logs for
-inspection and does not claim that the existing device app remained unchanged.
+Use `pinshift-resign-app --force` to request a newer profile immediately. The workflow validates the candidate signature, bundle identifier, team, application prefix, and strictly later expiry before installation. It never uninstalls the App. A pre-install failure restores the old cached profile; a disconnect after installation starts is reported as an uncertain remote outcome.
 
-Xcode must remain signed in to the Apple Account. Authentication expiry, two-factor authentication,
-or updated developer agreements still require interaction in Xcode. Wi-Fi installation requires the
-paired iPhone to remain visible to Xcode. A locked phone can defer only launch verification; unlock it
-and run `pinshift-resign-app --launch-only`, or open Pinshift manually.
+If a locked phone only deferred launch verification, unlock it and run:
 
-Keep the Active Test Device selector private. Supply it with `--device` or the `PINSHIFT_DEVICE` environment variable. Supply the approved full-Xcode developer directory with `--developer-directory` or `PINSHIFT_DEVELOPER_DIR`; this project does not require changing the global `xcode-select` value.
+```fish
+pinshift-resign-app --launch-only
+```
 
-## Diagnose without changing settings
+📱 不重新签名，只补做启动验证。
 
-Run:
+## Diagnose without mutation
 
 ```fish
 pinshift-controller doctor
 ```
 
-🩺 Runs the controller's read-only environment checks.
+🩺 运行固定的只读 Xcode、设备、签名、身份和权限检查。
 
-Doctor checks the configured full Xcode/version, first-launch status, developer-directory mismatch, Active Test Device availability, Developer Mode or developer disk image failures, signing identity, Controller Link identity, and the App permission checkpoint. It uses fixed read-only commands, never prints raw device or signing output, and never changes Xcode, device, permission, or system settings.
+Doctor never changes system or device settings and does not print raw private selectors. Location and Local Network permission decisions remain authoritative inside the iOS app.
 
-Follow only the recovery step for a failed check. Location and Local Network decisions belong to iOS, so their authoritative status appears inside the Pinshift app.
+## Pair and use
 
-## Pair and use the controller
-
-Install or update the repository-local signed controller:
-
-```fish
-pinshift-install
-```
-
-🛠️ Installs or updates the stable signed controller and Cleanup Guardian.
-
-Start the trusted local Controller Link and keep it open:
+Only when a new or reset iPhone needs a code, run:
 
 ```fish
 pinshift-start
 ```
 
-🔗 Starts the trusted local Controller Link for the current session.
+🔗 重启后台 Controller Link、打印新的六位码，然后立即返回。
 
-An iPhone that already trusts the preserved controller identity reconnects without a new six-digit code. A new or reset iPhone still performs the explicit one-time pairing flow.
+Already trusted iPhones reconnect automatically. In Pinshift:
 
-In the Pinshift app:
+1. Allow **Location** and **Local Network**, then pair if needed.
+2. Choose a Selected Location. Selection never applies automatically and remains available in every simulation state.
+3. Tap **Apply Selected Location**. There is no duration parameter: the Mac returns exactly 15 minutes from the first acceptance of this operation.
+4. Choose and Apply another location at any time. The new operation replaces current active, uncertain, or clear-retrying state and receives a fresh deadline.
+5. Optionally tap **Clear Now**. It targets the operation visible at the tap, so a delayed request cannot erase a later Apply. Failed or lost Clear never disables selection or Apply.
 
-1. Allow **Location** and **Local Network** access, then enter the short-lived pairing code.
-2. Choose one Selected Location with manual coordinates, the map, or place search. Selecting never applies automatically.
-3. Choose **15**, **30**, or **60 minutes**, then tap **Apply Selected Location**. Apply remains unavailable until the independent Cleanup Guardian reports ready.
-4. Use the active session card to see the authoritative end time, live remaining time, and automatic-cleanup protection. **Applied** means the `devicectl` backend acknowledged the request; a fresh Pinshift app observation remains separate evidence.
-5. Do nothing and let cleanup become due automatically, tap **Extend 15 Minutes**, or tap **Return to Normal Location** for immediate restore. The App retains extension and Stop Intent requests across reconnection or relaunch and reports the Simulated Location cleared only after public `devicectl` clear succeeds.
+The Mac snapshot is authoritative after reconnect or app relaunch. The app persists only user selection; it does not persist a resendable clear or extension command.
 
-If the foreground server exits normally, cleanup is requested immediately. If it crashes or is killed, the launchd Cleanup Guardian makes cleanup mandatory after 30 seconds without the matching server-owner heartbeat; an ordinary iOS disconnect or App backgrounding does not trigger this rule. The selected lease remains the hard upper bound. If the whole Mac or Active Test Device is unavailable, restore the same device connection and unlock the iPhone; the Guardian retains and resumes the Cleanup Obligation automatically. No second tap is required. iOS has no public API for this developer-service clear, so cleanup cannot execute while both the Mac-side Guardian and device connection are unavailable.
+## Automatic clear behavior
 
-`pinshift-controller tutorial` prints the same compact workflow in the terminal.
+- A genuinely new Apply receives a fixed deadline of acceptance time plus 900 seconds.
+- Retrying the same request ID returns the original deadline without another backend Apply.
+- At the deadline, the Mac authority requests public `devicectl ... location clear`.
+- If the Mac or Active Test Device is unreachable, retry metadata remains durable and the first reachable opportunity retries.
+- Apply always serializes through the same authority and can supersede retry state; an old timer cannot clear the replacement.
+- A successful backend clear does not guarantee an immediate fresh physical Core Location callback.
+
+The compact terminal version is available with:
+
+```fish
+pinshift-controller tutorial
+```
+
+📖 打印与当前产品协议一致的设置和使用说明。
