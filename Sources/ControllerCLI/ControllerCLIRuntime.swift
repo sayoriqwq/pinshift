@@ -20,7 +20,7 @@ enum ControllerSessionTerminationError: Error, Equatable, LocalizedError {
   var errorDescription: String? {
     switch self {
     case .clearFailed(let reason):
-      "The foreground session ended, but Clear failed (\(reason.rawValue)). Keep the iPhone reachable and run pinshift-reset."
+      "The foreground session ended, but Clear failed (\(reason.rawValue)). Keep the iPhone reachable and run `pinshift clear`."
     }
   }
 }

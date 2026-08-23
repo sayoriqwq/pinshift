@@ -135,7 +135,7 @@ function rollback_install --no-scope-shadowing
 end
 
 # Persistent authorities are deliberately retired. A test session owns one
-# foreground controller process, started explicitly with pinshift-start.
+# foreground controller process, started explicitly with pinshift.
 if launchctl print gui/$user_id/$authority_label >/dev/null 2>&1
     launchctl bootout gui/$user_id/$authority_label
     or exit $status
@@ -209,7 +209,7 @@ end
     --developer-directory "$PINSHIFT_DEVELOPER_DIR"
 or begin
     set --local failure_status $status
-    echo "The persistent controller was removed, but its final Clear failed. Restore device connectivity and retry pinshift-install." >&2
+    echo "The persistent controller was removed, but its final Clear failed. Restore device connectivity and retry `pinshift setup`." >&2
     exit $failure_status
 end
 command rm -f -- $legacy_lifecycle_file
@@ -269,4 +269,4 @@ or begin
     exit 1
 end
 
-echo "Stable foreground controller installed. Run pinshift-start when testing."
+echo "Stable foreground controller installed. Run `pinshift` when testing."

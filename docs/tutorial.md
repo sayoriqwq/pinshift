@@ -15,13 +15,13 @@ direnv allow
 Install once, then run the read-only checks:
 
 ```fish
-pinshift-install
-pinshift-doctor
+pinshift setup
+pinshift doctor
 ```
 
 🛠️ 构建并签名稳定控制器、移除旧常驻项，然后检查环境。
 
-`pinshift-install` publishes the signed controller but does not register a LaunchAgent. It unloads and removes the former controller and Cleanup Guardian authorities. The installer preserves the existing Keychain TLS identity and refuses an unexpected designated-requirement change before modifying trust.
+`pinshift setup` publishes the signed controller but does not register a LaunchAgent. It unloads and removes the former controller and Cleanup Guardian authorities. The installer preserves the existing Keychain TLS identity and refuses an unexpected designated-requirement change before modifying trust.
 
 Controller state now exists only in the explicitly started test session. There is no lifecycle journal, restart reconciliation, or durable cleanup retry. During migration, the signed candidate performs one real backend reset before the obsolete lifecycle file is removed; a failed reset aborts publication. Saved Locations and Trusted Controller data survive an upgrade.
 
@@ -40,17 +40,17 @@ Keep the Active Test Device selector private in `PINSHIFT_DEVICE` or pass `--dev
 A Personal Team app may require renewal every seven days. Renew only when 24 hours or less remain:
 
 ```fish
-pinshift-resign-app
+pinshift app
 ```
 
 🔏 验证新 profile 并原位更新现有 App。
 
-Use `pinshift-resign-app --force` to request a newer profile immediately. The workflow validates the candidate signature, bundle identifier, team, application prefix, and strictly later expiry before installation. It never uninstalls the App. A pre-install failure restores the old cached profile; a disconnect after installation starts is reported as an uncertain remote outcome.
+Use `pinshift app --force` to request a newer profile immediately. The workflow validates the candidate signature, bundle identifier, team, application prefix, and strictly later expiry before installation. It never uninstalls the App. A pre-install failure restores the old cached profile; a disconnect after installation starts is reported as an uncertain remote outcome.
 
 If a locked phone only deferred launch verification, unlock it and run:
 
 ```fish
-pinshift-resign-app --launch-only
+pinshift app --launch-only
 ```
 
 📱 不重新签名，只补做启动验证。
@@ -58,7 +58,7 @@ pinshift-resign-app --launch-only
 ## Diagnose without mutation
 
 ```fish
-pinshift-controller doctor
+pinshift doctor
 ```
 
 🩺 运行固定的只读 Xcode、设备、签名、身份和权限检查。
@@ -70,7 +70,7 @@ Doctor never changes system or device settings and does not print raw private se
 Whenever a testing session begins, run:
 
 ```fish
-pinshift-start
+pinshift
 ```
 
 🔗 启动前台 Controller Link 并打印六位码；保持终端打开，Ctrl-C 会先 Clear 再退出。
@@ -95,10 +95,10 @@ The running Mac session snapshot is authoritative after reconnect. The app persi
 - Ctrl-C, termination, and a finite session duration perform one real Clear before normal exit; failure makes the process exit unsuccessfully.
 - A successful backend clear does not guarantee an immediate fresh physical Core Location callback.
 
-The compact terminal version is available with:
+The compact command overview is available with:
 
 ```fish
-pinshift-controller tutorial
+pinshift help
 ```
 
-📖 打印与当前产品协议一致的设置和使用说明。
+📖 列出稳定的日常入口；底层 `pinshift-controller` 子命令只用于开发和排障。

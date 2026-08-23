@@ -1,0 +1,52 @@
+#!/usr/bin/env fish
+
+set --local script_dir (path resolve (path dirname (status filename)))
+
+function pinshift_usage
+    echo "Pinshift — temporary iPhone test locations"
+    echo
+    echo "Usage:"
+    echo "  pinshift                 Start a foreground test session"
+    echo "  pinshift start           Start a foreground test session"
+    echo "  pinshift setup           Build, sign, and update the Mac controller"
+    echo "  pinshift clear           Clear the simulated location now"
+    echo "  pinshift doctor          Run read-only readiness checks"
+    echo "  pinshift app [OPTIONS]   Renew, install, or launch the iOS app"
+    echo "  pinshift logs [OPTIONS]  Locate or copy Mac diagnostics"
+    echo "  pinshift help            Show this help"
+    echo
+    echo "The controller runs only in the foreground. Press Ctrl-C to Clear and exit."
+end
+
+set --local command start
+set --local arguments
+if test (count $argv) -gt 0
+    set command $argv[1]
+    set arguments $argv[2..-1]
+end
+
+switch $command
+    case help -h --help
+        if test (count $arguments) -gt 0
+            echo "pinshift help does not accept additional arguments." >&2
+            exit 2
+        end
+        pinshift_usage
+    case start
+        exec $script_dir/pinshift-start $arguments
+    case setup install
+        exec $script_dir/pinshift-install $arguments
+    case clear reset
+        exec $script_dir/pinshift-reset $arguments
+    case doctor check
+        exec $script_dir/pinshift-doctor $arguments
+    case app resign-app
+        exec $script_dir/pinshift-resign-app $arguments
+    case logs diagnostics
+        exec $script_dir/pinshift-diagnostics $arguments
+    case '*'
+        echo "Unknown Pinshift command: $command" >&2
+        echo >&2
+        pinshift_usage >&2
+        exit 2
+end

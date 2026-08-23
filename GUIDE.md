@@ -1,11 +1,11 @@
 # Pinshift 使用与审计指南
 
 这份指南面向当前这台 Mac 和已配对的 iPhone。首次配置完成后，日常使用不需要重新编译控制器或
-重复输入 Keychain 密码；测试期间需要保持 `pinshift-start` 的终端窗口运行。
+重复输入 Keychain 密码；测试期间需要保持 `pinshift` 的终端窗口运行。
 
 ## 用户只需要记住的模型
 
-> 运行 `pinshift-start`，选一个地点并 Apply；它固定生效 3 分钟，也可随时点 Clear Now 真实解除。
+> 运行 `pinshift`，选一个地点并 Apply；它固定生效 3 分钟，也可随时点 Clear Now 真实解除。
 
 - 没有时长设置。每次真正的新 Apply 都固定从头计时 3 分钟。
 - 当前是否已有地点、立即解除是否失败、上一次响应是否丢失，都不能阻止选点或新 Apply。
@@ -20,8 +20,8 @@
 
 ```fish
 direnv allow
-pinshift-install
-pinshift-doctor
+pinshift setup
+pinshift doctor
 ```
 
 🛠️ 安装稳定签名控制器、移除旧常驻项，并执行只读环境检查。
@@ -39,7 +39,7 @@ Clear 失败，安装会明确失败且不会发布新二进制。Saved Location
 每次开始测试时运行：
 
 ```fish
-pinshift-start
+pinshift
 ```
 
 🔗 启动前台 Controller Link 并打印六位码；保持终端打开，Ctrl-C 会先 Clear 再退出。
@@ -94,7 +94,7 @@ Stop、延长或后台清理请求。
 先运行只读检查：
 
 ```fish
-pinshift-doctor
+pinshift doctor
 ```
 
 🩺 检查 Xcode、iPhone、签名、控制器身份和设备服务，不修改系统设置。
@@ -102,16 +102,16 @@ pinshift-doctor
 常见路径：
 
 - **找不到 iPhone**：重新连接数据线，解锁手机，确认 Mac 与 iPhone 仍互相信任。
-- **Controller Link 未连接**：确认 `pinshift-start` 的前台终端仍在运行；需要时重新启动并配对。
+- **Controller Link 未连接**：确认 `pinshift` 的前台终端仍在运行；需要时重新启动并配对。
 - **Apply 按钮不可用**：确认已经选点；Controller Link、活动或重试状态都不会禁用按钮。
 - **本次 Apply 失败**：按界面显示恢复 Xcode/设备连接，然后直接重试或应用其他地点。
-- **控制器源码已变化**：运行 `pinshift-install`，不要用 `swift run` 代替已签名控制器。
-- **App 签名过期**：运行 `pinshift-resign-app --force`；账号错误需要先恢复 Xcode 登录。
+- **控制器源码已变化**：运行 `pinshift setup`，不要用 `swift run` 代替已签名控制器。
+- **App 签名过期**：运行 `pinshift app --force`；账号错误需要先恢复 Xcode 登录。
 
 需要紧急幂等解除时运行：
 
 ```fish
-pinshift-reset
+pinshift clear
 ```
 
 🧹 直接执行一次真实 clear，不启动或恢复任何常驻服务。
@@ -121,7 +121,7 @@ pinshift-reset
 Personal Team 签名剩余不超过 24 小时时运行：
 
 ```fish
-pinshift-resign-app
+pinshift app
 ```
 
 🔏 验证新 profile 并原位更新 Pinshift，不卸载 App。
@@ -129,7 +129,7 @@ pinshift-resign-app
 需要立即刷新时使用：
 
 ```fish
-pinshift-resign-app --force
+pinshift app --force
 ```
 
 ♻️ 立即请求新 profile、验证并原位安装。
@@ -137,7 +137,7 @@ pinshift-resign-app --force
 手机锁屏只导致启动验证延后；解锁后可运行：
 
 ```fish
-pinshift-resign-app --launch-only
+pinshift app --launch-only
 ```
 
 📱 不重新签名，只补做启动验证。
@@ -158,12 +158,12 @@ launchctl print gui/(id -u)/dev.sayori.pinshift.controller
 pgrep -af '.build/controller/bin/pinshift-controller link serve'
 ```
 
-🧭 只应在 `pinshift-start` 终端运行期间看到一个前台进程。
+🧭 只应在 `pinshift` 终端运行期间看到一个前台进程。
 
 导出 Mac 侧诊断：
 
 ```fish
-pinshift-diagnostics --copy-to .build/audit/(date +%Y%m%d-%H%M%S)
+pinshift logs --copy-to .build/audit/(date +%Y%m%d-%H%M%S)
 ```
 
 📦 复制脱敏诊断事件和元数据，不触发 Apply、Clear 或恢复操作。
@@ -175,10 +175,14 @@ pinshift-diagnostics --copy-to .build/audit/(date +%Y%m%d-%H%M%S)
 
 | 命令 | 用途 |
 | --- | --- |
-| `pinshift-install` | 首次安装或源码变化后更新稳定签名控制器，并移除旧常驻项 |
-| `pinshift-start` | 测试时启动前台控制器并打印六位码；保持终端运行 |
-| `pinshift-reset` | 紧急执行一次真实 clear，不启动常驻进程 |
-| `pinshift-doctor` | 只读检查开发环境和控制器状态 |
-| `pinshift-resign-app` | 签名临近到期时续签并原位安装 App |
-| `pinshift-resign-app --force` | 立即请求新 profile、验证并原位安装 |
-| `pinshift-resign-app --launch-only` | 不续签，只补做启动验证 |
+| `pinshift` / `pinshift start` | 测试时启动前台控制器并打印六位码；保持终端运行 |
+| `pinshift clear` | 紧急执行一次真实 clear，不启动常驻进程 |
+| `pinshift setup` | 首次安装或源码变化后更新稳定签名控制器，并移除旧常驻项 |
+| `pinshift doctor` | 只读检查开发环境和控制器状态 |
+| `pinshift app` | 签名临近到期时续签并原位安装 App |
+| `pinshift app --force` | 立即请求新 profile、验证并原位安装 |
+| `pinshift app --launch-only` | 不续签，只补做启动验证 |
+| `pinshift logs --copy-to <目录>` | 导出 Mac 侧诊断包 |
+
+原来的 `pinshift-start`、`pinshift-reset`、`pinshift-install` 等脚本继续作为兼容实现保留；日常使用
+不再需要记住它们。`pinshift-controller` 是底层维护接口，不是普通测试入口。

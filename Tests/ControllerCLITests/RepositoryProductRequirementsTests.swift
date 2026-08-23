@@ -9,6 +9,56 @@ final class RepositoryProductRequirementsTests: XCTestCase {
       .deletingLastPathComponent()
   }
 
+  func testSingleDailyEntrypointDispatchesToTheExistingHelpers() throws {
+    let helperURL = repositoryRoot.appending(path: "bin/pinshift")
+    XCTAssertTrue(FileManager.default.isExecutableFile(atPath: helperURL.path))
+    let contents = try String(contentsOf: helperURL, encoding: .utf8)
+
+    for requiredText in [
+      "case start",
+      "pinshift-start",
+      "case setup install",
+      "pinshift-install",
+      "case clear reset",
+      "pinshift-reset",
+      "case doctor check",
+      "pinshift-doctor",
+      "case app resign-app",
+      "pinshift-resign-app",
+      "case logs diagnostics",
+      "pinshift-diagnostics",
+    ] {
+      XCTAssertTrue(contents.contains(requiredText), requiredText)
+    }
+    XCTAssertTrue(contents.contains("set --local command start"))
+    XCTAssertFalse(contents.contains("launchctl"))
+    XCTAssertFalse(contents.contains("pinshift-controller link serve"))
+  }
+
+  func testSingleDailyEntrypointHelpIsShortAndSideEffectFree() throws {
+    let process = Process()
+    let output = Pipe()
+    process.executableURL = repositoryRoot.appending(path: "bin/pinshift")
+    process.arguments = ["help"]
+    process.standardOutput = output
+    try process.run()
+    process.waitUntilExit()
+
+    XCTAssertEqual(process.terminationStatus, 0)
+    let help = String(
+      decoding: output.fileHandleForReading.readDataToEndOfFile(),
+      as: UTF8.self
+    )
+    for command in [
+      "pinshift setup", "pinshift clear", "pinshift doctor", "pinshift app", "pinshift logs",
+    ] {
+      XCTAssertTrue(help.contains(command), command)
+    }
+    XCTAssertFalse(help.contains("--device"))
+    XCTAssertFalse(help.contains("--developer-directory"))
+    XCTAssertFalse(help.contains("link serve"))
+  }
+
   func testDailyHelpersUseOnlyTheInstalledController() throws {
     for helper in ["pinshift-start", "pinshift-doctor", "pinshift-reset"] {
       let contents = try String(

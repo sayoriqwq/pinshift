@@ -82,12 +82,12 @@ function pinshift_controller_executable
     set --local source_file $install_root/source-fingerprint
 
     if not test -x $executable; or not test -f $requirement_file; or not test -f $source_file
-        echo "The stable controller is not installed. Run pinshift-install once." >&2
+        echo "The stable controller is not installed. Run `pinshift setup` once." >&2
         return 1
     end
     codesign --verify --strict $executable >/dev/null 2>&1
     or begin
-        echo "The installed controller signature is invalid. Run pinshift-install." >&2
+        echo "The installed controller signature is invalid. Run `pinshift setup`." >&2
         return 1
     end
 
@@ -95,7 +95,7 @@ function pinshift_controller_executable
     set --local expected_requirement (string collect < $requirement_file)
     set --local required_identifier dev.sayori.pinshift.controller
     if test -z "$actual_requirement"; or not string match --quiet "*identifier \"$required_identifier\"*" $actual_requirement
-        echo "The installed controller does not have the required fixed identifier. Run pinshift-install." >&2
+        echo "The installed controller does not have the required fixed identifier. Run `pinshift setup`." >&2
         return 1
     end
     if test "$actual_requirement" != "$expected_requirement"
@@ -103,7 +103,7 @@ function pinshift_controller_executable
         return 1
     end
     if string match --quiet '*cdhash H*' $actual_requirement
-        echo "The installed controller has an unstable ad-hoc signature. Run pinshift-install." >&2
+        echo "The installed controller has an unstable ad-hoc signature. Run `pinshift setup`." >&2
         return 1
     end
 
@@ -111,7 +111,7 @@ function pinshift_controller_executable
     set --local current_source (pinshift_controller_source_fingerprint)
     or return 1
     if test "$installed_source" != "$current_source"
-        echo "The controller source changed after installation. Run pinshift-install to update it." >&2
+        echo "The controller source changed after installation. Run `pinshift setup` to update it." >&2
         return 1
     end
 

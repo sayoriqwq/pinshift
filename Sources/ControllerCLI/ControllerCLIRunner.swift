@@ -122,9 +122,9 @@ public struct ControllerCLIRunner: Sendable {
     case .noActiveDevice:
       message = "No Active Test Device is configured. Pass --device or set PINSHIFT_DEVICE."
     case .sessionNotReady:
-      message = "The Xcode device workflow is not ready. Run pinshift-controller doctor."
+      message = "The Xcode device workflow is not ready. Run `pinshift doctor`."
     case .backendUnavailable:
-      message = "The Injection Backend is unavailable. Run pinshift-controller doctor."
+      message = "The Injection Backend is unavailable. Run `pinshift doctor`."
     case .timedOut:
       message = "The Injection Backend timed out before acknowledging the request."
     case .authenticationFailed:

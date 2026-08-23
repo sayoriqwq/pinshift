@@ -41,12 +41,12 @@ Clear Now 始终显示，即使当前没有活动记录；每次点击都真实�
 
 ## 快速开始
 
-首次安装：
+首次进入仓库并安装：
 
 ```fish
 direnv allow
-pinshift-install
-pinshift-doctor
+pinshift setup
+pinshift doctor
 ```
 
 🛠️ 安装稳定签名控制器、移除旧常驻项，并检查当前环境。
@@ -54,10 +54,13 @@ pinshift-doctor
 每次开始测试时运行，并保持终端打开：
 
 ```fish
-pinshift-start
+pinshift
 ```
 
 🔗 启动前台 Controller Link 并打印六位配对码；按 Ctrl-C 会先执行真实 Clear 再退出。
+
+需要立即恢复真实位置时运行 `pinshift clear`。`pinshift help` 会列出完整的日常入口。此工作站通过
+Home Manager 安装全局入口后，在仓库外也可以使用同一条命令；项目依赖和签名产物仍留在仓库内。
 
 完整操作、恢复路径和审计方法见 [GUIDE.md](GUIDE.md)。
 

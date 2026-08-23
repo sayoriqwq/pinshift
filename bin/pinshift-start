@@ -20,7 +20,7 @@ set --local controller (pinshift_controller_executable)
 or exit $status
 
 if not test -x $controller
-    echo "The controller is not installed. Run pinshift-install once." >&2
+    echo "The controller is not installed. Run `pinshift setup` once." >&2
     exit 1
 end
 
