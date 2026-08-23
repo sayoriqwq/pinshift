@@ -18,11 +18,11 @@ final class ControllerTutorialTests: XCTestCase {
       "pinshift-start",
       "Apply",
       "Verify",
-      "temporary for 15 minutes",
+      "temporary for 3 minutes",
       "active card",
       "latest Apply replaces",
       "Historical state never blocks",
-      "first reachable opportunity",
+      "not persisted as background work",
       "Location",
       "Local Network",
     ] {
@@ -33,6 +33,7 @@ final class ControllerTutorialTests: XCTestCase {
     XCTAssertFalse(output.localizedCaseInsensitiveContains("xcode-select --switch"))
     XCTAssertFalse(output.localizedCaseInsensitiveContains("Cleanup Guardian"))
     XCTAssertFalse(output.localizedCaseInsensitiveContains("Simulation Lease"))
+    XCTAssertFalse(output.localizedCaseInsensitiveContains("launchd"))
   }
 
   func testDoctorAndTutorialAreRegisteredSubcommands() throws {

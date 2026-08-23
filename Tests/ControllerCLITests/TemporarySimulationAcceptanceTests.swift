@@ -10,14 +10,12 @@ final class TemporarySimulationAcceptanceTests: XCTestCase {
   func testApplyIsTemporaryAcrossTheAppControllerLinkAndSimulationController() async throws {
     let startedAt = Date(timeIntervalSince1970: 20_000)
     let clock = TemporarySimulationTestClock(now: startedAt)
-    let store = InMemoryTemporarySimulationStore()
+    let sleeper = TemporarySimulationControlledSleeper()
     let backend = TemporarySimulationRecordingBackend()
     let controller = SimulationController(
       backend: backend,
-      stateStore: store,
-      activeDeviceIdentifier: "Active Test Device",
       now: { clock.now },
-      automaticallySchedulesMaintenance: false
+      sleep: { seconds in try await sleeper.sleep(for: seconds) }
     )
     let identity = try ControllerIdentity(
       fingerprint: Data(repeating: 0x41, count: 32)
@@ -67,7 +65,7 @@ final class TemporarySimulationAcceptanceTests: XCTestCase {
       return XCTFail("Apply should return the fixed automatic-clear time")
     }
     XCTAssertEqual(responseID, request.requestID)
-    XCTAssertEqual(automaticClearAt, startedAt.addingTimeInterval(900))
+    XCTAssertEqual(automaticClearAt, startedAt.addingTimeInterval(180))
     XCTAssertTrue(
       app.acknowledgeApplied(
         requestID: responseID,
@@ -75,13 +73,46 @@ final class TemporarySimulationAcceptanceTests: XCTestCase {
       )
     )
 
-    clock.advance(by: 901)
-    await controller.reconcile()
+    clock.advance(by: 181)
+    let scheduledInterval = await sleeper.waitUntilScheduled()
+    XCTAssertEqual(scheduledInterval, 180)
+    await sleeper.resume()
+    await backend.waitUntilClearExecuted()
 
     let finalLocation = await backend.appliedLocation
     let finalSnapshot = await controller.snapshot()
     XCTAssertNil(finalLocation)
     XCTAssertEqual(finalSnapshot.simulation, .idle)
+  }
+}
+
+private actor TemporarySimulationControlledSleeper {
+  private var requestedInterval: TimeInterval?
+  private var requestWaiters: [CheckedContinuation<TimeInterval, Never>] = []
+  private var sleepContinuation: CheckedContinuation<Void, Error>?
+
+  func sleep(for interval: TimeInterval) async throws {
+    requestedInterval = interval
+    let waiters = requestWaiters
+    requestWaiters.removeAll()
+    for waiter in waiters {
+      waiter.resume(returning: interval)
+    }
+    try await withCheckedThrowingContinuation { continuation in
+      sleepContinuation = continuation
+    }
+  }
+
+  func waitUntilScheduled() async -> TimeInterval {
+    if let requestedInterval { return requestedInterval }
+    return await withCheckedContinuation { continuation in
+      requestWaiters.append(continuation)
+    }
+  }
+
+  func resume() {
+    sleepContinuation?.resume()
+    sleepContinuation = nil
   }
 }
 
@@ -106,6 +137,8 @@ private final class TemporarySimulationTestClock: @unchecked Sendable {
 
 private actor TemporarySimulationRecordingBackend: InjectionBackend {
   private(set) var appliedLocation: SelectedLocation?
+  private var didClear = false
+  private var clearWaiters: [CheckedContinuation<Void, Never>] = []
 
   func readiness() -> InjectionBackendReadiness {
     .ready
@@ -118,7 +151,20 @@ private actor TemporarySimulationRecordingBackend: InjectionBackend {
       return .applied(requestID: requestID, location: location)
     case .clear(let requestID):
       appliedLocation = nil
+      didClear = true
+      let waiters = clearWaiters
+      clearWaiters.removeAll()
+      for waiter in waiters {
+        waiter.resume()
+      }
       return .cleared(requestID: requestID)
+    }
+  }
+
+  func waitUntilClearExecuted() async {
+    if didClear { return }
+    await withCheckedContinuation { continuation in
+      clearWaiters.append(continuation)
     }
   }
 }

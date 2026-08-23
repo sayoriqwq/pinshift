@@ -5,7 +5,6 @@ import SimulationDiagnostics
 
 public enum ControllerCLICommand: Equatable, Sendable {
   case status
-  case apply(latitude: String, longitude: String, requestID: UUID)
   case clear(requestID: UUID)
   case reset(requestID: UUID)
 }
@@ -42,8 +41,6 @@ public struct ControllerCLIRunner: Sendable {
     switch command {
     case .status:
       result = await status()
-    case .apply(let latitude, let longitude, let requestID):
-      result = await apply(latitude: latitude, longitude: longitude, requestID: requestID)
     case .clear(let requestID), .reset(let requestID):
       result = await clear(requestID: requestID)
     }
@@ -79,8 +76,7 @@ public struct ControllerCLIRunner: Sendable {
           + "\(format(location)) and will clear automatically at "
           + "\(automaticClearAt.formatted(.iso8601))."
       )
-    case .uncertain(let operationID, _, let automaticClearAt, let reason),
-      .clearPending(let operationID, _, let automaticClearAt, let reason):
+    case .uncertain(let operationID, _, let automaticClearAt, let reason):
       let suffix = reason.map { " Last result: \($0.rawValue)." } ?? ""
       return ControllerCLIResult(
         exitCode: 0,
@@ -88,37 +84,21 @@ public struct ControllerCLIRunner: Sendable {
           "Temporary Simulated Location \(operationID.uuidString) is pending automatic "
           + "clear at or after \(automaticClearAt.formatted(.iso8601)).\(suffix)"
       )
-    }
-  }
-
-  private func apply(
-    latitude: String,
-    longitude: String,
-    requestID: UUID
-  ) async -> ControllerCLIResult {
-    let location: SelectedLocation
-    do {
-      location = try SelectedLocation.parse(latitude: latitude, longitude: longitude)
-    } catch let error as LocalizedError {
-      return ControllerCLIResult(
-        exitCode: 2,
-        output: error.errorDescription ?? "The coordinate is invalid."
-      )
-    } catch {
-      return ControllerCLIResult(exitCode: 2, output: "The coordinate is invalid.")
-    }
-
-    switch await controller.apply(location, requestID: requestID) {
-    case .applied(let responseID, let appliedLocation, let automaticClearAt):
+    case .clearPending(let operationID, _, let automaticClearAt, let reason):
+      let suffix = reason.map { " Last result: \($0.rawValue)." } ?? ""
+      if let automaticClearAt {
+        return ControllerCLIResult(
+          exitCode: 0,
+          output:
+            "Temporary Simulated Location \(operationID.uuidString) failed to clear at "
+            + "or after \(automaticClearAt.formatted(.iso8601)). Retry Clear Now.\(suffix)"
+        )
+      }
       return ControllerCLIResult(
         exitCode: 0,
         output:
-          "Temporary Simulated Location acknowledged for request "
-          + "\(responseID.uuidString) at \(format(appliedLocation)); automatic clear is "
-          + "armed for \(automaticClearAt.formatted(.iso8601))."
+          "A real Clear failed without tracked simulation state. Retry Clear Now.\(suffix)"
       )
-    case .failed(_, let reason):
-      return failure(reason)
     }
   }
 
@@ -152,7 +132,7 @@ public struct ControllerCLIRunner: Sendable {
     case .clearFailed:
       message = "The Injection Backend could not clear the Simulated Location."
     case .deviceMismatch:
-      message = "The retained automatic clear belongs to another Active Test Device."
+      message = "The Mac is connected to a different Active Test Device."
     }
     return ControllerCLIResult(exitCode: 1, output: message)
   }
@@ -161,12 +141,6 @@ public struct ControllerCLIRunner: Sendable {
     switch command {
     case .status:
       return ["command": .text("status")]
-    case .apply(let latitude, let longitude, _):
-      return [
-        "command": .text("apply"),
-        "latitude": .text(latitude),
-        "longitude": .text(longitude),
-      ]
     case .clear:
       return ["command": .text("clear")]
     case .reset:
@@ -178,7 +152,7 @@ public struct ControllerCLIRunner: Sendable {
     switch command {
     case .status:
       nil
-    case .apply(_, _, let requestID), .clear(let requestID), .reset(let requestID):
+    case .clear(let requestID), .reset(let requestID):
       requestID
     }
   }

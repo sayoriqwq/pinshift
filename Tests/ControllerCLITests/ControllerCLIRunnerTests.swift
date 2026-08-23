@@ -5,6 +5,12 @@ import XCTest
 @testable import ControllerCLI
 
 final class ControllerCLIRunnerTests: XCTestCase {
+  func testRootCommandDoesNotExposeOneShotApplyOutsideForegroundSession() {
+    let help = PinshiftControllerCommand.helpMessage()
+
+    XCTAssertFalse(help.contains("\n  apply"))
+  }
+
   func testStatusReportsIdleReadyAuthority() async {
     let runner = ControllerCLIRunner(
       controller: SimulationController(backend: InMemoryInjectionBackend())
@@ -18,31 +24,6 @@ final class ControllerCLIRunnerTests: XCTestCase {
         output: "No Simulated Location is active; the Injection Backend is ready."
       )
     )
-  }
-
-  func testApplyReportsAutomaticClearWithoutClaimingVerification() async {
-    let now = Date(timeIntervalSince1970: 1_000)
-    let runner = ControllerCLIRunner(
-      controller: SimulationController(
-        backend: InMemoryInjectionBackend(),
-        now: { now },
-        automaticallySchedulesMaintenance: false
-      )
-    )
-    let requestID = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
-
-    let result = await runner.run(
-      .apply(
-        latitude: "31.2304",
-        longitude: "121.4737",
-        requestID: requestID
-      )
-    )
-
-    XCTAssertEqual(result.exitCode, 0)
-    XCTAssertTrue(result.output.contains(requestID.uuidString))
-    XCTAssertTrue(result.output.contains("automatic clear is armed"))
-    XCTAssertFalse(result.output.localizedCaseInsensitiveContains("verified"))
   }
 
   func testResetIsIdempotentWithAndWithoutAnActiveSimulation() async {

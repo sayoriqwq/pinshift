@@ -115,8 +115,7 @@ final class ControllerServerSessionTests: XCTestCase {
     let cleared = await session.process(
       .clear(
         requestID: clearID,
-        authorization: authorization,
-        targetOperationID: nil
+        authorization: authorization
       )
     )
     XCTAssertEqual(
@@ -128,7 +127,7 @@ final class ControllerServerSessionTests: XCTestCase {
       commands,
       [
         .apply(requestID: applyID, latitude: 31.2304, longitude: 121.4737),
-        .clear(requestID: clearID, targetOperationID: nil),
+        .clear(requestID: clearID),
       ]
     )
   }
@@ -177,7 +176,7 @@ private actor RecordingControllerCommandHandler: ControllerCommandHandling {
         requestID: requestID,
         automaticClearAt: Date(timeIntervalSince1970: 1_000)
       )
-    case .clear(let requestID, _):
+    case .clear(let requestID):
       return .cleared(requestID: requestID)
     }
   }

@@ -31,16 +31,13 @@ public struct ManualSimulationRequest: Codable, Equatable, Sendable {
 public struct ManualSimulationClearRequest: Equatable, Sendable {
   public let requestID: UUID
   public let requestedAt: Date
-  public let targetOperationID: UUID?
 
   public init(
     requestID: UUID,
-    requestedAt: Date,
-    targetOperationID: UUID? = nil
+    requestedAt: Date
   ) {
     self.requestID = requestID
     self.requestedAt = requestedAt
-    self.targetOperationID = targetOperationID
   }
 }
 
@@ -207,8 +204,7 @@ public struct ManualSimulationSession: Equatable, Sendable {
   ) -> ManualSimulationClearRequest {
     let request = ManualSimulationClearRequest(
       requestID: requestID,
-      requestedAt: date,
-      targetOperationID: activeAppliedRequest?.requestID
+      requestedAt: date
     )
     currentClearRequest = request
     clearStatus = .clearing(requestID: requestID)
@@ -258,42 +254,80 @@ public struct ManualSimulationSession: Equatable, Sendable {
       }
       status = selected.map(ManualSimulationStatus.selected) ?? .noSelection
     case .active(let operationID, let location, let automaticClearAt),
-      .uncertain(let operationID, let location?, let automaticClearAt),
-      .clearPending(let operationID, let location?, let automaticClearAt):
-      let existing = activeAppliedRequest
-      let isSameOperation = existing?.requestID == operationID
-      let request = ManualSimulationRequest(
-        requestID: operationID,
+      .uncertain(let operationID, let location?, let automaticClearAt):
+      replaceWithTrackedControllerSnapshot(
+        operationID: operationID,
         location: location,
-        requestedAt: existing?.requestID == operationID ? existing?.requestedAt ?? date : date,
-        automaticClearAt: automaticClearAt
+        automaticClearAt: automaticClearAt,
+        isClearPending: false,
+        at: date
       )
-      activeAppliedRequest = request
-      status = statusPreservingLocalEvidence(for: request)
-      if case .clearPending = snapshot {
-        if case .unconfirmed = clearStatus {
-          // Keep the explicit Clear request correlation while the Mac retries.
-        } else {
-          clearStatus = .unconfirmed(
-            requestID: operationID,
-            .requestRejected(stableCode: "clearPending")
-          )
-        }
-      } else if isSameOperation {
-        switch clearStatus {
-        case .cleared, .unconfirmed:
-          break
-        case .idle, .clearing:
-          clearStatus = .idle
-        }
-      } else {
-        clearStatus = .idle
-      }
-    case .uncertain, .clearPending:
-      // Legacy migration can lack a coordinate. It remains informational and
-      // never replaces or disables the user's Selected Location.
+    case .clearPending(let operationID, let location?, let automaticClearAt):
+      replaceWithTrackedControllerSnapshot(
+        operationID: operationID,
+        location: location,
+        automaticClearAt: automaticClearAt,
+        isClearPending: true,
+        at: date
+      )
+    case .uncertain:
+      // An uncertain legacy snapshot without a coordinate cannot identify an
+      // active request. It remains informational and never blocks selection.
       activeAppliedRequest = nil
       status = selected.map(ManualSimulationStatus.selected) ?? .noSelection
+      clearStatus = .idle
+    case .clearPending(let operationID, nil, _):
+      // A failed real Clear can outlive missing controller bookkeeping. Keep
+      // any local active request and the explicit failure so Clear Now remains
+      // honestly retryable after status reconciliation.
+      if activeAppliedRequest == nil {
+        status = selected.map(ManualSimulationStatus.selected) ?? .noSelection
+      }
+      if case .unconfirmed = clearStatus {
+        // Preserve the request that produced the visible failure.
+      } else {
+        clearStatus = .unconfirmed(
+          requestID: operationID,
+          .requestRejected(stableCode: "clearPending")
+        )
+      }
+    }
+  }
+
+  private mutating func replaceWithTrackedControllerSnapshot(
+    operationID: UUID,
+    location: SelectedLocation,
+    automaticClearAt: Date?,
+    isClearPending: Bool,
+    at date: Date
+  ) {
+    let existing = activeAppliedRequest
+    let isSameOperation = existing?.requestID == operationID
+    let request = ManualSimulationRequest(
+      requestID: operationID,
+      location: location,
+      requestedAt: isSameOperation ? existing?.requestedAt ?? date : date,
+      automaticClearAt: automaticClearAt
+    )
+    activeAppliedRequest = request
+    status = statusPreservingLocalEvidence(for: request)
+    if isClearPending {
+      if case .unconfirmed = clearStatus {
+        // Keep the explicit Clear request correlation while the Mac retries.
+      } else {
+        clearStatus = .unconfirmed(
+          requestID: operationID,
+          .requestRejected(stableCode: "clearPending")
+        )
+      }
+    } else if isSameOperation {
+      switch clearStatus {
+      case .cleared, .unconfirmed:
+        break
+      case .idle, .clearing:
+        clearStatus = .idle
+      }
+    } else {
       clearStatus = .idle
     }
   }
@@ -303,10 +337,10 @@ public struct ManualSimulationSession: Equatable, Sendable {
   ) -> ManualSimulationStatus {
     switch status {
     case .verified(let existing, let evidence)
-      where existing.requestID == request.requestID:
+    where existing.requestID == request.requestID:
       return .verified(request, evidence)
     case .appliedNotVerified(let existing, let issue)
-      where existing.requestID == request.requestID:
+    where existing.requestID == request.requestID:
       return .appliedNotVerified(request, issue)
     case .applied(let existing) where existing.requestID == request.requestID:
       return .applied(request)
@@ -321,7 +355,7 @@ public enum ManualSimulationControllerSnapshot: Equatable, Sendable {
   case idle
   case active(operationID: UUID, location: SelectedLocation, automaticClearAt: Date)
   case uncertain(operationID: UUID, location: SelectedLocation?, automaticClearAt: Date)
-  case clearPending(operationID: UUID, location: SelectedLocation?, automaticClearAt: Date)
+  case clearPending(operationID: UUID, location: SelectedLocation?, automaticClearAt: Date?)
 }
 
 public final class FileManualSimulationSessionStore: @unchecked Sendable {

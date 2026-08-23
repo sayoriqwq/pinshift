@@ -67,11 +67,11 @@
 
 /* Temporary simulation */
 "Temporary Simulation" = "Temporary Simulation";
-"The selected location applies for 15 minutes. Choose and apply another location at any time to replace it." = "The selected location applies for 15 minutes. Choose and apply another location at any time to replace it.";
+"The selected location applies for 3 minutes. Choose and apply another location at any time to replace it." = "The selected location applies for 3 minutes. Choose and apply another location at any time to replace it.";
 "Simulated Location" = "Simulated Location";
 "Automatic clear at" = "Automatic clear at";
 "Automatic clear in %@" = "Automatic clear in %@";
-"Automatic clear is due. The Mac will retry when the device is reachable." = "Automatic clear is due. The Mac will retry when the device is reachable.";
+"Automatic clear is due. Use Clear Now if the location remains active." = "Automatic clear is due. Use Clear Now if the location remains active.";
 "Clearing…" = "Clearing…";
 "Clear Now" = "Clear Now";
 "Simulation active" = "Simulation active";
@@ -81,11 +81,11 @@
 "Clearing simulated location…" = "Clearing simulated location…";
 "Simulated Location cleared" = "Simulated Location cleared";
 "Clear could not be confirmed" = "Clear could not be confirmed";
-"Automatic clear remains scheduled. You can choose and apply another location now." = "Automatic clear remains scheduled. You can choose and apply another location now.";
+"Keep the Mac session open and tap Clear Now again when the device is reachable." = "Keep the Mac session open and tap Clear Now again when the device is reachable.";
 "Automatic Clear" = "Automatic Clear";
-"Every applied location clears automatically after 15 minutes." = "Every applied location clears automatically after 15 minutes.";
+"Every applied location clears automatically after 3 minutes." = "Every applied location clears automatically after 3 minutes.";
 "Apply outcome unknown; automatic clear remains scheduled" = "Apply outcome unknown; automatic clear remains scheduled";
-"Automatic clear will retry when the device is reachable" = "Automatic clear will retry when the device is reachable";
+"Clear failed; tap Clear Now to retry" = "Clear failed; tap Clear Now to retry";
 "The trusted controller is unavailable. Reconnect and try again." = "The trusted controller is unavailable. Reconnect and try again.";
 "The controller is connected to a different Active Test Device" = "The controller is connected to a different Active Test Device";
 "Refresh Controller Status" = "Refresh Controller Status";

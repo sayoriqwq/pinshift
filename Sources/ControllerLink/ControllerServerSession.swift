@@ -91,18 +91,14 @@ public actor ControllerServerSession {
 
     case .clear(
       let requestID,
-      let presentedAuthorization,
-      let targetOperationID
+      let presentedAuthorization
     ):
       guard await isAuthorized(presentedAuthorization) else {
         response = .rejected(requestID: requestID, reason: .authorizationFailed)
         break
       }
       response = await processCommand(
-        .clear(
-          requestID: requestID,
-          targetOperationID: targetOperationID
-        )
+        .clear(requestID: requestID)
       )
     }
     await record(

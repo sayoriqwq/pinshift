@@ -3,13 +3,13 @@ import Foundation
 public enum ControllerCommand: Equatable, Sendable {
   case status(requestID: UUID)
   case apply(requestID: UUID, latitude: Double, longitude: Double)
-  case clear(requestID: UUID, targetOperationID: UUID?)
+  case clear(requestID: UUID)
 
   public var requestID: UUID {
     switch self {
     case .status(let requestID),
       .apply(let requestID, _, _),
-      .clear(let requestID, _):
+      .clear(let requestID):
       requestID
     }
   }
@@ -39,7 +39,7 @@ public enum ControllerSimulationState: Codable, Equatable, Sendable {
     operationID: UUID,
     latitude: Double?,
     longitude: Double?,
-    automaticClearAt: Date,
+    automaticClearAt: Date?,
     reason: ControllerCommandFailure?
   )
 }

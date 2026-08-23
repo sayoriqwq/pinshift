@@ -25,8 +25,8 @@ A map-based refinement around the current Selected Location that produces a repl
 _Avoid_: Route Movement, Automatic Apply
 
 **Simulation Controller（模拟控制器）**:
-The single persistent Mac authority for Controller Link, the current temporary simulation, and automatic clear. It applies and clears locations through the Injection Backend and is the source of truth after reconnect or relaunch.
-_Avoid_: Pinshift app, Background Guardian, Foreground Server
+The Mac authority for Controller Link, the current Temporary Simulation, and Automatic Clear during one explicitly started testing session. It applies and clears locations through the Injection Backend and is the source of truth while that session is running.
+_Avoid_: Pinshift app, Background Guardian, Persistent Daemon
 
 **Injection Backend（注入后端）**:
 The part of the Simulation Controller that translates Apply and Clear into the location-testing mechanism provided by Xcode.
@@ -45,7 +45,7 @@ The single physical iPhone selected for the developer workflow and eligible to r
 _Avoid_: Device Fleet, Concurrent Target
 
 **Temporary Simulation（临时位置模拟）**:
-One applied coordinate with a fixed 15-minute lifetime. A new Apply replaces it immediately and starts a fresh lifetime; retrying the same Apply does not extend it.
+One applied coordinate with a fixed three-minute lifetime. A new Apply replaces it immediately and starts a fresh lifetime; retrying the same Apply does not extend it.
 _Avoid_: Indefinite Simulation, Configurable Duration, Route Playback
 
 **Apply Operation（应用操作）**:
@@ -53,15 +53,15 @@ One user request to apply the current Selected Location. Each genuinely new Appl
 _Avoid_: Session Generation, Coordinate Draft
 
 **Automatic Clear（自动解除）**:
-The Simulation Controller's responsibility to clear a Temporary Simulation at its fixed deadline. If the Mac or Active Test Device is unreachable, the responsibility remains on the Mac and retries at the first reachable opportunity without blocking a new Apply.
-_Avoid_: User Confirmation, iOS Timer, Readiness Gate
+The Simulation Controller's one real attempt to clear a Temporary Simulation at its fixed deadline during the current testing session. Failure is reported as current status and remains manually retryable through Clear Now.
+_Avoid_: Durable Cleanup Responsibility, iOS Timer, Background Retry
 
 **Clear Now（立即解除）**:
-An optional request to clear the simulation visible when the user tapped it. A delayed Clear cannot erase a newer Apply, and a failed or lost response never blocks selection or replacement Apply.
-_Avoid_: Persistent Stop Intent, Required Final Step, Physical Location Refresh
+A user-initiated request that remains visible even when no active simulation record is shown. It always asks the Injection Backend to clear its current simulation, including when the Simulation Controller has no tracked operation. Success is shown only after backend acknowledgement; failure never blocks selection, another Apply, or a later Clear Now retry.
+_Avoid_: Successful No-op, Persistent Stop Intent, Physical Location Refresh
 
 **Controller Status（控制器状态）**:
-The Simulation Controller's current snapshot: idle, active, uncertain, or automatic-clear retrying, plus present backend readiness. On reconnect or app relaunch it replaces local display state but never disables a new Apply because of historical state.
+The running Simulation Controller's current snapshot: idle, active, uncertain, or clear failed, plus present backend readiness. On reconnect it replaces local display state but never disables a new Apply because of historical state.
 _Avoid_: iOS-Owned Lifecycle, Apply Precondition
 
 **Simulation Capability（模拟能力）**:

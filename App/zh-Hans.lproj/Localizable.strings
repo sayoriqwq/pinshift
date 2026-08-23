@@ -244,11 +244,11 @@
 
 /* Temporary simulation */
 "Temporary Simulation" = "临时位置模拟";
-"The selected location applies for 15 minutes. Choose and apply another location at any time to replace it." = "待应用位置会生效 15 分钟。你可以随时选择并应用其他地点来替换它。";
+"The selected location applies for 3 minutes. Choose and apply another location at any time to replace it." = "待应用位置会生效 3 分钟。你可以随时选择并应用其他地点来替换它。";
 "Simulated Location" = "模拟位置";
 "Automatic clear at" = "自动解除时间";
 "Automatic clear in %@" = "%@ 后自动解除";
-"Automatic clear is due. The Mac will retry when the device is reachable." = "已到自动解除时间。设备可连接后，Mac 会自动重试。";
+"Automatic clear is due. Use Clear Now if the location remains active." = "已到自动解除时间。如果模拟位置仍然生效，请点“立即解除”。";
 "Clearing…" = "正在解除…";
 "Clear Now" = "立即解除";
 "Simulation active" = "位置模拟中";
@@ -258,11 +258,11 @@
 "Clearing simulated location…" = "正在解除模拟位置…";
 "Simulated Location cleared" = "已清除模拟位置";
 "Clear could not be confirmed" = "未能确认立即解除";
-"Automatic clear remains scheduled. You can choose and apply another location now." = "自动解除仍按原计划执行。你现在仍可选择并应用其他地点。";
+"Keep the Mac session open and tap Clear Now again when the device is reachable." = "请保持 Mac 测试会话运行，等设备可连接后再次点“立即解除”。";
 "Automatic Clear" = "自动解除";
-"Every applied location clears automatically after 15 minutes." = "每个已应用地点都会在 15 分钟后自动解除。";
+"Every applied location clears automatically after 3 minutes." = "每个已应用地点都会在 3 分钟后自动解除。";
 "Apply outcome unknown; automatic clear remains scheduled" = "应用结果未知；自动解除仍按计划执行";
-"Automatic clear will retry when the device is reachable" = "设备可连接后会重试自动解除";
+"Clear failed; tap Clear Now to retry" = "解除失败；请点“立即解除”重试";
 "The trusted controller is unavailable. Reconnect and try again." = "可信控制器不可用。请重新连接后重试。";
 "The controller is connected to a different Active Test Device" = "控制器连接的是另一台活动测试设备";
 "Refresh Controller Status" = "刷新控制器状态";

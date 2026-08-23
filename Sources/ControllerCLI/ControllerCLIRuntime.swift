@@ -1,3 +1,5 @@
+import Darwin
+import Dispatch
 import Foundation
 import SimulationController
 import SimulationDiagnostics
@@ -9,6 +11,17 @@ public struct ControllerRuntimeConfiguration: Equatable, Sendable {
   public init(device: String?, developerDirectory: String) {
     self.device = device
     self.developerDirectory = developerDirectory
+  }
+}
+
+enum ControllerSessionTerminationError: Error, Equatable, LocalizedError {
+  case clearFailed(InjectionBackendFailure)
+
+  var errorDescription: String? {
+    switch self {
+    case .clearFailed(let reason):
+      "The foreground session ended, but Clear failed (\(reason.rawValue)). Keep the iPhone reachable and run pinshift-reset."
+    }
   }
 }
 
@@ -42,8 +55,6 @@ public enum ControllerCLIRuntime {
   public static func makeController(
     device: String? = nil,
     developerDirectory: String? = nil,
-    automaticClearInterval: TimeInterval = TemporarySimulationPolicy.automaticClearInterval,
-    stateStore: (any TemporarySimulationStoring)? = nil,
     environment: [String: String] = ProcessInfo.processInfo.environment,
     executor: any DevicectlCommandExecuting = FoundationDevicectlCommandExecutor(),
     diagnostics: SimulationDiagnosticRecorder? = nil,
@@ -67,14 +78,6 @@ public enum ControllerCLIRuntime {
         diagnostics: recorder
       ),
       diagnostics: recorder,
-      stateStore: stateStore
-        ?? FileTemporarySimulationStore(
-          fileURL: FileTemporarySimulationStore.defaultFileURL(
-            environment: environment
-          )
-        ),
-      activeDeviceIdentifier: configuration.device ?? "",
-      automaticClearInterval: automaticClearInterval,
       now: now,
       sleep: sleep,
       automaticallySchedulesMaintenance: automaticallySchedulesMaintenance
@@ -103,22 +106,49 @@ public enum ControllerCLIRuntime {
     )
   }
 
-  static func runAuthority(
+  static func runSession(
     controller: SimulationController,
-    pollInterval: TimeInterval = 60,
-    runFor duration: TimeInterval? = nil,
-    now: @escaping @Sendable () -> Date = Date.init,
-    sleep: @escaping @Sendable (TimeInterval) async throws -> Void = { seconds in
-      try await Task.sleep(for: .seconds(seconds))
-    }
+    stopAcceptingCommands: @escaping @Sendable () async -> Void = {},
+    waitUntilStopped: @escaping @Sendable () async throws -> Void
   ) async throws {
-    let startedAt = now()
-    while !Task.isCancelled {
-      _ = await controller.reconcile()
-      if let duration, now().timeIntervalSince(startedAt) >= duration {
-        return
+    let waitError: (any Error)?
+    do {
+      try await waitUntilStopped()
+      waitError = nil
+    } catch {
+      waitError = error
+    }
+
+    await stopAcceptingCommands()
+    switch await controller.clear() {
+    case .cleared:
+      if let waitError { throw waitError }
+    case .failed(_, let reason):
+      throw ControllerSessionTerminationError.clearFailed(reason)
+    }
+  }
+
+  static func runForegroundSession(
+    controller: SimulationController,
+    runFor duration: TimeInterval?,
+    stopAcceptingCommands: @escaping @Sendable () async -> Void = {}
+  ) async throws {
+    if let duration {
+      try await runSession(
+        controller: controller,
+        stopAcceptingCommands: stopAcceptingCommands
+      ) {
+        try await Task.sleep(for: .seconds(duration))
       }
-      try await sleep(pollInterval)
+      return
+    }
+
+    let signalWaiter = ControllerTerminationSignalWaiter()
+    try await runSession(
+      controller: controller,
+      stopAcceptingCommands: stopAcceptingCommands
+    ) {
+      await signalWaiter.wait()
     }
   }
 
@@ -129,5 +159,35 @@ public enum ControllerCLIRuntime {
       return nil
     }
     return trimmed
+  }
+}
+
+private struct ControllerTerminationSignalWaiter: Sendable {
+  func wait() async {
+    Darwin.signal(SIGHUP, SIG_IGN)
+    Darwin.signal(SIGINT, SIG_IGN)
+    Darwin.signal(SIGTERM, SIG_IGN)
+
+    let events = AsyncStream<Void> { continuation in
+      let sources = [SIGHUP, SIGINT, SIGTERM].map {
+        DispatchSource.makeSignalSource(signal: $0, queue: .main)
+      }
+      for source in sources {
+        source.setEventHandler {
+          continuation.yield()
+          continuation.finish()
+        }
+        source.resume()
+      }
+      continuation.onTermination = { _ in
+        for source in sources {
+          source.cancel()
+        }
+      }
+    }
+
+    for await _ in events {
+      return
+    }
   }
 }

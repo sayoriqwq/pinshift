@@ -52,7 +52,7 @@ public struct NetworkControllerLinkTransport: ControllerLinkTransport {
       verifyQueue
     )
 
-    let parameters = NWParameters(tls: tls, tcp: NWProtocolTCP.Options())
+    let parameters = Self.parameters(tls: tls)
     let endpoint = Self.endpoint(for: service)
     let connection = NWConnection(to: endpoint, using: parameters)
     let frame = try ControllerLinkFrameCodec.encode(request)
@@ -129,6 +129,12 @@ public struct NetworkControllerLinkTransport: ControllerLinkTransport {
       domain: service.domain ?? "",
       interface: nil
     )
+  }
+
+  static func parameters(tls: NWProtocolTLS.Options) -> NWParameters {
+    let parameters = NWParameters(tls: tls, tcp: NWProtocolTCP.Options())
+    parameters.includePeerToPeer = true
+    return parameters
   }
 }
 

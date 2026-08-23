@@ -5,6 +5,10 @@ import dnssd
 @testable import ControllerLink
 
 final class BonjourControllerDiscoveryTests: XCTestCase {
+  func testBrowserEnablesPeerToPeerDiscovery() {
+    XCTAssertTrue(BonjourControllerDiscovery.browserParameters().includePeerToPeer)
+  }
+
   func testBrowserReadyAndPolicyDeniedBecomeDistinctPermissionEvents() {
     XCTAssertEqual(
       BonjourControllerDiscovery.event(for: .ready),

@@ -32,13 +32,13 @@ final class SimulationControllerCommandHandlerTests: XCTestCase {
       applied,
       .applied(
         requestID: applyID,
-        automaticClearAt: now.addingTimeInterval(900)
+        automaticClearAt: now.addingTimeInterval(180)
       )
     )
 
     let clearID = UUID()
     let cleared = await handler.handle(
-      .clear(requestID: clearID, targetOperationID: nil)
+      .clear(requestID: clearID)
     )
     XCTAssertEqual(
       cleared,

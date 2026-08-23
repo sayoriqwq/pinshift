@@ -6,45 +6,6 @@ import XCTest
 @testable import SimulationController
 
 final class SimulationControllerTests: XCTestCase {
-  func testDefaultStorePathMigratesTheExistingAuthorityFileInPlace() {
-    let url = FileTemporarySimulationStore.defaultFileURL(environment: [:])
-
-    XCTAssertTrue(
-      url.path.hasSuffix("/Pinshift/SimulationLifecycle/lifecycle.json"),
-      "The new authority must discover and replace the old durable journal"
-    )
-  }
-
-  func testLegacyAuthorityStateBecomesAnImmediateNonBlockingClear() async throws {
-    let directory = FileManager.default.temporaryDirectory
-      .appendingPathComponent("pinshift-controller-migration-\(UUID().uuidString)")
-    defer { try? FileManager.default.removeItem(at: directory) }
-    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-    let file = directory.appendingPathComponent("lifecycle.json")
-    let operationID = UUID()
-    let legacy = """
-      {
-        "schemaVersion": 1,
-        "legacyCleanupCompleted": true,
-        "active": {
-          "activeDeviceIdentifier": "device",
-          "generationID": "\(operationID.uuidString)",
-          "location": {"latitude":31.2304,"longitude":121.4737},
-          "leaseExpiresAt": "2099-01-01T00:00:00Z",
-          "phase": "applied",
-          "retryAttempt": 0
-        }
-      }
-      """
-    try Data(legacy.utf8).write(to: file)
-
-    let migrated = try await FileTemporarySimulationStore(fileURL: file).load()
-
-    XCTAssertEqual(migrated?.current?.operationID, operationID)
-    XCTAssertEqual(migrated?.current?.phase, .clearPending)
-    XCTAssertEqual(migrated?.current?.automaticClearAt, .distantPast)
-  }
-
   func testApplyArmsFixedAutomaticClearAndReportsActiveSnapshot() async throws {
     let now = Date(timeIntervalSince1970: 1_000)
     let backend = InMemoryInjectionBackend()
@@ -63,7 +24,7 @@ final class SimulationControllerTests: XCTestCase {
       .applied(
         requestID: requestID,
         location: location,
-        automaticClearAt: now.addingTimeInterval(900)
+        automaticClearAt: now.addingTimeInterval(180)
       )
     )
     XCTAssertEqual(
@@ -71,17 +32,16 @@ final class SimulationControllerTests: XCTestCase {
       .active(
         operationID: requestID,
         location: location,
-        automaticClearAt: now.addingTimeInterval(900)
+        automaticClearAt: now.addingTimeInterval(180)
       )
     )
   }
 
-  func testFailedClearRetainsAutomaticClearResponsibility() async throws {
+  func testFailedManualClearCanBeRetriedWithoutDurableCleanupState() async throws {
     let now = Date(timeIntervalSince1970: 1_000)
-    let store = InMemoryTemporarySimulationStore()
+    let backend = FailingThenSucceedingClearBackend()
     let controller = SimulationController(
-      backend: FailingClearBackend(),
-      stateStore: store,
+      backend: backend,
       now: { now },
       automaticallySchedulesMaintenance: false
     )
@@ -94,51 +54,64 @@ final class SimulationControllerTests: XCTestCase {
       clearResult,
       .failed(requestID: clearID, reason: .clearFailed)
     )
-    guard case .clearPending(_, _, let automaticClearAt, .clearFailed) =
-      await controller.snapshot().simulation
+    let failedSnapshot = await controller.snapshot()
+    guard
+      case .clearPending(_, _, let automaticClearAt, .clearFailed) =
+        failedSnapshot.simulation
     else {
-      return XCTFail("A failed Clear Now must retain automatic clear")
+      return XCTFail("A failed Clear Now must remain visible for manual retry")
     }
-    XCTAssertEqual(automaticClearAt, now.addingTimeInterval(900))
-    let retained = await store.load()?.current
-    XCTAssertNotNil(retained)
+    XCTAssertEqual(automaticClearAt, now.addingTimeInterval(180))
+
+    let retryID = UUID()
+    let retryResult = await controller.clear(requestID: retryID)
+    XCTAssertEqual(
+      retryResult,
+      .cleared(requestID: retryID)
+    )
+    let finalSnapshot = await controller.snapshot()
+    XCTAssertEqual(finalSnapshot.simulation, .idle)
   }
 
-  func testClearTargetingOlderOperationCannotClearNewerApply() async throws {
-    let now = Date(timeIntervalSince1970: 1_000)
-    let backend = InMemoryInjectionBackend()
+  func testClearExecutesBackendWhenTheSessionHasNoTrackedOperation() async {
+    let backend = CountingSuccessBackend()
     let controller = SimulationController(
       backend: backend,
-      now: { now },
       automaticallySchedulesMaintenance: false
     )
-    let firstOperationID = UUID()
-    let secondOperationID = UUID()
-    let first = try SelectedLocation(latitude: 31.2304, longitude: 121.4737)
-    let second = try SelectedLocation(latitude: 35.6762, longitude: 139.6503)
+    let clearID = UUID()
 
-    _ = await controller.apply(first, requestID: firstOperationID)
-    _ = await controller.apply(second, requestID: secondOperationID)
+    let result = await controller.clear(requestID: clearID)
 
-    let clearResult = await controller.clear(
-      requestID: UUID(),
-      targetOperationID: firstOperationID
+    XCTAssertEqual(result, .cleared(requestID: clearID))
+    let clearCount = await backend.clearCount
+    XCTAssertEqual(clearCount, 1)
+  }
+
+  func testFailedClearWithoutATrackedOperationRemainsVisibleUntilManualRetry() async {
+    let backend = FailingThenSucceedingClearBackend()
+    let controller = SimulationController(
+      backend: backend,
+      automaticallySchedulesMaintenance: false
     )
+    let clearID = UUID()
 
-    guard case .cleared = clearResult else {
-      return XCTFail("A stale Clear should be acknowledged as a no-op")
+    let failed = await controller.clear(requestID: clearID)
+
+    XCTAssertEqual(failed, .failed(requestID: clearID, reason: .clearFailed))
+    guard
+      case .clearPending(let operationID, nil, _, .clearFailed) =
+        await controller.snapshot().simulation
+    else {
+      return XCTFail("An untracked Clear failure must not be reported as idle")
     }
-    let appliedLocation = await backend.appliedLocation
-    let snapshot = await controller.snapshot()
-    XCTAssertEqual(appliedLocation, second)
-    XCTAssertEqual(
-      snapshot.simulation,
-      .active(
-        operationID: secondOperationID,
-        location: second,
-        automaticClearAt: now.addingTimeInterval(900)
-      )
-    )
+    XCTAssertEqual(operationID, clearID)
+
+    let retryID = UUID()
+    let retried = await controller.clear(requestID: retryID)
+    let finalSnapshot = await controller.snapshot()
+    XCTAssertEqual(retried, .cleared(requestID: retryID))
+    XCTAssertEqual(finalSnapshot.simulation, .idle)
   }
 
   func testSameApplyRetryKeepsItsDeadlineAndNewApplyGetsAFreshOne() async throws {
@@ -164,7 +137,7 @@ final class SimulationControllerTests: XCTestCase {
       .applied(
         requestID: firstID,
         location: first,
-        automaticClearAt: Date(timeIntervalSince1970: 1_900)
+        automaticClearAt: Date(timeIntervalSince1970: 1_180)
       )
     )
     XCTAssertEqual(retry, original)
@@ -173,105 +146,47 @@ final class SimulationControllerTests: XCTestCase {
       .applied(
         requestID: secondID,
         location: second,
-        automaticClearAt: Date(timeIntervalSince1970: 2_000)
+        automaticClearAt: Date(timeIntervalSince1970: 1_280)
       )
     )
     let applyCount = await backend.applyCount
     XCTAssertEqual(applyCount, 2)
   }
 
-  func testRestartKeepsTheOriginalDeadlineAndClearsWhenAlreadyDue() async throws {
-    let clock = ControllerTestClock(now: Date(timeIntervalSince1970: 1_000))
-    let store = InMemoryTemporarySimulationStore()
+  func testClearedApplyRequestCannotBeAcknowledgedAgainAsActive() async throws {
     let backend = CountingSuccessBackend()
-    let location = try SelectedLocation(latitude: 31.2304, longitude: 121.4737)
-    let operationID = UUID()
-    let firstAuthority = SimulationController(
-      backend: backend,
-      stateStore: store,
-      now: { clock.now },
-      automaticallySchedulesMaintenance: false
-    )
-    _ = await firstAuthority.apply(location, requestID: operationID)
-
-    clock.advance(by: 899)
-    let restartedBeforeDeadline = SimulationController(
-      backend: backend,
-      stateStore: store,
-      now: { clock.now },
-      automaticallySchedulesMaintenance: false
-    )
-    let beforeDeadline = await restartedBeforeDeadline.snapshot()
-    XCTAssertEqual(
-      beforeDeadline.simulation,
-      .active(
-        operationID: operationID,
-        location: location,
-        automaticClearAt: Date(timeIntervalSince1970: 1_900)
-      )
-    )
-
-    clock.advance(by: 2)
-    let restartedAfterDeadline = SimulationController(
-      backend: backend,
-      stateStore: store,
-      now: { clock.now },
-      automaticallySchedulesMaintenance: false
-    )
-    let afterDeadline = await restartedAfterDeadline.reconcile()
-    XCTAssertEqual(afterDeadline.simulation, .idle)
-    let clearCount = await backend.clearCount
-    XCTAssertEqual(clearCount, 1)
-  }
-
-  func testExpiredUnreachableLocationCanBeReplacedAsSoonAsBackendReturns() async throws {
-    let clock = ControllerTestClock(now: Date(timeIntervalSince1970: 1_000))
-    let backend = InMemoryInjectionBackend()
     let controller = SimulationController(
       backend: backend,
-      now: { clock.now },
       automaticallySchedulesMaintenance: false
     )
-    let first = try SelectedLocation(latitude: 31.2304, longitude: 121.4737)
-    let second = try SelectedLocation(latitude: 35.6762, longitude: 139.6503)
-    _ = await controller.apply(first, requestID: UUID())
+    let requestID = UUID()
+    let location = try SelectedLocation(latitude: 31.2304, longitude: 121.4737)
+    _ = await controller.apply(location, requestID: requestID)
+    _ = await controller.clear()
 
-    clock.advance(by: 901)
-    await backend.setReadiness(.unavailable(.backendUnavailable))
-    let unreachable = await controller.reconcile()
-    guard case .clearPending = unreachable.simulation else {
-      return XCTFail("The due clear must remain retryable while unreachable")
-    }
+    let replay = await controller.apply(location, requestID: requestID)
 
-    await backend.setReadiness(.ready)
-    let replacementID = UUID()
-    let replacement = await controller.apply(second, requestID: replacementID)
-    XCTAssertEqual(
-      replacement,
-      .applied(
-        requestID: replacementID,
-        location: second,
-        automaticClearAt: clock.now.addingTimeInterval(900)
-      )
-    )
-    let finalLocation = await backend.appliedLocation
-    XCTAssertEqual(finalLocation, second)
+    XCTAssertEqual(replay, .failed(requestID: requestID, reason: .timedOut))
+    let applyCount = await backend.applyCount
+    XCTAssertEqual(applyCount, 1)
   }
 
   func testAutomaticClearAlreadyInFlightFinishesBeforeReplacementApply() async throws {
     let clock = ControllerTestClock(now: Date(timeIntervalSince1970: 1_000))
     let backend = BlockingClearBackend()
+    let sleeper = ControlledSleeper()
     let controller = SimulationController(
       backend: backend,
       now: { clock.now },
-      automaticallySchedulesMaintenance: false
+      sleep: { seconds in try await sleeper.sleep(for: seconds) }
     )
     let first = try SelectedLocation(latitude: 31.2304, longitude: 121.4737)
     let second = try SelectedLocation(latitude: 35.6762, longitude: 139.6503)
     _ = await controller.apply(first, requestID: UUID())
-    clock.advance(by: 901)
+    let scheduledInterval = await sleeper.waitUntilScheduled()
+    XCTAssertEqual(scheduledInterval, 180)
 
-    let automaticClear = Task { await controller.reconcile() }
+    await sleeper.resume()
     await backend.waitUntilClearStarted()
     let replacementID = UUID()
     let replacementApply = Task {
@@ -279,7 +194,6 @@ final class SimulationControllerTests: XCTestCase {
     }
     await Task.yield()
     await backend.releaseClear()
-    _ = await automaticClear.value
     _ = await replacementApply.value
 
     let finalLocation = await backend.appliedLocation
@@ -290,6 +204,36 @@ final class SimulationControllerTests: XCTestCase {
     }
     XCTAssertEqual(operationID, replacementID)
     XCTAssertEqual(location, second)
+  }
+}
+
+private actor ControlledSleeper {
+  private var requestedInterval: TimeInterval?
+  private var requestWaiters: [CheckedContinuation<TimeInterval, Never>] = []
+  private var sleepContinuation: CheckedContinuation<Void, Error>?
+
+  func sleep(for interval: TimeInterval) async throws {
+    requestedInterval = interval
+    let waiters = requestWaiters
+    requestWaiters.removeAll()
+    for waiter in waiters {
+      waiter.resume(returning: interval)
+    }
+    try await withCheckedThrowingContinuation { continuation in
+      sleepContinuation = continuation
+    }
+  }
+
+  func waitUntilScheduled() async -> TimeInterval {
+    if let requestedInterval { return requestedInterval }
+    return await withCheckedContinuation { continuation in
+      requestWaiters.append(continuation)
+    }
+  }
+
+  func resume() {
+    sleepContinuation?.resume()
+    sleepContinuation = nil
   }
 }
 
@@ -348,7 +292,9 @@ private actor BlockingClearBackend: InjectionBackend {
       clearStarted = true
       let waiters = clearStartedWaiters
       clearStartedWaiters.removeAll()
-      waiters.forEach { $0.resume() }
+      for waiter in waiters {
+        waiter.resume()
+      }
       await withCheckedContinuation { continuation in
         clearContinuation = continuation
       }
@@ -370,7 +316,9 @@ private actor BlockingClearBackend: InjectionBackend {
   }
 }
 
-private actor FailingClearBackend: InjectionBackend {
+private actor FailingThenSucceedingClearBackend: InjectionBackend {
+  private var clearCount = 0
+
   func readiness() -> InjectionBackendReadiness { .ready }
 
   func execute(_ command: InjectionBackendCommand) -> InjectionBackendResult {
@@ -378,7 +326,11 @@ private actor FailingClearBackend: InjectionBackend {
     case .apply(let requestID, let location):
       return .applied(requestID: requestID, location: location)
     case .clear(let requestID):
-      return .failed(requestID: requestID, reason: .clearFailed)
+      clearCount += 1
+      if clearCount == 1 {
+        return .failed(requestID: requestID, reason: .clearFailed)
+      }
+      return .cleared(requestID: requestID)
     }
   }
 }

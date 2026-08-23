@@ -22,6 +22,9 @@ final class ControllerLinkViewModel: ObservableObject {
   private var reconnectTask: Task<Void, Never>?
   private var discoveryRetryPolicy = ControllerDiscoveryRetryPolicy()
   private var hasPairingCandidate = false
+  private var pendingApply:
+    (request: ManualSimulationRequest, continuation: CheckedContinuation<ControllerLinkResponse, Never>)?
+  private var pendingApplyTimeoutTask: Task<Void, Never>?
 
   #if DEBUG
     private static let e2eFixtureIdentity = try! ControllerIdentity(
@@ -38,6 +41,24 @@ final class ControllerLinkViewModel: ObservableObject {
       ProcessInfo.processInfo.environment[
         "PINSHIFT_E2E_CONTROLLER_LINK_FAILURE_FIXTURE"
       ] == "failed-clear"
+    }
+
+    private var usesE2ENeverConnectFixture: Bool {
+      ProcessInfo.processInfo.environment[
+        "PINSHIFT_E2E_CONTROLLER_LINK_FAILURE_FIXTURE"
+      ] == "never-connect"
+    }
+
+    private var deferredApplyTimeoutMilliseconds: Int {
+      guard
+        let value = ProcessInfo.processInfo.environment[
+          "PINSHIFT_E2E_DEFERRED_APPLY_TIMEOUT_MILLISECONDS"
+        ],
+        let milliseconds = Int(value), milliseconds > 0
+      else {
+        return 5_000 // Deferred Apply attempts are bounded to five seconds.
+      }
+      return milliseconds
     }
 
     private var e2eApplyDelayMilliseconds: Int {
@@ -77,6 +98,11 @@ final class ControllerLinkViewModel: ObservableObject {
         state = .connected(Self.e2eFixtureIdentity)
         controllerStatus = ControllerStatus(readiness: .ready, simulation: .idle)
         record(kind: "app.controller-link.connected", fields: ["source": .text("fixture")])
+        return
+      }
+      if usesE2ENeverConnectFixture {
+        localNetworkPermission = .allowed
+        state = .unavailable(.transportUnavailable)
         return
       }
     #endif
@@ -126,6 +152,7 @@ final class ControllerLinkViewModel: ObservableObject {
         state = await link.refresh()
         controllerStatus = await link.currentStatus()
         record(kind: "app.controller-link.connected", fields: stateFields(state))
+        deliverPendingApplyIfConnected()
       }
     }
   }
@@ -134,18 +161,29 @@ final class ControllerLinkViewModel: ObservableObject {
     hasPairingCandidate && pairingCode.count == 6 && pairingCode.allSatisfy(\.isNumber)
   }
 
-  /// Historical simulation state and backend readiness never gate a new Apply.
-  var canApply: Bool {
-    if case .connected = state { return true }
-    return false
-  }
-
-  var canClear: Bool {
-    if case .connected = state { return true }
-    return false
-  }
-
   func apply(_ request: ManualSimulationRequest) async -> ControllerLinkResponse {
+    guard case .connected = state else {
+      if let previous = pendingApply {
+        finishPendingApply(
+          previous,
+          with: .failed(
+            requestID: previous.request.requestID,
+            reason: .controllerUnavailable
+          )
+        )
+      }
+      let response = await withCheckedContinuation {
+        (continuation: CheckedContinuation<ControllerLinkResponse, Never>) in
+        pendingApply = (request: request, continuation: continuation)
+        schedulePendingApplyTimeout()
+        retry()
+      }
+      return response
+    }
+    return await sendApply(request)
+  }
+
+  private func sendApply(_ request: ManualSimulationRequest) async -> ControllerLinkResponse {
     record(
       kind: "app.controller-link.apply-started",
       requestID: request.requestID,
@@ -159,7 +197,7 @@ final class ControllerLinkViewModel: ObservableObject {
         if e2eApplyDelayMilliseconds > 0 {
           try? await Task.sleep(for: .milliseconds(e2eApplyDelayMilliseconds))
         }
-        let automaticClearAt = Date().addingTimeInterval(900)
+        let automaticClearAt = Date().addingTimeInterval(180)
         controllerStatus = ControllerStatus(
           readiness: .ready,
           simulation: .active(
@@ -196,13 +234,62 @@ final class ControllerLinkViewModel: ObservableObject {
     return response
   }
 
+  private func deliverPendingApplyIfConnected() {
+    guard case .connected = state, let pendingApply else { return }
+    self.pendingApply = nil
+    pendingApplyTimeoutTask?.cancel()
+    pendingApplyTimeoutTask = nil
+    Task { [weak self] in
+      guard let self else { return }
+      let response = await sendApply(pendingApply.request)
+      pendingApply.continuation.resume(returning: response)
+    }
+  }
+
+  private func failPendingApply() {
+    guard let pendingApply else { return }
+    cancelScheduledReconnect()
+    finishPendingApply(
+      pendingApply,
+      with: .failed(
+        requestID: pendingApply.request.requestID,
+        reason: .controllerUnavailable
+      )
+    )
+  }
+
+  private func schedulePendingApplyTimeout() {
+    pendingApplyTimeoutTask?.cancel()
+    #if DEBUG
+      let timeoutMilliseconds = deferredApplyTimeoutMilliseconds
+    #else
+      let timeoutMilliseconds = 5_000
+    #endif
+    pendingApplyTimeoutTask = Task { [weak self] in
+      try? await Task.sleep(for: .milliseconds(timeoutMilliseconds))
+      guard !Task.isCancelled else { return }
+      self?.failPendingApply()
+    }
+  }
+
+  private func finishPendingApply(
+    _ pending: (request: ManualSimulationRequest, continuation: CheckedContinuation<ControllerLinkResponse, Never>),
+    with response: ControllerLinkResponse
+  ) {
+    guard pendingApply?.request.requestID == pending.request.requestID else { return }
+    pendingApply = nil
+    pendingApplyTimeoutTask?.cancel()
+    pendingApplyTimeoutTask = nil
+    pending.continuation.resume(returning: response)
+  }
+
   func clear(_ request: ManualSimulationClearRequest) async -> ControllerLinkResponse {
     record(kind: "app.controller-link.clear-started", requestID: request.requestID)
     #if DEBUG
       if usesE2EFixture {
         if usesE2EClearFailureFixture {
           let existing = controllerStatus?.simulation
-          let fallbackDeadline = Date().addingTimeInterval(900)
+          let fallbackDeadline = Date().addingTimeInterval(180)
           switch existing {
           case .active(let operationID, let latitude, let longitude, let deadline):
             controllerStatus = ControllerStatus(
@@ -250,10 +337,7 @@ final class ControllerLinkViewModel: ObservableObject {
         return response
       }
     #endif
-    let response = await link.clear(
-      requestID: request.requestID,
-      targetOperationID: request.targetOperationID
-    )
+    let response = await link.clear(requestID: request.requestID)
     state = await link.currentState()
     controllerStatus = await link.currentStatus()
     record(
@@ -313,12 +397,14 @@ final class ControllerLinkViewModel: ObservableObject {
       state = await link.localNetworkPermissionDenied()
       controllerStatus = nil
       record(kind: "app.controller-link.local-network-denied")
+      failPendingApply()
     case .failed:
       cancelScheduledReconnect()
       discoveryRetryPolicy.stopRetrying()
       state = .unavailable(.transportUnavailable)
       controllerStatus = nil
       record(kind: "app.controller-link.connection-failed")
+      failPendingApply()
     }
   }
 
@@ -335,9 +421,11 @@ final class ControllerLinkViewModel: ObservableObject {
       reconnectTask = nil
       discoveryRetryPolicy.connectionAttemptSettled()
       hasPairingCandidate = true
+      failPendingApply()
     case .connected:
       reconnectTask = nil
       discoveryRetryPolicy.connectionAttemptSettled()
+      deliverPendingApplyIfConnected()
     case .unavailable(.transportUnavailable):
       scheduleReconnect(to: service)
     case .notDiscovered, .unavailable, .localNetworkDenied:

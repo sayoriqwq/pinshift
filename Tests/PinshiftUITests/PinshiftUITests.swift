@@ -248,7 +248,7 @@ final class PinshiftUITests: XCTestCase {
     }
   }
 
-  func testFailedClearStaysNonBlockingAndRecordsAutomaticClearFallback() {
+  func testFailedClearStaysNonBlockingAndOffersAnHonestManualRetry() {
     let app = pinshiftApp()
     app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
     app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FAILURE_FIXTURE"] = "failed-clear"
@@ -260,7 +260,8 @@ final class PinshiftUITests: XCTestCase {
 
     let coordinate = CLLocationCoordinate2D(latitude: 31.2304, longitude: 121.4737)
     selectAndBeginObservation(of: coordinate, in: app)
-    applyAndVerifySimulation(of: coordinate, in: app)
+    applyAndAcknowledgeSimulation(in: app)
+    returnHome(in: app)
 
     let clear = app.buttons["clear-simulation"]
     scrollUp(until: clear, in: app)
@@ -279,16 +280,17 @@ final class PinshiftUITests: XCTestCase {
         )
       ).firstMatch.exists
     )
+    let clearDiagnostic = app.staticTexts["clear-diagnostic"]
+    XCTAssertTrue(clearDiagnostic.waitForExistence(timeout: 5))
+    XCTAssertEqual(
+      clearDiagnostic.label,
+      "Keep the Mac session open and tap Clear Now again when the device is reachable."
+    )
 
-    let simulationStatus = app.staticTexts.matching(identifier: "simulation-status")
-      .matching(
-        NSPredicate(
-          format: "label == %@",
-          "Verified by a fresh observation in this app"
-        )
-      )
-      .firstMatch
-    XCTAssertTrue(simulationStatus.waitForExistence(timeout: 5))
+    let activeCard = app.otherElements["active-simulation-card"]
+    XCTAssertTrue(activeCard.waitForExistence(timeout: 5))
+    XCTAssertTrue(clear.waitForExistence(timeout: 5))
+    XCTAssertTrue(clear.isEnabled)
 
     openLocationPicker(in: app)
     XCTAssertTrue(app.buttons["use-map-center"].waitForExistence(timeout: 5))
@@ -336,6 +338,52 @@ final class PinshiftUITests: XCTestCase {
         $0.kind == "app.clear.response" && $0.requestID == clearRequestID
       }
     )
+  }
+
+  func testClearNowIsAvailableWithoutATrackedSimulation() {
+    let app = pinshiftApp()
+    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
+    app.launch()
+    app.tap()
+
+    let clear = app.buttons["clear-simulation"]
+    scrollUp(until: clear, in: app)
+    XCTAssertTrue(clear.waitForExistence(timeout: 5))
+    XCTAssertTrue(clear.isEnabled)
+    clear.tap()
+
+    let cleared = app.staticTexts.matching(identifier: "clear-status")
+      .matching(NSPredicate(format: "label == %@", "Simulated Location cleared"))
+      .firstMatch
+    XCTAssertTrue(cleared.waitForExistence(timeout: 5))
+  }
+
+  func testFailedClearWithoutATrackedSimulationRemainsRetryableAfterReconciliation() {
+    let app = pinshiftApp()
+    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
+    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FAILURE_FIXTURE"] = "failed-clear"
+    app.launch()
+    app.tap()
+
+    let clear = app.buttons["clear-simulation"]
+    scrollUp(until: clear, in: app)
+    XCTAssertTrue(clear.waitForExistence(timeout: 5))
+    clear.tap()
+
+    let failed = app.staticTexts.matching(identifier: "clear-status")
+      .matching(NSPredicate(format: "label == %@", "Clear could not be confirmed"))
+      .firstMatch
+    XCTAssertTrue(failed.waitForExistence(timeout: 5))
+
+    let reconciled = expectation(description: "Controller status reconciled")
+    DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
+      reconciled.fulfill()
+    }
+    wait(for: [reconciled], timeout: 7)
+
+    XCTAssertTrue(failed.exists)
+    XCTAssertTrue(clear.exists)
+    XCTAssertTrue(clear.isEnabled)
   }
 
   func testLanguageSelectorSwitchesImmediatelyAndPersistsTheChoice() {

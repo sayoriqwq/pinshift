@@ -9,7 +9,7 @@
 </p>
 
 Pinshift 是一套由 iPhone App 和一个可信 Mac 控制器组成的个人开发工具。它通过 Xcode 的公开
-`devicectl` 工作流设置测试位置。用户只需要选点并 Apply：每个地点固定生效 15 分钟，新 Apply 随时
+`devicectl` 工作流设置测试位置。用户只需要选点并 Apply：每个地点固定生效 3 分钟，新 Apply 随时
 替换旧地点，历史状态永远不会锁住选点或 Apply。
 
 当前正式版本为 **1.0.1**。
@@ -17,9 +17,9 @@ Pinshift 是一套由 iPhone App 和一个可信 Mac 控制器组成的个人开
 ## 核心能力
 
 - **直观选点**：地图中心选点、地点搜索、经纬度输入、收藏地点和近距离微调。
-- **固定临时**：每次 Apply 固定 15 分钟，无时长选择和无限模式；新 Apply 立即替换并重新计时。
+- **固定临时**：每次 Apply 固定 3 分钟，无时长选择和无限模式；新 Apply 立即替换并重新计时。
 - **永不阻塞**：活动中、立即解除失败、重连或迁移后，都可以继续选择并应用新地点。
-- **后台权威**：一个 macOS LaunchAgent 同时负责 Controller Link、当前状态和到期自动解除，不要求终端常驻。
+- **按需前台**：只在测试时手动启动 Mac 控制器；终端退出前会执行一次真实 Clear，不注册常驻服务。
 - **可信连接**：iPhone 与 Mac 通过 Bonjour、TLS 和一次性六位码配对，不需要账号或云服务。
 - **如实反馈**：区分后端已应用、App 已观测、立即解除未确认和 Mac 权威状态，不用界面猜测替代事实。
 
@@ -27,18 +27,17 @@ Pinshift 是一套由 iPhone App 和一个可信 Mac 控制器组成的个人开
 
 ```mermaid
 flowchart LR
-  A["Pinshift on iPhone"] -->|"Status / Apply / Clear over paired TLS"| B["Persistent Mac authority"]
+  A["Pinshift on iPhone"] -->|"Status / Apply / Clear over paired TLS"| B["Foreground Mac test session"]
   B -->|"public devicectl"| C["Xcode device services"]
   C -->|"set / clear test location"| D["Connected iPhone"]
-  B --> E["Durable current operation + 15 min deadline"]
+  B --> E["In-memory operation + 3 min deadline"]
 ```
 
-Mac 是模拟状态的唯一权威。Apply 在调用后端前写入当前 operation 和固定截止时间；同一请求重试不会
-延长截止时间，新的 Apply 会替换它。Clear Now 只是便利操作，延迟到达时也只能清除它原本看到的
-operation，不能误清更新的地点。
+运行中的 Mac 测试会话是模拟状态的唯一权威。同一请求重试不会延长截止时间，新的 Apply 会替换它。
+Clear Now 始终显示，即使当前没有活动记录；每次点击都真实调用后端，只有 `devicectl` 确认后才显示成功。
 
-到期时如果 Mac 或 iPhone 不可达，公开接口无法凭空完成 clear；Mac 会保留责任，并在设备首次恢复
-可达时重试。与此同时，用户的新 Apply 仍然可用。
+到期或退出时如果 Mac 与 iPhone 可达，控制器会执行 clear；失败会如实显示，可在恢复连接后从 App
+再次点 Clear Now。没有常驻进程或跨重启后台重试。
 
 ## 快速开始
 
@@ -50,15 +49,15 @@ pinshift-install
 pinshift-doctor
 ```
 
-🛠️ 安装稳定签名控制器与单一后台 authority，并检查当前环境。
+🛠️ 安装稳定签名控制器、移除旧常驻项，并检查当前环境。
 
-只有新设备需要配对码时才运行：
+每次开始测试时运行，并保持终端打开：
 
 ```fish
 pinshift-start
 ```
 
-🔗 刷新后台 Controller Link 并打印六位配对码；命令随后立即返回。
+🔗 启动前台 Controller Link 并打印六位配对码；按 Ctrl-C 会先执行真实 Clear 再退出。
 
 完整操作、恢复路径和审计方法见 [GUIDE.md](GUIDE.md)。
 

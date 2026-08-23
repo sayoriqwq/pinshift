@@ -24,7 +24,7 @@ public struct PinshiftControllerCommand: AsyncParsableCommand {
     commandName: "pinshift-controller",
     abstract: "Control temporary locations on an Xcode-connected device.",
     subcommands: [
-      Status.self, Apply.self, Clear.self, Reset.self, Doctor.self, Tutorial.self, Link.self,
+      Status.self, Clear.self, Reset.self, Doctor.self, Tutorial.self, Link.self,
     ],
     defaultSubcommand: Status.self
   )
@@ -85,46 +85,6 @@ public struct PinshiftControllerCommand: AsyncParsableCommand {
 
     public func run() async throws {
       try await emit(await makeRunner(activeDevice).run(.status))
-    }
-  }
-
-  public struct Apply: AsyncParsableCommand {
-    public static let configuration = CommandConfiguration(
-      abstract: "Apply or replace one static WGS 84 coordinate."
-    )
-
-    @Argument(help: "Latitude from -90 through 90.")
-    public var latitude: String
-
-    @Argument(help: "Longitude from -180 through 180.")
-    public var longitude: String
-
-    @Option(name: .long, help: "Optional request UUID for correlation.")
-    public var requestID: String?
-
-    @OptionGroup public var activeDevice: ActiveDeviceOptions
-
-    public init() {}
-
-    public func run() async throws {
-      let parsedRequestID: UUID
-      if let requestID {
-        guard let value = UUID(uuidString: requestID) else {
-          throw ValidationError("--request-id must be a UUID.")
-        }
-        parsedRequestID = value
-      } else {
-        parsedRequestID = UUID()
-      }
-      try await emit(
-        await makeRunner(activeDevice).run(
-          .apply(
-            latitude: latitude,
-            longitude: longitude,
-            requestID: parsedRequestID
-          )
-        )
-      )
     }
   }
 
@@ -276,7 +236,7 @@ public struct PinshiftControllerCommand: AsyncParsableCommand {
 
       @Option(
         name: .long,
-        help: "Optional server duration in seconds. Zero keeps the background authority running."
+        help: "Optional foreground session duration. Zero waits for Ctrl-C or termination."
       )
       public var seconds: Double = 0
 
@@ -389,10 +349,14 @@ public struct PinshiftControllerCommand: AsyncParsableCommand {
         } else {
           print("Controller Link is ready. Pairing code: \(code) (expires in 5 minutes).")
         }
-        print("Temporary Simulated Locations clear automatically after 15 minutes.")
-        try await ControllerCLIRuntime.runAuthority(
+        print("Temporary Simulated Locations clear automatically after 3 minutes.")
+        print("Keep this terminal open. Ctrl-C performs a real Clear before exit.")
+        try await ControllerCLIRuntime.runForegroundSession(
           controller: simulationController,
-          runFor: seconds == 0 ? nil : seconds
+          runFor: seconds == 0 ? nil : seconds,
+          stopAcceptingCommands: {
+            server.stop()
+          }
         )
       }
     }

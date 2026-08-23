@@ -96,11 +96,17 @@ public final class BonjourControllerDiscovery: ControllerDiscovering, @unchecked
 
   public init() {}
 
+  static func browserParameters() -> NWParameters {
+    let parameters = NWParameters.tcp
+    parameters.includePeerToPeer = true
+    return parameters
+  }
+
   public func events() -> AsyncStream<ControllerDiscoveryEvent> {
     AsyncStream { continuation in
       let browser = NWBrowser(
         for: .bonjour(type: ControllerService.serviceType, domain: nil),
-        using: .tcp
+        using: Self.browserParameters()
       )
       lock.lock()
       self.browser?.cancel()

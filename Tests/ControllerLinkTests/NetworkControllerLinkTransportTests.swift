@@ -4,6 +4,12 @@ import XCTest
 @testable import ControllerLink
 
 final class NetworkControllerLinkTransportTests: XCTestCase {
+  func testTransportEnablesPeerToPeerConnections() {
+    let tls = NWProtocolTLS.Options()
+    XCTAssertTrue(NetworkControllerLinkTransport.parameters(tls: tls).includePeerToPeer)
+    XCTAssertTrue(TLSControllerServer.parameters(tls: tls).includePeerToPeer)
+  }
+
   func testBuildsBonjourEndpointForDiscoveredService() {
     let service = ControllerService(
       name: "Mac",

@@ -9,36 +9,4 @@ or exit $status
 set --local controller (pinshift_controller_executable)
 or exit $status
 
-set --local authority_label dev.sayori.pinshift.controller
-set --local authority_plist $HOME/Library/LaunchAgents/$authority_label.plist
-set --local user_id (id -u)
-set --local was_loaded 0
-
-# The emergency direct clear temporarily takes exclusive ownership of the same
-# durable state, then restores the normal background authority on every outcome.
-if launchctl print gui/$user_id/$authority_label >/dev/null 2>&1
-    set was_loaded 1
-    launchctl bootout gui/$user_id/$authority_label
-    or exit $status
-end
-
-$controller reset
-set --local reset_status $status
-
-if test -f $authority_plist
-    launchctl bootstrap gui/$user_id $authority_plist
-    set --local bootstrap_status $status
-    if test $bootstrap_status -eq 0
-        launchctl kickstart -k gui/$user_id/$authority_label
-        set bootstrap_status $status
-    end
-    if test $bootstrap_status -ne 0
-        echo "The clear command finished, but the background authority could not be restored." >&2
-        exit $bootstrap_status
-    end
-else if test $was_loaded -eq 1
-    echo "The background authority plist disappeared while reset was running." >&2
-    exit 1
-end
-
-exit $reset_status
+exec $controller reset

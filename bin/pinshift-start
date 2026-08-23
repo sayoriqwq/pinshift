@@ -9,8 +9,8 @@ or exit 2
 
 if set --query _flag_help
     echo "Usage: pinshift-start"
-    echo "Restarts the installed background controller and prints a fresh pairing code."
-    echo "The command returns immediately; no foreground terminal is required."
+    echo "Starts the installed controller in this terminal and prints a fresh pairing code."
+    echo "Keep this terminal open while testing; Ctrl-C clears before the session exits."
     exit 0
 end
 
@@ -19,41 +19,12 @@ or exit $status
 set --local controller (pinshift_controller_executable)
 or exit $status
 
-set --local authority_label dev.sayori.pinshift.controller
-set --local authority_plist $HOME/Library/LaunchAgents/$authority_label.plist
-set --local pairing_code_file $HOME/Library/Application\ Support/Pinshift/ControllerLink/pairing-code
-set --local user_id (id -u)
-
-if not test -x $controller; or not test -f $authority_plist
-    echo "The background controller is not installed. Run pinshift-install once." >&2
+if not test -x $controller
+    echo "The controller is not installed. Run pinshift-install once." >&2
     exit 1
 end
 
-if not launchctl print gui/$user_id/$authority_label >/dev/null 2>&1
-    launchctl bootstrap gui/$user_id $authority_plist
-    or begin
-        echo "The background controller could not be registered. Run pinshift-install again." >&2
-        exit 1
-    end
-end
-launchctl kickstart -k gui/$user_id/$authority_label
-or begin
-    echo "The background controller could not be started." >&2
-    exit 1
-end
-
-for attempt in (seq 1 50)
-    if test -s $pairing_code_file
-        set --local pairing_code (string trim < $pairing_code_file)
-        if test (string length $pairing_code) -eq 6; and string match --quiet --regex '^[0-9]{6}$' $pairing_code
-            echo "Background Controller Link is ready. Pairing code: $pairing_code"
-            echo "Every applied location clears automatically after 15 minutes."
-            exit 0
-        end
-    end
-    sleep 0.1
-end
-
-echo "The background controller started, but a fresh pairing code was not available." >&2
-echo "Inspect $HOME/Library/Logs/Pinshift/controller.log, then run pinshift-start again." >&2
-exit 1
+echo "Keep this terminal open while using Pinshift. Ctrl-C ends the session after a real Clear."
+exec $controller link serve \
+    --device "$PINSHIFT_DEVICE" \
+    --developer-directory "$PINSHIFT_DEVELOPER_DIR"

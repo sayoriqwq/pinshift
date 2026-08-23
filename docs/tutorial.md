@@ -19,11 +19,11 @@ pinshift-install
 pinshift-doctor
 ```
 
-🛠️ 构建并签名稳定控制器，安装单一后台 authority，然后检查环境。
+🛠️ 构建并签名稳定控制器、移除旧常驻项，然后检查环境。
 
-`pinshift-install` installs one per-user LaunchAgent. The same process owns Controller Link, durable current-operation state, backend serialization, and automatic clear. It runs at login and restarts after failure, so daily use does not need a foreground terminal. The installer preserves the existing Keychain TLS identity and refuses an unexpected designated-requirement change before modifying trust.
+`pinshift-install` publishes the signed controller but does not register a LaunchAgent. It unloads and removes the former controller and Cleanup Guardian authorities. The installer preserves the existing Keychain TLS identity and refuses an unexpected designated-requirement change before modifying trust.
 
-When upgrading from the former lifecycle design, the installer stops and removes the legacy Guardian LaunchAgent. The new authority reads the existing state-file path, turns legacy Mac state into an immediate safe clear attempt, and writes schema 2 in place. Saved Locations and Trusted Controller data survive; old iOS control state does not.
+Controller state now exists only in the explicitly started test session. There is no lifecycle journal, restart reconciliation, or durable cleanup retry. During migration, the signed candidate performs one real backend reset before the obsolete lifecycle file is removed; a failed reset aborts publication. Saved Locations and Trusted Controller data survive an upgrade.
 
 ## Prepare Xcode and the iPhone
 
@@ -67,31 +67,32 @@ Doctor never changes system or device settings and does not print raw private se
 
 ## Pair and use
 
-Only when a new or reset iPhone needs a code, run:
+Whenever a testing session begins, run:
 
 ```fish
 pinshift-start
 ```
 
-🔗 重启后台 Controller Link、打印新的六位码，然后立即返回。
+🔗 启动前台 Controller Link 并打印六位码；保持终端打开，Ctrl-C 会先 Clear 再退出。
 
-Already trusted iPhones reconnect automatically. In Pinshift:
+Already trusted iPhones reconnect automatically while this foreground process is running. In Pinshift:
 
 1. Allow **Location** and **Local Network**, then pair if needed.
 2. Choose a Selected Location. Selection never applies automatically and remains available in every simulation state.
-3. Tap **Apply Selected Location**. There is no duration parameter: the Mac returns exactly 15 minutes from the first acceptance of this operation.
-4. Choose and Apply another location at any time. The new operation replaces current active, uncertain, or clear-retrying state and receives a fresh deadline.
-5. Optionally tap **Clear Now**. It targets the operation visible at the tap, so a delayed request cannot erase a later Apply. Failed or lost Clear never disables selection or Apply.
+3. Tap **Apply Selected Location**. There is no duration parameter: the Mac returns exactly three minutes from the first acceptance of this operation.
+4. Choose and Apply another location at any time. The new operation replaces current state and receives a fresh deadline.
+5. **Clear Now** remains visible even when no active record is shown. Every tap reaches the backend, including when the controller has no tracked operation. Failed or lost Clear never disables selection or Apply and can be retried.
 
-The Mac snapshot is authoritative after reconnect or app relaunch. The app persists only user selection; it does not persist a resendable clear or extension command.
+The running Mac session snapshot is authoritative after reconnect. The app persists only user selection; it does not persist a resendable clear or extension command.
 
 ## Automatic clear behavior
 
-- A genuinely new Apply receives a fixed deadline of acceptance time plus 900 seconds.
+- A genuinely new Apply receives a fixed deadline of acceptance time plus 180 seconds.
 - Retrying the same request ID returns the original deadline without another backend Apply.
 - At the deadline, the Mac authority requests public `devicectl ... location clear`.
-- If the Mac or Active Test Device is unreachable, retry metadata remains durable and the first reachable opportunity retries.
-- Apply always serializes through the same authority and can supersede retry state; an old timer cannot clear the replacement.
+- If the Mac or Active Test Device is unreachable, the failure is exposed and the user can retry Clear Now after restoring connectivity.
+- Apply, Clear, and the timer serialize through the same foreground controller actor.
+- Ctrl-C, termination, and a finite session duration perform one real Clear before normal exit; failure makes the process exit unsuccessfully.
 - A successful backend clear does not guarantee an immediate fresh physical Core Location callback.
 
 The compact terminal version is available with:

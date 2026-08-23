@@ -34,7 +34,7 @@ public protocol InjectionBackend: Sendable {
 }
 
 public enum TemporarySimulationPolicy {
-  public static let automaticClearInterval: TimeInterval = 900
+  public static let automaticClearInterval: TimeInterval = 180
 }
 
 public enum TemporarySimulationSnapshotState: Equatable, Sendable {
@@ -53,7 +53,7 @@ public enum TemporarySimulationSnapshotState: Equatable, Sendable {
   case clearPending(
     operationID: UUID,
     location: SelectedLocation?,
-    automaticClearAt: Date,
+    automaticClearAt: Date?,
     reason: InjectionBackendFailure?
   )
 }
@@ -86,27 +86,47 @@ public enum TemporarySimulationClearResult: Equatable, Sendable {
 }
 
 public actor SimulationController {
+  private enum Phase {
+    case uncertain
+    case active
+    case clearPending
+  }
+
+  private struct CurrentSimulation {
+    let operationID: UUID
+    let location: SelectedLocation
+    let automaticClearAt: Date
+    var phase: Phase
+    var lastFailure: InjectionBackendFailure?
+  }
+
+  private struct ApplyReceipt {
+    let operationID: UUID
+    let location: SelectedLocation
+    let automaticClearAt: Date
+  }
+
+  private struct UntrackedClearFailure {
+    let requestID: UUID
+    let reason: InjectionBackendFailure
+  }
+
   private let backend: any InjectionBackend
   private let diagnostics: SimulationDiagnosticRecorder?
-  private let stateStore: any TemporarySimulationStoring
-  private let activeDeviceIdentifier: String
-  private let automaticClearInterval: TimeInterval
   private let now: @Sendable () -> Date
   private let sleep: @Sendable (TimeInterval) async throws -> Void
   private let automaticallySchedulesMaintenance: Bool
 
-  private var state = TemporarySimulationState()
-  private var didLoadState = false
+  private var current: CurrentSimulation?
+  private var untrackedClearFailure: UntrackedClearFailure?
+  private var recentApplyReceipts: [ApplyReceipt] = []
   private var operationInFlight = false
   private var operationWaiters: [CheckedContinuation<Void, Never>] = []
-  private var maintenanceTask: Task<Void, Never>?
+  private var automaticClearTask: Task<Void, Never>?
 
   public init(
     backend: any InjectionBackend,
     diagnostics: SimulationDiagnosticRecorder? = nil,
-    stateStore: any TemporarySimulationStoring = InMemoryTemporarySimulationStore(),
-    activeDeviceIdentifier: String = "in-memory-active-device",
-    automaticClearInterval: TimeInterval = TemporarySimulationPolicy.automaticClearInterval,
     now: @escaping @Sendable () -> Date = Date.init,
     sleep: @escaping @Sendable (TimeInterval) async throws -> Void = { seconds in
       try await Task.sleep(for: .seconds(seconds))
@@ -115,9 +135,6 @@ public actor SimulationController {
   ) {
     self.backend = backend
     self.diagnostics = diagnostics
-    self.stateStore = stateStore
-    self.activeDeviceIdentifier = activeDeviceIdentifier
-    self.automaticClearInterval = automaticClearInterval
     self.now = now
     self.sleep = sleep
     self.automaticallySchedulesMaintenance = automaticallySchedulesMaintenance
@@ -126,15 +143,8 @@ public actor SimulationController {
   public func snapshot() async -> TemporarySimulationSnapshot {
     await acquireOperation()
     defer { releaseOperation() }
-    guard await loadStateIfNeeded() else {
-      return TemporarySimulationSnapshot(
-        readiness: .unavailable(.backendUnavailable),
-        simulation: snapshotState()
-      )
-    }
-    let readiness = await backend.readiness()
     return TemporarySimulationSnapshot(
-      readiness: readiness,
+      readiness: await backend.readiness(),
       simulation: snapshotState()
     )
   }
@@ -150,15 +160,13 @@ public actor SimulationController {
       requestID: requestID,
       fields: coordinateFields(location)
     )
-    guard await loadStateIfNeeded() else {
-      return .failed(requestID: requestID, reason: .backendUnavailable)
-    }
 
-    if let receipt = state.recentApplyReceipts.last(where: {
-      $0.operationID == requestID
-    }) {
+    if let receipt = recentApplyReceipts.last(where: { $0.operationID == requestID }) {
       guard receipt.location == location else {
         return .failed(requestID: requestID, reason: .backendUnavailable)
+      }
+      guard current?.operationID == requestID else {
+        return .failed(requestID: requestID, reason: .timedOut)
       }
       return .applied(
         requestID: requestID,
@@ -167,7 +175,7 @@ public actor SimulationController {
       )
     }
 
-    if let current = state.current, current.operationID == requestID {
+    if let current, current.operationID == requestID {
       guard current.location == location else {
         return .failed(requestID: requestID, reason: .backendUnavailable)
       }
@@ -191,21 +199,20 @@ public actor SimulationController {
     }
 
     let automaticClearAt: Date
-    if let current = state.current, current.operationID == requestID {
+    if let current, current.operationID == requestID {
       automaticClearAt = current.automaticClearAt
     } else {
-      automaticClearAt = now().addingTimeInterval(automaticClearInterval)
-      var replacement = state
-      replacement.current = TemporarySimulationRecord(
-        activeDeviceIdentifier: activeDeviceIdentifier,
+      automaticClearAt = now().addingTimeInterval(
+        TemporarySimulationPolicy.automaticClearInterval
+      )
+      current = CurrentSimulation(
         operationID: requestID,
         location: location,
         automaticClearAt: automaticClearAt,
-        phase: .armed
+        phase: .uncertain,
+        lastFailure: nil
       )
-      guard await persist(replacement) else {
-        return .failed(requestID: requestID, reason: .backendUnavailable)
-      }
+      untrackedClearFailure = nil
       await record(
         kind: "controller.temporary-simulation.armed",
         requestID: requestID,
@@ -218,25 +225,20 @@ public actor SimulationController {
     )
     switch backendResult {
     case .applied(let responseID, let appliedLocation)
-      where responseID == requestID && appliedLocation == location:
-      var acknowledged = state
-      if var current = acknowledged.current, current.operationID == requestID {
+    where responseID == requestID && appliedLocation == location:
+      if var current, current.operationID == requestID {
         current.phase = .active
-        current.retryAttempt = 0
-        current.nextClearAttemptAt = nil
-        current.lastClearFailure = nil
-        acknowledged.current = current
+        current.lastFailure = nil
+        self.current = current
       }
       appendReceipt(
-        TemporaryApplyReceipt(
+        ApplyReceipt(
           operationID: requestID,
           location: location,
           automaticClearAt: automaticClearAt
-        ),
-        to: &acknowledged
+        )
       )
-      _ = await persist(acknowledged)
-      scheduleMaintenance()
+      scheduleAutomaticClear()
       await record(
         kind: "controller.temporary-simulation.applied",
         requestID: requestID,
@@ -249,187 +251,65 @@ public actor SimulationController {
       )
 
     case .failed(let responseID, let reason) where responseID == requestID:
-      await retainUncertainApplyFailure(requestID: requestID, reason: reason)
-      scheduleMaintenance()
+      retainUncertainApplyFailure(requestID: requestID, reason: reason)
+      scheduleAutomaticClear()
       return .failed(requestID: requestID, reason: reason)
 
     case .applied(let responseID, _), .cleared(let responseID),
       .failed(let responseID, _):
-      await retainUncertainApplyFailure(
+      retainUncertainApplyFailure(
         requestID: requestID,
         reason: .backendUnavailable
       )
-      scheduleMaintenance()
+      scheduleAutomaticClear()
       return .failed(requestID: responseID, reason: .backendUnavailable)
     }
   }
 
-  public func clear(
-    requestID: UUID = UUID(),
-    targetOperationID: UUID? = nil
-  ) async -> TemporarySimulationClearResult {
+  public func clear(requestID: UUID = UUID()) async -> TemporarySimulationClearResult {
     await acquireOperation()
     defer { releaseOperation() }
     await record(kind: "controller.clear.started", requestID: requestID)
-    guard await loadStateIfNeeded() else {
-      return .failed(requestID: requestID, reason: .backendUnavailable)
-    }
-
-    if let targetOperationID, state.current?.operationID != targetOperationID {
-      await record(
-        kind: "controller.clear.stale-target-ignored",
-        requestID: requestID,
-        fields: ["targetOperationID": .text(targetOperationID.uuidString)]
-      )
-      return .cleared(requestID: requestID)
-    }
-
-    let resolvedTargetOperationID = state.current?.operationID
-    if var current = state.current {
+    if var current {
       current.phase = .clearPending
-      current.lastClearFailure = nil
-      current.nextClearAttemptAt = current.automaticClearAt
-      var pending = state
-      pending.current = current
-      guard await persist(pending) else {
-        return .failed(requestID: requestID, reason: .backendUnavailable)
-      }
+      current.lastFailure = nil
+      self.current = current
     }
 
-    let result = await backend.execute(.clear(requestID: requestID))
     return await finishClear(
-      result,
+      await backend.execute(.clear(requestID: requestID)),
       requestID: requestID,
-      targetOperationID: resolvedTargetOperationID,
       automatic: false
     )
   }
 
-  @discardableResult
-  public func reconcile() async -> TemporarySimulationSnapshot {
+  private func automaticallyClear(operationID: UUID) async {
     await acquireOperation()
     defer { releaseOperation() }
-    guard await loadStateIfNeeded() else {
-      return TemporarySimulationSnapshot(
-        readiness: .unavailable(.backendUnavailable),
-        simulation: snapshotState()
-      )
-    }
-    guard let current = state.current else {
-      maintenanceTask?.cancel()
-      maintenanceTask = nil
-      return TemporarySimulationSnapshot(
-        readiness: await backend.readiness(),
-        simulation: .idle
-      )
-    }
-    guard current.activeDeviceIdentifier == activeDeviceIdentifier else {
-      // A different configured device cannot satisfy this retained obligation.
-      // Keep it visible and retry slowly without creating an immediate task loop.
-      scheduleMaintenance(after: 60)
-      return TemporarySimulationSnapshot(
-        readiness: .unavailable(.deviceMismatch),
-        simulation: snapshotState()
-      )
-    }
-
-    let dueAt = max(
-      current.automaticClearAt,
-      current.nextClearAttemptAt ?? current.automaticClearAt
-    )
-    guard now() >= dueAt else {
-      scheduleMaintenance()
-      return TemporarySimulationSnapshot(
-        readiness: await backend.readiness(),
-        simulation: snapshotState()
-      )
-    }
-
-    var pending = current
-    pending.phase = .clearPending
-    pending.nextClearAttemptAt = nil
-    var pendingState = state
-    pendingState.current = pending
-    guard await persist(pendingState) else {
-      scheduleMaintenance(after: 1)
-      return TemporarySimulationSnapshot(
-        readiness: .unavailable(.backendUnavailable),
-        simulation: snapshotState()
-      )
-    }
+    guard var current, current.operationID == operationID else { return }
+    current.phase = .clearPending
+    current.lastFailure = nil
+    self.current = current
 
     let requestID = UUID()
-    let result = await backend.execute(.clear(requestID: requestID))
     _ = await finishClear(
-      result,
+      await backend.execute(.clear(requestID: requestID)),
       requestID: requestID,
-      targetOperationID: current.operationID,
       automatic: true
     )
-    return TemporarySimulationSnapshot(
-      readiness: await backend.readiness(),
-      simulation: snapshotState()
-    )
-  }
-
-  private func loadStateIfNeeded() async -> Bool {
-    guard !didLoadState else { return true }
-    do {
-      state = try await stateStore.load() ?? TemporarySimulationState()
-      if var current = state.current, current.activeDeviceIdentifier.isEmpty {
-        current.activeDeviceIdentifier = activeDeviceIdentifier
-        var migrated = state
-        migrated.current = current
-        guard await persist(migrated) else { return false }
-      } else {
-        // Re-save once so a decoded legacy schema is atomically replaced by schema 2.
-        guard await persist(state) else { return false }
-      }
-      didLoadState = true
-      scheduleMaintenance()
-      return true
-    } catch {
-      await record(
-        kind: "controller.temporary-simulation.state-load-failed",
-        fields: ["error": .text(String(describing: error))]
-      )
-      return false
-    }
-  }
-
-  private func persist(_ replacement: TemporarySimulationState) async -> Bool {
-    do {
-      try await stateStore.save(replacement)
-      state = replacement
-      return true
-    } catch {
-      await record(
-        kind: "controller.temporary-simulation.state-save-failed",
-        fields: ["error": .text(String(describing: error))]
-      )
-      return false
-    }
   }
 
   private func finishClear(
     _ result: InjectionBackendResult,
     requestID: UUID,
-    targetOperationID: UUID?,
     automatic: Bool
   ) async -> TemporarySimulationClearResult {
     switch result {
     case .cleared(let responseID) where responseID == requestID:
-      var cleared = state
-      if targetOperationID == nil || cleared.current?.operationID == targetOperationID {
-        cleared.current = nil
-      }
-      let persisted = await persist(cleared)
-      if persisted {
-        maintenanceTask?.cancel()
-        maintenanceTask = nil
-      } else {
-        scheduleMaintenance(after: 1)
-      }
+      current = nil
+      untrackedClearFailure = nil
+      automaticClearTask?.cancel()
+      automaticClearTask = nil
       await record(
         kind: automatic
           ? "controller.temporary-simulation.automatic-clear-succeeded"
@@ -439,19 +319,15 @@ public actor SimulationController {
       return .cleared(requestID: responseID)
 
     case .failed(let responseID, let reason) where responseID == requestID:
-      await retainClearFailure(
-        requestID: requestID,
-        targetOperationID: targetOperationID,
-        reason: reason
-      )
+      await retainClearFailure(requestID: requestID, reason: reason, automatic: automatic)
       return .failed(requestID: responseID, reason: reason)
 
     case .applied(let responseID, _), .cleared(let responseID),
       .failed(let responseID, _):
       await retainClearFailure(
         requestID: requestID,
-        targetOperationID: targetOperationID,
-        reason: .clearFailed
+        reason: .clearFailed,
+        automatic: automatic
       )
       return .failed(requestID: responseID, reason: .clearFailed)
     }
@@ -460,119 +336,108 @@ public actor SimulationController {
   private func retainUncertainApplyFailure(
     requestID: UUID,
     reason: InjectionBackendFailure
-  ) async {
-    guard var current = state.current, current.operationID == requestID else { return }
-    current.phase = .armed
-    current.lastClearFailure = reason
-    var uncertain = state
-    uncertain.current = current
-    _ = await persist(uncertain)
+  ) {
+    guard var current, current.operationID == requestID else { return }
+    current.phase = .uncertain
+    current.lastFailure = reason
+    self.current = current
   }
 
   private func retainClearFailure(
     requestID: UUID,
-    targetOperationID: UUID?,
-    reason: InjectionBackendFailure
+    reason: InjectionBackendFailure,
+    automatic: Bool
   ) async {
-    guard var current = state.current,
-      targetOperationID == nil || current.operationID == targetOperationID
-    else { return }
+    guard var current else {
+      untrackedClearFailure = UntrackedClearFailure(
+        requestID: requestID,
+        reason: reason
+      )
+      await record(
+        kind: automatic
+          ? "controller.temporary-simulation.automatic-clear-failed"
+          : "controller.temporary-simulation.clear-failed",
+        requestID: requestID,
+        fields: ["reason": .text(reason.rawValue)]
+      )
+      return
+    }
     current.phase = .clearPending
-    current.retryAttempt += 1
-    let retryDelay = min(pow(2, Double(current.retryAttempt)), 60)
-    current.nextClearAttemptAt = max(
-      current.automaticClearAt,
-      now().addingTimeInterval(retryDelay)
-    )
-    current.lastClearFailure = reason
-    var pending = state
-    pending.current = current
-    _ = await persist(pending)
-    scheduleMaintenance()
+    current.lastFailure = reason
+    self.current = current
     await record(
-      kind: "controller.temporary-simulation.clear-retry-scheduled",
+      kind: automatic
+        ? "controller.temporary-simulation.automatic-clear-failed"
+        : "controller.temporary-simulation.clear-failed",
       requestID: requestID,
       fields: [
         "automaticClearAt": .date(current.automaticClearAt),
-        "nextClearAttemptAt": .date(current.nextClearAttemptAt ?? current.automaticClearAt),
         "reason": .text(reason.rawValue),
       ]
     )
   }
 
   private func snapshotState() -> TemporarySimulationSnapshotState {
-    guard let current = state.current else { return .idle }
-    if current.activeDeviceIdentifier != activeDeviceIdentifier {
-      return .uncertain(
-        operationID: current.operationID,
-        location: current.location,
-        automaticClearAt: current.automaticClearAt,
-        reason: .deviceMismatch
-      )
+    guard let current else {
+      if let untrackedClearFailure {
+        return .clearPending(
+          operationID: untrackedClearFailure.requestID,
+          location: nil,
+          automaticClearAt: nil,
+          reason: untrackedClearFailure.reason
+        )
+      }
+      return .idle
     }
     switch current.phase {
     case .active:
-      guard let location = current.location else {
-        return .uncertain(
-          operationID: current.operationID,
-          location: nil,
-          automaticClearAt: current.automaticClearAt,
-          reason: current.lastClearFailure
-        )
-      }
       return .active(
         operationID: current.operationID,
-        location: location,
+        location: current.location,
         automaticClearAt: current.automaticClearAt
       )
-    case .armed:
+    case .uncertain:
       return .uncertain(
         operationID: current.operationID,
         location: current.location,
         automaticClearAt: current.automaticClearAt,
-        reason: current.lastClearFailure
+        reason: current.lastFailure
       )
     case .clearPending:
       return .clearPending(
         operationID: current.operationID,
         location: current.location,
         automaticClearAt: current.automaticClearAt,
-        reason: current.lastClearFailure
+        reason: current.lastFailure
       )
     }
   }
 
-  private func appendReceipt(
-    _ receipt: TemporaryApplyReceipt,
-    to state: inout TemporarySimulationState
-  ) {
-    state.recentApplyReceipts.removeAll { $0.operationID == receipt.operationID }
-    state.recentApplyReceipts.append(receipt)
-    if state.recentApplyReceipts.count > 8 {
-      state.recentApplyReceipts.removeFirst(state.recentApplyReceipts.count - 8)
+  private func appendReceipt(_ receipt: ApplyReceipt) {
+    recentApplyReceipts.removeAll { $0.operationID == receipt.operationID }
+    recentApplyReceipts.append(receipt)
+    if recentApplyReceipts.count > 8 {
+      recentApplyReceipts.removeFirst(recentApplyReceipts.count - 8)
     }
   }
 
-  private func scheduleMaintenance(after explicitDelay: TimeInterval? = nil) {
-    maintenanceTask?.cancel()
-    guard automaticallySchedulesMaintenance, didLoadState, let current = state.current else {
-      maintenanceTask = nil
+  private func scheduleAutomaticClear() {
+    automaticClearTask?.cancel()
+    guard automaticallySchedulesMaintenance, let current else {
+      automaticClearTask = nil
       return
     }
-    let dueAt = max(
-      current.automaticClearAt,
-      current.nextClearAttemptAt ?? current.automaticClearAt
-    )
-    let delay = explicitDelay ?? max(0, dueAt.timeIntervalSince(now()))
+    let operationID = current.operationID
+    let delay = max(0, current.automaticClearAt.timeIntervalSince(now()))
     let sleep = self.sleep
-    maintenanceTask = Task { [weak self] in
+    automaticClearTask = Task { [weak self] in
       do {
         try await sleep(delay)
       } catch {
         return
       }
       guard !Task.isCancelled else { return }
-      await self?.reconcile()
+      await self?.automaticallyClear(operationID: operationID)
     }
   }
 

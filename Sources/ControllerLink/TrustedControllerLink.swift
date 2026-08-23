@@ -41,8 +41,7 @@ public enum ControllerLinkRequest: Codable, Equatable, Sendable {
   )
   case clear(
     requestID: UUID,
-    authorization: ControllerAuthorization,
-    targetOperationID: UUID?
+    authorization: ControllerAuthorization
   )
 
   public var requestID: UUID {
@@ -50,7 +49,7 @@ public enum ControllerLinkRequest: Codable, Equatable, Sendable {
     case .status(let requestID, _),
       .pair(let requestID, _),
       .apply(let requestID, _, _, _),
-      .clear(let requestID, _, _):
+      .clear(let requestID, _):
       requestID
     }
   }
@@ -285,10 +284,7 @@ public actor TrustedControllerLink {
     return response
   }
 
-  public func clear(
-    requestID: UUID,
-    targetOperationID: UUID? = nil
-  ) async -> ControllerLinkResponse {
+  public func clear(requestID: UUID) async -> ControllerLinkResponse {
     let revision = beginMutation()
     if case .connected = stateMachine.state {
       // Clear is a convenience and needs no historical-state precondition.
@@ -301,8 +297,7 @@ public actor TrustedControllerLink {
       makeRequest: { authorization in
         .clear(
           requestID: requestID,
-          authorization: authorization,
-          targetOperationID: targetOperationID
+          authorization: authorization
         )
       },
       accepts: { response in
@@ -310,11 +305,7 @@ public actor TrustedControllerLink {
         return false
       }
     )
-    if case .cleared = response,
-      mutationRevision == revision,
-      targetOperationID == nil
-        || currentOperationID(in: controllerStatus?.simulation) == targetOperationID
-    {
+    if case .cleared = response, mutationRevision == revision {
       controllerStatus = ControllerStatus(readiness: .ready, simulation: .idle)
     }
     return response
@@ -418,19 +409,6 @@ public actor TrustedControllerLink {
     case .status, .paired, .applied, .cleared:
       stateMachine.transportUnavailable()
       return .failed(requestID: requestID, reason: .responseIdentityMismatch)
-    }
-  }
-
-  private func currentOperationID(
-    in simulation: ControllerSimulationState?
-  ) -> UUID? {
-    switch simulation {
-    case .active(let operationID, _, _, _),
-      .uncertain(let operationID, _, _, _, _),
-      .clearPending(let operationID, _, _, _, _):
-      operationID
-    case .idle, nil:
-      nil
     }
   }
 

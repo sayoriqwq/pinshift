@@ -1,3 +1,7 @@
+---
+status: superseded by ADR-0011
+---
+
 # Make every simulated location temporary without blocking replacement
 
 Every successful Apply creates a Temporary Simulation with one fixed 15-minute automatic-clear deadline. Duration is not user-configurable. Retrying the same Apply returns its original deadline; a genuinely new Apply replaces any active, uncertain, or clear-retrying state and receives a fresh deadline.

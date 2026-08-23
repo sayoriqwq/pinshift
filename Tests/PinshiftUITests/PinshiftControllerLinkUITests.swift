@@ -22,6 +22,29 @@ final class PinshiftControllerLinkUITests: XCTestCase {
     }
   }
 
+  func testApplyRemainsEnabledAndFailsBoundedlyWhenControllerNeverConnects() {
+    let app = pinshiftApp()
+    app.launchEnvironment["PINSHIFT_E2E_SELECTED_LOCATION"] = "31.2304,121.4737"
+    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FAILURE_FIXTURE"] = "never-connect"
+    app.launchEnvironment["PINSHIFT_E2E_DEFERRED_APPLY_TIMEOUT_MILLISECONDS"] = "250"
+    app.launch()
+    app.tap()
+
+    let apply = app.buttons["apply-selected-location"]
+    scroll(upTo: apply, in: app)
+    XCTAssertTrue(apply.waitForExistence(timeout: 5))
+    XCTAssertTrue(apply.isEnabled)
+    apply.tap()
+
+    let failed = app.staticTexts["simulation-status"]
+    XCTAssertTrue(failed.waitForExistence(timeout: 5))
+    XCTAssertTrue(
+      app.staticTexts["simulation-diagnostic"]
+        .waitForExistence(timeout: 5)
+    )
+    XCTAssertTrue(apply.isEnabled)
+  }
+
   func testDiscoversPairsAndPinsTheMacController() throws {
     guard let pairingCode = ProcessInfo.processInfo.environment["PINSHIFT_PAIRING_CODE"]
     else {

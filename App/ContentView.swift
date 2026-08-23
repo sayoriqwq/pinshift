@@ -635,7 +635,7 @@ struct ContentView: View {
       }
 
       LabeledContent("Automatic Clear") {
-        Text(localized("Every applied location clears automatically after 15 minutes."))
+        Text(localized("Every applied location clears automatically after 3 minutes."))
           .accessibilityIdentifier("automatic-clear-policy")
       }
 
@@ -1051,7 +1051,7 @@ struct ContentView: View {
         .foregroundStyle(PinshiftDesign.textPrimary)
 
       Text(
-        "The selected location applies for 15 minutes. Choose and apply another location at any time to replace it."
+        "The selected location applies for 3 minutes. Choose and apply another location at any time to replace it."
       )
       .font(.footnote)
       .foregroundStyle(PinshiftDesign.textSecondary)
@@ -1074,7 +1074,6 @@ struct ContentView: View {
       .buttonStyle(PinshiftFilledButtonStyle())
       .disabled(
         model.selection.selected == nil
-          || !controllerLink.canApply
       )
       .accessibilityIdentifier("apply-selected-location")
 
@@ -1084,6 +1083,7 @@ struct ContentView: View {
         activeSimulationCard(activeRequest)
       }
 
+      clearNowButton
       manualClearStatus
     }
     .font(.subheadline)
@@ -1127,7 +1127,7 @@ struct ContentView: View {
             .accessibilityIdentifier("simulation-auto-clear-countdown")
           } else {
             Label(
-              "Automatic clear is due. The Mac will retry when the device is reachable.",
+              "Automatic clear is due. Use Clear Now if the location remains active.",
               systemImage: "clock.badge.exclamationmark"
             )
             .font(.headline)
@@ -1138,23 +1138,6 @@ struct ContentView: View {
       }
 
       activeVerificationSummary
-
-      Button {
-        let request = model.beginClear()
-        Task {
-          let response = await controllerLink.clear(request)
-          model.receiveClearResponse(response, for: request)
-        }
-      } label: {
-        ActionButtonLabel(
-          title: Text(localized(model.isClearing ? "Clearing…" : "Clear Now")),
-          systemImage: "location.slash",
-          isBusy: model.isClearing
-        )
-      }
-      .buttonStyle(PinshiftSoftButtonStyle())
-      .disabled(model.isClearing || model.isApplying || !controllerLink.canClear)
-      .accessibilityIdentifier("clear-simulation")
     }
     .padding(PinshiftDesign.spaceM)
     .background(PinshiftDesign.surfaceSecondary)
@@ -1166,6 +1149,25 @@ struct ContentView: View {
     )
     .accessibilityElement(children: .contain)
     .accessibilityIdentifier("active-simulation-card")
+  }
+
+  private var clearNowButton: some View {
+    Button {
+      let request = model.beginClear()
+      Task {
+        let response = await controllerLink.clear(request)
+        model.receiveClearResponse(response, for: request)
+      }
+    } label: {
+      ActionButtonLabel(
+        title: Text(localized(model.isClearing ? "Clearing…" : "Clear Now")),
+        systemImage: "location.slash",
+        isBusy: model.isClearing
+      )
+    }
+    .buttonStyle(PinshiftSoftButtonStyle())
+    .disabled(model.isClearing || model.isApplying)
+    .accessibilityIdentifier("clear-simulation")
   }
 
   @ViewBuilder
@@ -1261,7 +1263,7 @@ struct ContentView: View {
       Label("Clear could not be confirmed", systemImage: "exclamationmark.triangle")
         .foregroundStyle(PinshiftDesign.textSecondary)
         .accessibilityIdentifier("clear-status")
-      Text("Automatic clear remains scheduled. You can choose and apply another location now.")
+      Text("Keep the Mac session open and tap Clear Now again when the device is reachable.")
         .font(.footnote)
         .foregroundStyle(PinshiftDesign.textSecondary)
         .accessibilityIdentifier("clear-diagnostic")
@@ -1621,7 +1623,7 @@ struct ContentView: View {
     case .uncertain:
       localized("Apply outcome unknown; automatic clear remains scheduled")
     case .clearPending:
-      localized("Automatic clear will retry when the device is reachable")
+      localized("Clear failed; tap Clear Now to retry")
     case .idle:
       localized("Inactive")
     case nil:

@@ -111,7 +111,6 @@ final class ManualSimulationSessionTests: XCTestCase {
     _ = try session.beginApply(requestID: firstID, at: startedAt)
     _ = session.acknowledgeApplied(requestID: firstID, automaticClearAt: deadline)
     let clear = session.beginClear(requestID: UUID(), at: startedAt)
-    XCTAssertEqual(clear.targetOperationID, firstID)
 
     try session.select(latitude: "35.6812", longitude: "139.7671")
     let replacementID = UUID()
@@ -195,6 +194,30 @@ final class ManualSimulationSessionTests: XCTestCase {
 
     XCTAssertNil(session.activeAppliedRequest)
     XCTAssertEqual(session.clearStatus, .cleared(requestID: clear.requestID))
+  }
+
+  func testSuccessfulClearSeparatesInactiveSimulationFromHistoricalObservation() throws {
+    var session = ManualSimulationSession()
+    let location = try SelectedLocation(latitude: 31.2304, longitude: 121.4737)
+    let observation = LocationObservation(
+      coordinate: location,
+      timestamp: startedAt.addingTimeInterval(1),
+      horizontalAccuracy: 5,
+      isSimulatedBySoftware: true
+    )
+    session.select(location)
+    let applyID = UUID()
+    _ = try session.beginApply(requestID: applyID, at: startedAt)
+    _ = session.acknowledgeApplied(requestID: applyID, automaticClearAt: deadline)
+    session.record(observation)
+    let clear = session.beginClear(requestID: UUID(), at: startedAt.addingTimeInterval(2))
+
+    XCTAssertTrue(session.acknowledgeCleared(requestID: clear.requestID))
+
+    XCTAssertNil(session.activeAppliedRequest)
+    XCTAssertEqual(session.latestObservation, observation)
+    XCTAssertEqual(session.clearStatus, .cleared(requestID: clear.requestID))
+    XCTAssertEqual(session.status, .selected(location))
   }
 
   func testControllerPollingCannotCancelAnExplicitActionInFlight() throws {

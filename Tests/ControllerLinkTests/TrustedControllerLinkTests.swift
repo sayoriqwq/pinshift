@@ -90,19 +90,16 @@ final class TrustedControllerLinkTests: XCTestCase {
     XCTAssertEqual(applyCount, 1)
 
     let clearID = UUID()
-    let cleared = await link.clear(
-      requestID: clearID,
-      targetOperationID: applyID
-    )
+    let cleared = await link.clear(requestID: clearID)
     XCTAssertEqual(
       cleared,
       .cleared(requestID: clearID)
     )
-    let clearTarget = await transport.clearTarget
-    XCTAssertEqual(clearTarget, applyID)
+    let clearCount = await transport.clearCount
+    XCTAssertEqual(clearCount, 1)
   }
 
-  func testStaleClearAcknowledgementDoesNotEraseNewerCachedApply() async throws {
+  func testSuccessfulClearAlwaysMakesCachedStatusIdle() async throws {
     let identity = try ControllerIdentity(fingerprint: Data(repeating: 0x41, count: 32))
     let authorization = try ControllerAuthorization(bytes: Data(repeating: 0x42, count: 32))
     let deadline = Date(timeIntervalSince1970: 20_900)
@@ -121,34 +118,54 @@ final class TrustedControllerLinkTests: XCTestCase {
     )
     _ = await link.connect(to: ControllerService(name: "controller"))
 
-    let olderOperationID = UUID()
     let newerOperationID = UUID()
     _ = await link.apply(
       requestID: newerOperationID,
       latitude: 31.2304,
       longitude: 121.4737
     )
-    let clearResponse = await link.clear(
-      requestID: UUID(),
-      targetOperationID: olderOperationID
-    )
+    let clearResponse = await link.clear(requestID: UUID())
 
     guard case .cleared = clearResponse else {
-      return XCTFail("The controller should acknowledge a stale Clear as a no-op.")
+      return XCTFail("The controller should acknowledge a real Clear.")
     }
     let status = await link.currentStatus()
     XCTAssertEqual(
       status,
       ControllerStatus(
         readiness: .ready,
-        simulation: .active(
-          operationID: newerOperationID,
-          latitude: 31.2304,
-          longitude: 121.4737,
-          automaticClearAt: deadline
-        )
+        simulation: .idle
       )
     )
+  }
+
+  func testClearReconnectsBeforeSubmittingTheRealRequest() async throws {
+    let identity = try ControllerIdentity(fingerprint: Data(repeating: 0x45, count: 32))
+    let authorization = try ControllerAuthorization(bytes: Data(repeating: 0x46, count: 32))
+    let transport = RecordingControllerTransport(
+      identity: identity,
+      authorization: authorization,
+      initialStatus: ControllerStatus(readiness: .ready, simulation: .idle),
+      applyDeadline: Date(timeIntervalSince1970: 1_180)
+    )
+    let link = TrustedControllerLink(
+      trust: ControllerTrust(store: InMemoryControllerTrustStore(identity: identity)),
+      authorizationStore: InMemoryControllerAuthorizationStore(
+        authorization: authorization
+      ),
+      transport: transport
+    )
+    _ = await link.connect(to: ControllerService(name: "controller"))
+    _ = await link.disconnected()
+
+    let clearID = UUID()
+    let response = await link.clear(requestID: clearID)
+
+    XCTAssertEqual(response, .cleared(requestID: clearID))
+    let statusCount = await transport.statusCount
+    let clearCount = await transport.clearCount
+    XCTAssertEqual(statusCount, 2)
+    XCTAssertEqual(clearCount, 1)
   }
 
   func testStatusPollStartedBeforeApplyCannotOverwriteTheNewApply() async throws {
@@ -234,7 +251,7 @@ private actor PairingControllerTransport: ControllerLinkTransport {
     case .pair(let requestID, let code):
       XCTAssertEqual(code, "123456")
       response = .paired(requestID: requestID, authorization: authorization)
-    case .apply(let requestID, _, _, _), .clear(let requestID, _, _):
+    case .apply(let requestID, _, _, _), .clear(let requestID, _):
       response = .rejected(requestID: requestID, reason: .invalidRequest)
     }
     return ControllerTransportReply(presentedIdentity: identity, response: response)
@@ -268,8 +285,9 @@ private actor RecordingControllerTransport: ControllerLinkTransport {
   let authorization: ControllerAuthorization
   let initialStatus: ControllerStatus
   let applyDeadline: Date
+  private(set) var statusCount = 0
   private(set) var applyCount = 0
-  private(set) var clearTarget: UUID?
+  private(set) var clearCount = 0
 
   init(
     identity: ControllerIdentity,
@@ -293,6 +311,7 @@ private actor RecordingControllerTransport: ControllerLinkTransport {
     switch request {
     case .status(let requestID, let presented):
       XCTAssertEqual(presented, authorization)
+      statusCount += 1
       response = .status(requestID: requestID, status: initialStatus)
     case .apply(let requestID, let presented, let latitude, let longitude):
       XCTAssertEqual(presented, authorization)
@@ -300,9 +319,9 @@ private actor RecordingControllerTransport: ControllerLinkTransport {
       XCTAssertEqual(longitude, 121.4737)
       applyCount += 1
       response = .applied(requestID: requestID, automaticClearAt: applyDeadline)
-    case .clear(let requestID, let presented, let targetOperationID):
+    case .clear(let requestID, let presented):
       XCTAssertEqual(presented, authorization)
-      clearTarget = targetOperationID
+      clearCount += 1
       response = .cleared(requestID: requestID)
     case .pair(let requestID, _):
       response = .rejected(requestID: requestID, reason: .invalidRequest)
@@ -369,7 +388,7 @@ private actor BlockingRefreshControllerTransport: ControllerLinkTransport {
     case .apply(let requestID, let presented, _, _):
       XCTAssertEqual(presented, authorization)
       response = .applied(requestID: requestID, automaticClearAt: applyDeadline)
-    case .pair(let requestID, _), .clear(let requestID, _, _):
+    case .pair(let requestID, _), .clear(let requestID, _):
       response = .rejected(requestID: requestID, reason: .invalidRequest)
     }
     return ControllerTransportReply(presentedIdentity: identity, response: response)

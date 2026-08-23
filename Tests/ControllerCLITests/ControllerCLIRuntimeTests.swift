@@ -1,55 +1,84 @@
 import ControllerLink
 import Foundation
+import LocationDomain
 import SimulationController
 import XCTest
 
 @testable import ControllerCLI
 
 final class ControllerCLIRuntimeTests: XCTestCase {
-  func testBackgroundAuthorityUsesMinuteFallbackPollingByDefault() async throws {
-    let controller = SimulationController(
-      backend: RuntimeCountingBackend(),
-      automaticallySchedulesMaintenance: false
-    )
-    let clock = RuntimeTestClock(now: Date(timeIntervalSince1970: 1_000))
-    let intervals = RuntimeIntervalRecorder()
-
-    try await ControllerCLIRuntime.runAuthority(
-      controller: controller,
-      runFor: 60,
-      now: { clock.now },
-      sleep: { seconds in
-        intervals.record(seconds)
-        clock.advance(by: seconds)
-      }
-    )
-
-    XCTAssertEqual(intervals.values, [60])
-  }
-
-  func testBackgroundAuthorityPollsTheSameControllerWithoutClearingOnShutdown() async throws {
+  func testForegroundSessionWaitsOnceThenClearsBeforeReturning() async throws {
     let backend = RuntimeCountingBackend()
     let controller = SimulationController(
       backend: backend,
       automaticallySchedulesMaintenance: false
     )
-    let clock = RuntimeTestClock(now: Date(timeIntervalSince1970: 1_000))
-    let sleeps = RuntimeCounter()
+    let waits = RuntimeCounter()
+    let location = try SelectedLocation(latitude: 31.2304, longitude: 121.4737)
+    _ = await controller.apply(location, requestID: UUID())
 
-    try await ControllerCLIRuntime.runAuthority(
+    try await ControllerCLIRuntime.runSession(
       controller: controller,
-      pollInterval: 1,
-      runFor: 1,
-      now: { clock.now },
-      sleep: { _ in
-        sleeps.increment()
-        clock.advance(by: 1)
+      waitUntilStopped: {
+        waits.increment()
       }
     )
 
+    XCTAssertEqual(waits.value, 1)
     let clearCount = await backend.clearCount
-    XCTAssertEqual(sleeps.value, 1)
-    XCTAssertEqual(clearCount, 0)
+    XCTAssertEqual(clearCount, 1)
+    let snapshot = await controller.snapshot()
+    XCTAssertEqual(snapshot.simulation, .idle)
+  }
+
+  func testForegroundSessionReportsARealClearFailure() async throws {
+    let backend = RuntimeFailingClearBackend()
+    let controller = SimulationController(
+      backend: backend,
+      automaticallySchedulesMaintenance: false
+    )
+    let location = try SelectedLocation(latitude: 31.2304, longitude: 121.4737)
+    _ = await controller.apply(location, requestID: UUID())
+
+    do {
+      try await ControllerCLIRuntime.runSession(
+        controller: controller,
+        waitUntilStopped: {}
+      )
+      XCTFail("A failed shutdown Clear must make the foreground process fail")
+    } catch {
+      XCTAssertEqual(
+        error as? ControllerSessionTerminationError,
+        .clearFailed(.clearFailed)
+      )
+    }
+
+    let clearCount = await backend.clearCount
+    XCTAssertEqual(clearCount, 1)
+    guard case .clearPending = await controller.snapshot().simulation else {
+      return XCTFail("A failed exit-time Clear must remain visible")
+    }
+  }
+
+  func testForegroundSessionStopsAcceptingCommandsBeforeFinalClear() async throws {
+    let events = RuntimeEventRecorder()
+    let controller = SimulationController(
+      backend: RuntimeOrderingBackend(events: events),
+      automaticallySchedulesMaintenance: false
+    )
+    let location = try SelectedLocation(latitude: 31.2304, longitude: 121.4737)
+    _ = await controller.apply(location, requestID: UUID())
+
+    try await ControllerCLIRuntime.runSession(
+      controller: controller,
+      stopAcceptingCommands: {
+        await events.append("server-stopped")
+      },
+      waitUntilStopped: {}
+    )
+
+    let recordedEvents = await events.values
+    XCTAssertEqual(recordedEvents, ["apply", "server-stopped", "clear"])
   }
 
   func testResolvesExplicitValuesBeforeEnvironmentAndDefaults() {
@@ -81,17 +110,12 @@ final class ControllerCLIRuntimeTests: XCTestCase {
   }
 
   func testBuildsProductionControllerFromDevicectlConfiguration() async {
-    let directory = FileManager.default.temporaryDirectory
-      .appendingPathComponent("pinshift-runtime-\(UUID().uuidString)")
-    defer { try? FileManager.default.removeItem(at: directory) }
     let executor = RuntimeRecordingDevicectlExecutor(
       results: [.exited(0), .exited(0), .exited(0)]
     )
     let environment = [
       "PINSHIFT_DEVICE": "Active Test Device",
       "PINSHIFT_DEVELOPER_DIR": "/Applications/Xcode-beta.app/Contents/Developer",
-      FileTemporarySimulationStore.fileEnvironmentKey:
-        directory.appendingPathComponent("state.json").path,
     ]
     let now = Date(timeIntervalSince1970: 1_000)
     let controller = ControllerCLIRuntime.makeController(
@@ -107,14 +131,14 @@ final class ControllerCLIRuntimeTests: XCTestCase {
     )
     let clearID = UUID()
     let cleared = await handler.handle(
-      .clear(requestID: clearID, targetOperationID: nil)
+      .clear(requestID: clearID)
     )
 
     XCTAssertEqual(
       applied,
       .applied(
         requestID: applyID,
-        automaticClearAt: now.addingTimeInterval(900)
+        automaticClearAt: now.addingTimeInterval(180)
       )
     )
     XCTAssertEqual(cleared, .cleared(requestID: clearID))
@@ -155,6 +179,49 @@ private actor RuntimeCountingBackend: InjectionBackend {
   }
 }
 
+private actor RuntimeFailingClearBackend: InjectionBackend {
+  private(set) var clearCount = 0
+
+  func readiness() -> InjectionBackendReadiness { .ready }
+
+  func execute(_ command: InjectionBackendCommand) -> InjectionBackendResult {
+    switch command {
+    case .apply(let requestID, let location):
+      return .applied(requestID: requestID, location: location)
+    case .clear(let requestID):
+      clearCount += 1
+      return .failed(requestID: requestID, reason: .clearFailed)
+    }
+  }
+}
+
+private actor RuntimeEventRecorder {
+  private var recordedValues: [String] = []
+
+  var values: [String] { recordedValues }
+
+  func append(_ value: String) {
+    recordedValues.append(value)
+  }
+}
+
+private struct RuntimeOrderingBackend: InjectionBackend {
+  let events: RuntimeEventRecorder
+
+  func readiness() -> InjectionBackendReadiness { .ready }
+
+  func execute(_ command: InjectionBackendCommand) async -> InjectionBackendResult {
+    switch command {
+    case .apply(let requestID, let location):
+      await events.append("apply")
+      return .applied(requestID: requestID, location: location)
+    case .clear(let requestID):
+      await events.append("clear")
+      return .cleared(requestID: requestID)
+    }
+  }
+}
+
 private final class RuntimeTestClock: @unchecked Sendable {
   private let lock = NSLock()
   private var value: Date
@@ -172,16 +239,6 @@ private final class RuntimeCounter: @unchecked Sendable {
 
   var value: Int { lock.withLock { count } }
   func increment() { lock.withLock { count += 1 } }
-}
-
-private final class RuntimeIntervalRecorder: @unchecked Sendable {
-  private let lock = NSLock()
-  private var intervals: [TimeInterval] = []
-
-  var values: [TimeInterval] { lock.withLock { intervals } }
-  func record(_ interval: TimeInterval) {
-    lock.withLock { intervals.append(interval) }
-  }
 }
 
 private final class RuntimeRecordingDevicectlExecutor:

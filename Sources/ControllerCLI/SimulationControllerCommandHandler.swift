@@ -48,11 +48,8 @@ public struct SimulationControllerCommandHandler: ControllerCommandHandling {
         result = .failed(requestID: responseID, reason: map(reason))
       }
 
-    case .clear(let requestID, let targetOperationID):
-      switch await controller.clear(
-        requestID: requestID,
-        targetOperationID: targetOperationID
-      ) {
+    case .clear(let requestID):
+      switch await controller.clear(requestID: requestID) {
       case .cleared(let responseID):
         result = .cleared(requestID: responseID)
       case .failed(let responseID, let reason):
