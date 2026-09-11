@@ -41,7 +41,7 @@ flowchart TB
 ```
 
 iOS 负责选择、短暂交互状态和观测；手动启动的 Mac 测试会话负责当次会话内的状态、命令串行化和自动解除；
-backend 只负责调用 Apple 的位置测试接口。没有 Guardian、LaunchAgent 或跨重启清理责任。
+backend 只负责调用 Apple 的位置测试接口。没有 Guardian 或 LaunchAgent；新显式会话以真实 Clear 处理可能的遗留模拟。
 
 ## 目录与模块
 
@@ -71,8 +71,8 @@ Applied 与 Verified 故意分离：后端确认设置成功不等于 Pinshift �
 
 ## Mac 侧
 
-`pinshift-start` 在当前终端运行 `pinshift-controller link serve`。同一前台进程创建一个
-`SimulationController` 并交给 TLS session；关闭终端、Ctrl-C 或正常时限结束前都会执行一次真实 Clear。
+`pinshift-start` 先检查 App 签名并按需续签，再在当前终端运行 `pinshift-controller link serve`。同一前台进程创建一个
+`SimulationController` 并交给 TLS session；正常 Ctrl-C 或时限结束先执行真实 Clear，失败时前台等待并重试；再次明确中断可强制退出。
 `pinshift-install` 卸载旧 authority 后先用已签名 candidate 执行一次真实 reset，成功后才删除旧 lifecycle
 文件并发布新二进制。
 
@@ -83,8 +83,8 @@ Applied 与 Verified 故意分离：后端确认设置成功不等于 Pinshift �
 - 真正的新 Apply 在内存中记录 operation ID、坐标和 `acceptedAt + 180s`；
 - 同一 request ID 的重试返回原 deadline，真正的新 Apply 原子替换 current；
 - Clear 即使没有 current 也调用 backend，只有 backend 确认后才返回成功；
-- 到期只尝试一次；失败保留在当次会话状态中，用户可从 iOS 再次点 Clear Now；
-- 没有 lifecycle journal、跨重启恢复或后台退避重试。
+- 到期解除失败保留在当次会话状态中并有界退避重试，用户也可从 iOS 再次点 Clear Now；
+- 没有 lifecycle journal 或常驻重试；下次显式启动先尝试真实遗留清理。
 
 `DevicectlInjectionBackend` 不知道 UI、网络或计时，只安全构造公开 `xcrun devicectl device simulate location`
 命令并映射结果。
@@ -116,8 +116,7 @@ sequenceDiagram
 Clear Now 不依赖历史 operation：每次都调用 backend。自动 timer 与 Apply/Clear 通过同一个 gate，避免
 同一 Mac 进程内的 backend 命令并发执行。
 
-到期流程：标记 `clearPending` → 调用 backend → 成功清空 `current`；失败只保留原因并等待用户再次
-Clear Now，不创建后台重试。Mac 或设备不可达是显式失败，不是 UI 锁。
+到期流程：标记 `clearPending` → 调用 backend → 成功清空 `current`；失败保留原因，并在当前前台会话中有界退避重试。Mac 或设备不可达是显式失败，不是 UI 锁。
 
 ## 权威与持久化
 

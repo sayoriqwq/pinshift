@@ -12,7 +12,7 @@
 - 活动期间选另一个地点并 Apply，新地点立即替换旧地点并重新计时。
 - **Clear Now** 只是提前解除的便利按钮，不是完成一次使用的必需步骤。
 - App 重连后，以当前 Mac 测试会话返回的状态替换本地显示。
-- Mac 或 iPhone 不可达时，公开 `devicectl` 无法立即解除。失败会如实显示；恢复连接后可再次点 Clear Now。
+- Mac 或 iPhone 不可达时，公开 `devicectl` 无法立即解除。失败会如实显示，前台会话保留责任并自动重试；恢复连接后也可再次点立即解除。
 
 ## 首次安装或控制器更新
 
@@ -42,7 +42,7 @@ Clear 失败，安装会明确失败且不会发布新二进制。Saved Location
 pinshift
 ```
 
-🔗 启动前台 Controller Link 并打印六位码；保持终端打开，Ctrl-C 会先 Clear 再退出。
+🔗 检查 App 签名、按需续签后启动前台 Controller Link；Ctrl-C 等待真实解除成功后退出。
 
 已信任的 iPhone 在前台控制器启动后会自动重连。App 中应看到：
 
@@ -58,11 +58,11 @@ Injection Backend 和 Controller Link 都是当前诊断信息，不是操作门
 
 ### 选择并应用
 
-1. 打开 **Choose Location**。
-2. 使用地图、地点搜索、经纬度输入或 Saved Locations 选择地点。
-3. 点 **Apply Selected Location**。
-4. 活动卡会显示权威自动解除时间和倒计时。
-5. 想换地点时直接重新选点并 Apply；不需要先 Clear。
+1. 在主页顶部搜索、拖动地图，或点击地图下缘的收藏，准备待应用位置 B。经纬度输入在“更多”中。
+2. 点“应用 3 分钟”，真实回执后才出现已应用位置 A。
+3. 活动卡显示当前 A 和计划解除倒计时；倒计时归零不是解除成功。
+4. 选择 B 后，A 和 B 同屏；点“改到这里 · 3 分钟”替换 A 并重新计时。
+5. “换个地点…”直接聚焦顶部搜索；“回到当前地点”只把 B 恢复为 A，不发请求、不延时。
 
 选点只改变 **Selected Location**，绝不会自动应用。**Applied** 表示 Mac 的 `devicectl` 后端确认了
 请求；Pinshift 的新 Core Location 观测属于单独的 **Verified** 证据，不能代表所有 App 都会接受该位置。
@@ -118,7 +118,7 @@ pinshift clear
 
 ## 签名续期
 
-Personal Team 签名剩余不超过 24 小时时运行：
+日常只运行 `pinshift`：它检查 App 签名，剩余不超过 24 小时时按需续签。需要单独维护时运行：
 
 ```fish
 pinshift app
@@ -141,6 +141,17 @@ pinshift app --launch-only
 ```
 
 📱 不重新签名，只补做启动验证。
+
+## 结束与恢复
+
+正常 Ctrl-C 会先发起真实解除，失败继续留在前台等待设备恢复，成功后才退出。终端会显示明确的
+再次中断强制退出提示；强制退出留下的未确认模拟不会被报告成已解除。下次显式运行 `pinshift`
+会先尝试遗留清理，即使没有本地活动记录。失败不阻止新的合法 Apply。
+
+Mac 睡眠期间不保证计时器执行；存活会话恢复运行后处理已到期责任。进程被杀、断电或终端直接
+关闭后没有后台保证。不要把手机退出 Pinshift 当作结束模拟：Mac 仍按原期限处理解除。
+
+本轮完整的连接和功能验收步骤见 [#24 本人验收清单](docs/evidence/spec-24-owner-acceptance.md)。
 
 ## 审计
 
@@ -175,7 +186,7 @@ pinshift logs --copy-to .build/audit/(date +%Y%m%d-%H%M%S)
 
 | 命令 | 用途 |
 | --- | --- |
-| `pinshift` / `pinshift start` | 测试时启动前台控制器并打印六位码；保持终端运行 |
+| `pinshift` / `pinshift start` | 检查签名、按需续签，再启动前台控制器；保持终端运行 |
 | `pinshift clear` | 紧急执行一次真实 clear，不启动常驻进程 |
 | `pinshift setup` | 首次安装或源码变化后更新稳定签名控制器，并移除旧常驻项 |
 | `pinshift doctor` | 只读检查开发环境和控制器状态 |

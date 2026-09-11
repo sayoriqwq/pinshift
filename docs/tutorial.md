@@ -23,7 +23,7 @@ pinshift doctor
 
 `pinshift setup` publishes the signed controller but does not register a LaunchAgent. It unloads and removes the former controller and Cleanup Guardian authorities. The installer preserves the existing Keychain TLS identity and refuses an unexpected designated-requirement change before modifying trust.
 
-Controller state now exists only in the explicitly started test session. There is no lifecycle journal, restart reconciliation, or durable cleanup retry. During migration, the signed candidate performs one real backend reset before the obsolete lifecycle file is removed; a failed reset aborts publication. Saved Locations and Trusted Controller data survive an upgrade.
+Controller state now exists only in the explicitly started test session. There is no lifecycle journal or durable background cleanup retry. Each explicit start attempts a real residual clear, even without a tracked operation. During migration, the signed candidate performs one real backend reset before the obsolete lifecycle file is removed; a failed reset aborts publication. Saved Locations and Trusted Controller data survive an upgrade.
 
 ## Prepare Xcode and the iPhone
 
@@ -37,7 +37,7 @@ Keep the Active Test Device selector private in `PINSHIFT_DEVICE` or pass `--dev
 
 ## App signing renewal
 
-A Personal Team app may require renewal every seven days. Renew only when 24 hours or less remain:
+Daily `pinshift` checks the App signature and requests renewal when 24 hours or less remain. The secondary maintenance entry is:
 
 ```fish
 pinshift app
@@ -73,26 +73,28 @@ Whenever a testing session begins, run:
 pinshift
 ```
 
-🔗 启动前台 Controller Link 并打印六位码；保持终端打开，Ctrl-C 会先 Clear 再退出。
+🔗 检查签名、按需续签后启动前台 Controller Link；Ctrl-C 等待真实解除成功后退出。
 
 Already trusted iPhones reconnect automatically while this foreground process is running. In Pinshift:
 
 1. Allow **Location** and **Local Network**, then pair if needed.
 2. Choose a Selected Location. Selection never applies automatically and remains available in every simulation state.
-3. Tap **Apply Selected Location**. There is no duration parameter: the Mac returns exactly three minutes from the first acceptance of this operation.
+3. Tap **Apply for 3 minutes**. There is no duration parameter: the Mac returns exactly three minutes from the first acceptance of this operation.
 4. Choose and Apply another location at any time. The new operation replaces current state and receives a fresh deadline.
 5. **Clear Now** remains visible even when no active record is shown. Every tap reaches the backend, including when the controller has no tracked operation. Failed or lost Clear never disables selection or Apply and can be retried.
 
 The running Mac session snapshot is authoritative after reconnect. The app persists only user selection; it does not persist a resendable clear or extension command.
+
+Search, Saved Locations and map dragging update the same Selected Location on the main map. Applying it changes the Applied Simulation only after acknowledgement. More contains manual coordinates, connection, settings, observations and diagnostics.
 
 ## Automatic clear behavior
 
 - A genuinely new Apply receives a fixed deadline of acceptance time plus 180 seconds.
 - Retrying the same request ID returns the original deadline without another backend Apply.
 - At the deadline, the Mac authority requests public `devicectl ... location clear`.
-- If the Mac or Active Test Device is unreachable, the failure is exposed and the user can retry Clear Now after restoring connectivity.
+- If the Mac or Active Test Device is unreachable, the failure is exposed and bounded retries retain cleanup responsibility in the running foreground session; Clear Now also remains available.
 - Apply, Clear, and the timer serialize through the same foreground controller actor.
-- Ctrl-C, termination, and a finite session duration perform one real Clear before normal exit; failure makes the process exit unsuccessfully.
+- Ctrl-C, termination, and a finite session duration request real Clear before normal exit; failure keeps the foreground process waiting and retrying. An explicit repeated interruption permits force exit with an unconfirmed-clear warning.
 - A successful backend clear does not guarantee an immediate fresh physical Core Location callback.
 
 The compact command overview is available with:
