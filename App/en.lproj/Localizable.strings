@@ -172,3 +172,9 @@
 "The request could not be confirmed. Check the Mac connection in More and try again." = "The request could not be confirmed. Check the Mac connection in More and try again.";
 
 "Last confirmed location" = "Last confirmed location";
+
+"App renewal" = "App renewal";
+
+"Run pinshift on your Mac to check the app signature and renew it when needed. Follow the Mac instructions if Apple sign-in or iPhone confirmation is required." = "Run pinshift on your Mac to check the app signature and renew it when needed. Follow the Mac instructions if Apple sign-in or iPhone confirmation is required.";
+
+"Save this place" = "Save this place";

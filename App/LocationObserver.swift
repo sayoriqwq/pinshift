@@ -44,7 +44,7 @@ final class LocationObserver: NSObject, ObservableObject {
   func start() {
     record(
       kind: "app.location.lifecycle-started",
-      fields: ["authorizationStatus": .text(String(describing: manager.authorizationStatus))]
+      fields: ["authorizationStatus": .text(String(describing: permissionState))]
     )
     switch manager.authorizationStatus {
     case .notDetermined:

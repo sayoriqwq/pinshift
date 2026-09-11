@@ -350,6 +350,14 @@ struct ContentView: View {
         .listRowSeparator(.hidden)
       baselineSection
         .listRowSeparator(.hidden)
+      Section(localized("App renewal")) {
+        Text(
+          localized(
+            "Run pinshift on your Mac to check the app signature and renew it when needed. Follow the Mac instructions if Apple sign-in or iPhone confirmation is required."
+          )
+        )
+        .font(.footnote)
+      }
       limitationsSection
         .listRowSeparator(.hidden)
     }
@@ -892,6 +900,13 @@ struct ContentView: View {
     return false
   }
 
+  private var automaticClearDeadline: Date? {
+    if case .uncertain(_, _, _, let deadline, _) = controllerLink.controllerStatus?.simulation {
+      return deadline
+    }
+    return model.manualSession.activeAppliedRequest?.automaticClearAt
+  }
+
   private var clearUnconfirmed: Bool {
     if case .unconfirmed = model.manualSession.clearStatus { return true }
     return false
@@ -904,8 +919,7 @@ struct ContentView: View {
   }
 
   private func simulationContent(now: Date) -> some View {
-    let automaticClearDue =
-      model.manualSession.activeAppliedRequest?.automaticClearAt.map { $0 <= now } ?? false
+    let automaticClearDue = automaticClearDeadline.map { $0 <= now } ?? false
     let activeIsUnconfirmed =
       !isConnected || applyUnconfirmed || clearUnconfirmed || automaticClearDue
     return VStack(alignment: .leading, spacing: 14) {
@@ -941,7 +955,7 @@ struct ContentView: View {
           Text(activeLocationDescription(active.location))
             .font(selectionDiffers ? .headline : .title2.weight(.semibold))
             .accessibilityIdentifier("active-simulation-location")
-          if let expiry = active.automaticClearAt {
+          if !activeIsUnconfirmed, let expiry = active.automaticClearAt {
             Text(
               now < expiry
                 ? localizedFormat(
@@ -977,6 +991,10 @@ struct ContentView: View {
         Label(homeFailureDescription(failure), systemImage: "exclamationmark.circle")
           .font(.footnote).foregroundStyle(PinshiftDesign.destructive)
           .accessibilityIdentifier("simulation-status")
+      }
+      if applyUnconfirmed {
+        Text(localized("Apply outcome unknown; automatic clear remains scheduled"))
+          .font(.footnote).foregroundStyle(.secondary)
       }
       manualClearStatus
 
@@ -1044,7 +1062,12 @@ struct ContentView: View {
       savedLocationName = selectedLocationDisplayName
       showingSavedLocationNamePrompt = true
     } label: {
-      ActionButtonLabel(title: Text(localized("Save place")), systemImage: "bookmark")
+      ActionButtonLabel(
+        title: Text(
+          localized(
+            model.manualSession.activeAppliedRequest != nil && !selectionDiffers
+              ? "Save this place" : "Save place")), systemImage: "bookmark"
+      )
     }
     .buttonStyle(PinshiftSoftButtonStyle())
     .disabled(model.selection.selected == nil)
