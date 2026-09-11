@@ -11,7 +11,7 @@ final class TemporarySimulationAcceptanceTests: XCTestCase {
     let startedAt = Date(timeIntervalSince1970: 20_000)
     let clock = TemporarySimulationTestClock(now: startedAt)
     let sleeper = TemporarySimulationControlledSleeper()
-    let backend = TemporarySimulationRecordingBackend()
+    let backend = TemporarySimulationRecordingBackend(failures: 2)
     let controller = SimulationController(
       backend: backend,
       now: { clock.now },
@@ -77,12 +77,25 @@ final class TemporarySimulationAcceptanceTests: XCTestCase {
     let scheduledInterval = await sleeper.waitUntilScheduled()
     XCTAssertEqual(scheduledInterval, 180)
     await sleeper.resume()
+    let firstRetry = await sleeper.waitUntilScheduled()
+    XCTAssertEqual(firstRetry, 1)
+    _ = await link.refresh()
+    guard case .clearPending = await link.currentStatus()?.simulation else {
+      return XCTFail("Failed deadline cleanup must remain pending")
+    }
+    await sleeper.resume()
+    let secondRetry = await sleeper.waitUntilScheduled()
+    XCTAssertEqual(secondRetry, 2)
+    await sleeper.resume()
     await backend.waitUntilClearExecuted()
 
     let finalLocation = await backend.appliedLocation
     let finalSnapshot = await controller.snapshot()
     XCTAssertNil(finalLocation)
     XCTAssertEqual(finalSnapshot.simulation, .idle)
+    _ = await link.refresh()
+    let reconnectedStatus = await link.currentStatus()
+    XCTAssertEqual(reconnectedStatus?.simulation, .idle)
   }
 }
 
@@ -111,6 +124,7 @@ private actor TemporarySimulationControlledSleeper {
   }
 
   func resume() {
+    requestedInterval = nil
     sleepContinuation?.resume()
     sleepContinuation = nil
   }
@@ -137,6 +151,8 @@ private final class TemporarySimulationTestClock: @unchecked Sendable {
 
 private actor TemporarySimulationRecordingBackend: InjectionBackend {
   private(set) var appliedLocation: SelectedLocation?
+  private var failures: Int
+  init(failures: Int = 0) { self.failures = failures }
   private var didClear = false
   private var clearWaiters: [CheckedContinuation<Void, Never>] = []
 
@@ -150,6 +166,10 @@ private actor TemporarySimulationRecordingBackend: InjectionBackend {
       appliedLocation = location
       return .applied(requestID: requestID, location: location)
     case .clear(let requestID):
+      if failures > 0 {
+        failures -= 1
+        return .failed(requestID: requestID, reason: .sessionNotReady)
+      }
       appliedLocation = nil
       didClear = true
       let waiters = clearWaiters

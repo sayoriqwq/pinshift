@@ -20,7 +20,7 @@ enum ControllerSessionTerminationError: Error, Equatable, LocalizedError {
   var errorDescription: String? {
     switch self {
     case .clearFailed(let reason):
-      "The foreground session ended, but Clear failed (\(reason.rawValue)). Keep the iPhone reachable and run `pinshift clear`."
+      "Forced exit: Clear is unconfirmed (\(reason.rawValue)). Keep the iPhone reachable and run `pinshift clear`."
     }
   }
 }
@@ -109,6 +109,13 @@ public enum ControllerCLIRuntime {
   static func runSession(
     controller: SimulationController,
     stopAcceptingCommands: @escaping @Sendable () async -> Void = {},
+    retrySleep: @escaping @Sendable (TimeInterval) async throws -> Void = { seconds in
+      // Normal task cancellation must not abandon the exit-time cleanup responsibility.
+      try await Task { try await Task.sleep(for: .seconds(seconds)) }.value
+    },
+    cleanupFailed: @escaping @Sendable (InjectionBackendFailure) async throws -> Void = { reason in
+      print("Clear is unconfirmed (\(reason.rawValue)). Keep the iPhone reachable; retrying. Press Ctrl-C again to force exit without confirmed cleanup.")
+    },
     waitUntilStopped: @escaping @Sendable () async throws -> Void
   ) async throws {
     let waitError: (any Error)?
@@ -120,11 +127,18 @@ public enum ControllerCLIRuntime {
     }
 
     await stopAcceptingCommands()
-    switch await controller.clear() {
-    case .cleared:
-      if let waitError { throw waitError }
-    case .failed(_, let reason):
-      throw ControllerSessionTerminationError.clearFailed(reason)
+    await controller.stopMaintenance()
+    var delay: TimeInterval = 1
+    while true {
+      switch await controller.clear() {
+      case .cleared:
+        if let waitError { throw waitError }
+        return
+      case .failed(_, let reason):
+        try await cleanupFailed(reason)
+        try await retrySleep(delay)
+        delay = min(delay * 2, 30)
+      }
     }
   }
 
@@ -133,22 +147,29 @@ public enum ControllerCLIRuntime {
     runFor duration: TimeInterval?,
     stopAcceptingCommands: @escaping @Sendable () async -> Void = {}
   ) async throws {
-    if let duration {
-      try await runSession(
-        controller: controller,
-        stopAcceptingCommands: stopAcceptingCommands
-      ) {
-        try await Task.sleep(for: .seconds(duration))
-      }
-      return
-    }
-
     let signalWaiter = ControllerTerminationSignalWaiter()
+    defer { signalWaiter.cancel() }
     try await runSession(
       controller: controller,
       stopAcceptingCommands: stopAcceptingCommands
     ) {
-      await signalWaiter.wait()
+      if let duration {
+        await withTaskGroup(of: Void.self) { group in
+          group.addTask { try? await Task.sleep(for: .seconds(duration)) }
+          group.addTask { await signalWaiter.wait() }
+          await group.next()
+          group.cancelAll()
+        }
+      } else {
+        await signalWaiter.wait()
+      }
+      signalWaiter.armForceExit()
+    }
+  }
+
+  static func prepareSession(controller: SimulationController) async {
+    if case .failed(_, let reason) = await controller.clear() {
+      print("Startup Clear is unconfirmed (\(reason.rawValue)); the foreground session will retry. New Apply remains available.")
     }
   }
 
@@ -162,32 +183,47 @@ public enum ControllerCLIRuntime {
   }
 }
 
-private struct ControllerTerminationSignalWaiter: Sendable {
+private final class ControllerTerminationSignalWaiter: @unchecked Sendable {
+  private let lock = NSLock()
+  private var forceExitArmed = false
+  private let events: AsyncStream<Void>
+  private let continuation: AsyncStream<Void>.Continuation
+  private var sources: [DispatchSourceSignal] = []
+
+  init() {
+    let stream = AsyncStream<Void>.makeStream()
+    events = stream.stream
+    continuation = stream.continuation
+    for number in [SIGHUP, SIGINT, SIGTERM] {
+      Darwin.signal(number, SIG_IGN)
+      let source = DispatchSource.makeSignalSource(signal: number, queue: .main)
+      source.setEventHandler { [weak self] in
+        guard let self else { return }
+        let force = self.lock.withLock {
+          let wasArmed = self.forceExitArmed
+          self.forceExitArmed = true
+          return wasArmed
+        }
+        if force {
+          let message = "Forced exit: cleanup is unconfirmed. Keep the iPhone reachable and restart pinshift to clear residual simulation.\n"
+          FileHandle.standardError.write(Data(message.utf8))
+          Darwin.exit(1)
+        }
+        self.continuation.yield()
+      }
+      sources.append(source)
+      source.resume()
+    }
+  }
+
+  func armForceExit() { lock.withLock { forceExitArmed = true } }
+
   func wait() async {
-    Darwin.signal(SIGHUP, SIG_IGN)
-    Darwin.signal(SIGINT, SIG_IGN)
-    Darwin.signal(SIGTERM, SIG_IGN)
+    for await _ in events { return }
+  }
 
-    let events = AsyncStream<Void> { continuation in
-      let sources = [SIGHUP, SIGINT, SIGTERM].map {
-        DispatchSource.makeSignalSource(signal: $0, queue: .main)
-      }
-      for source in sources {
-        source.setEventHandler {
-          continuation.yield()
-          continuation.finish()
-        }
-        source.resume()
-      }
-      continuation.onTermination = { _ in
-        for source in sources {
-          source.cancel()
-        }
-      }
-    }
-
-    for await _ in events {
-      return
-    }
+  func cancel() {
+    for source in sources { source.cancel() }
+    continuation.finish()
   }
 }
