@@ -127,7 +127,7 @@ public enum ControllerCLIRuntime {
     }
 
     await stopAcceptingCommands()
-    await controller.stopMaintenance()
+    await controller.beginShutdown()
     var delay: TimeInterval = 1
     while true {
       switch await controller.clear() {

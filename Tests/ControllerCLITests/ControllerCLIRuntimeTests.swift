@@ -85,6 +85,92 @@ final class ControllerCLIRuntimeTests: XCTestCase {
     XCTAssertEqual(recordedEvents, ["apply", "server-stopped", "clear"])
   }
 
+  func testSecondProcessCannotClearAndProcessExitReleasesSessionOwnership() async throws {
+    let marker = "PINSHIFT_TEST_LOCK_DIRECTORY"
+    if let directoryPath = ProcessInfo.processInfo.environment[marker] {
+      let directory = URL(fileURLWithPath: directoryPath, isDirectory: true)
+      let ownership: ControllerSessionLock
+      do { ownership = try ControllerSessionLock.acquire(directory: directory) }
+      catch {
+        // A second session must fail before preparing/clearing the device.
+        Darwin.exit(23)
+      }
+      let controller = SimulationController(
+        backend: RuntimeFileRecordingBackend(file: directory.appending(path: "clears")),
+        automaticallySchedulesMaintenance: false
+      )
+      await ControllerCLIRuntime.prepareSession(controller: controller)
+      withExtendedLifetime(ownership) {
+        // Bypass Swift deinit and explicit release, as a forced process exit would.
+        Darwin.exit(0)
+      }
+    }
+
+    let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let ownership = try ControllerSessionLock.acquire(directory: directory)
+    defer { ownership.release() }
+    let eventFile = directory.appending(path: "clears")
+    let controller = SimulationController(
+      backend: RuntimeFileRecordingBackend(file: eventFile), automaticallySchedulesMaintenance: false
+    )
+    await ControllerCLIRuntime.prepareSession(controller: controller)
+
+    for expectedExit in [Int32(23), Int32(0)] {
+      let child = Process()
+      child.executableURL = URL(fileURLWithPath: CommandLine.arguments[0])
+      child.arguments = [
+        "-XCTest",
+        "ControllerCLITests.ControllerCLIRuntimeTests/testSecondProcessCannotClearAndProcessExitReleasesSessionOwnership",
+        Bundle(for: ControllerCLIRuntimeTests.self).bundlePath,
+      ]
+      child.environment = ProcessInfo.processInfo.environment.merging([marker: directory.path]) { _, new in new }
+      child.standardOutput = FileHandle.nullDevice
+      child.standardError = FileHandle.nullDevice
+      try child.run()
+      for _ in 0..<250 where child.isRunning {
+        try await Task.sleep(for: .milliseconds(20))
+      }
+      guard !child.isRunning else {
+        kill(child.processIdentifier, SIGKILL)
+        return XCTFail("Session ownership child must finish promptly")
+      }
+      XCTAssertEqual(child.terminationStatus, expectedExit)
+      XCTAssertEqual(try String(contentsOf: eventFile, encoding: .utf8),
+        expectedExit == 23 ? "clear\n" : "clear\nclear\n")
+      ownership.release()
+    }
+    // The lock file remains, but the exited child cannot leave a stale ownership lock.
+    let recovered = try ControllerSessionLock.acquire(directory: directory)
+    recovered.release()
+  }
+
+  func testLateApplyIsRejectedWhileShutdownClearIsInFlight() async throws {
+    let backend = RuntimeHeldClearBackend()
+    let controller = SimulationController(backend: backend, automaticallySchedulesMaintenance: false)
+    let location = try SelectedLocation(latitude: 31, longitude: 121)
+    _ = await controller.apply(location)
+    let shutdown = Task {
+      try await ControllerCLIRuntime.runSession(controller: controller, waitUntilStopped: {})
+    }
+    await backend.waitUntilClearHeld()
+    // Represents an already accepted connection whose handler reaches Apply after listener.stop().
+    let handler = SimulationControllerCommandHandler(controller: controller)
+    let lateID = UUID()
+    let late = Task {
+      await handler.handle(.apply(requestID: lateID, latitude: 35, longitude: 139))
+    }
+    for _ in 0..<100 { await Task.yield() }
+    await backend.releaseClear()
+    try await shutdown.value
+    let result = await late.value
+    XCTAssertEqual(result, .failed(requestID: lateID, reason: .sessionNotReady))
+    let locationAfterExit = await backend.location
+    XCTAssertNil(locationAfterExit)
+    let commands = await backend.names
+    XCTAssertEqual(commands, ["apply", "clear"])
+  }
+
   func testSecondSignalForcesExitWithUnconfirmedCleanupWarning() async throws {
     let marker = "PINSHIFT_TEST_FORCE_EXIT_CHILD"
     if ProcessInfo.processInfo.environment[marker] == "1" {
@@ -359,4 +445,50 @@ private actor RuntimeRecoveringBackend: InjectionBackend {
       return .cleared(requestID: id)
     }
   }
+}
+
+private struct RuntimeFileRecordingBackend: InjectionBackend {
+  let file: URL
+  func readiness() -> InjectionBackendReadiness { .ready }
+  func execute(_ command: InjectionBackendCommand) async -> InjectionBackendResult {
+    switch command {
+    case .apply(let id, let location): return .applied(requestID: id, location: location)
+    case .clear(let id):
+      do {
+        let previous = (try? Data(contentsOf: file)) ?? Data()
+        try (previous + Data("clear\n".utf8)).write(to: file)
+        return .cleared(requestID: id)
+      } catch { return .failed(requestID: id, reason: .clearFailed) }
+    }
+  }
+}
+
+private actor RuntimeHeldClearBackend: InjectionBackend {
+  private(set) var location: SelectedLocation?
+  private(set) var names: [String] = []
+  private var clearHeld = false
+  private var waiters: [CheckedContinuation<Void, Never>] = []
+  private var continuation: CheckedContinuation<Void, Never>?
+  func readiness() -> InjectionBackendReadiness { .ready }
+  func execute(_ command: InjectionBackendCommand) async -> InjectionBackendResult {
+    switch command {
+    case .apply(let id, let selected):
+      names.append("apply")
+      location = selected
+      return .applied(requestID: id, location: selected)
+    case .clear(let id):
+      names.append("clear")
+      clearHeld = true
+      for waiter in waiters { waiter.resume() }
+      waiters.removeAll()
+      await withCheckedContinuation { continuation = $0 }
+      location = nil
+      return .cleared(requestID: id)
+    }
+  }
+  func waitUntilClearHeld() async {
+    if clearHeld { return }
+    await withCheckedContinuation { waiters.append($0) }
+  }
+  func releaseClear() { continuation?.resume(); continuation = nil }
 }
