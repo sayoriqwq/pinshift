@@ -101,6 +101,7 @@ pinshift doctor
 
 常见路径：
 
+- **已有前台会话**：回到原来的 `pinshift` 终端；要重开时先按 Ctrl-C 完成清理。重复启动会在清理前被拒绝，不会影响原会话的地点。
 - **找不到 iPhone**：重新连接数据线，解锁手机，确认 Mac 与 iPhone 仍互相信任。
 - **Controller Link 未连接**：确认 `pinshift` 的前台终端仍在运行；需要时重新启动并配对。
 - **Apply 按钮不可用**：确认已经选点；Controller Link、活动或重试状态都不会禁用按钮。
