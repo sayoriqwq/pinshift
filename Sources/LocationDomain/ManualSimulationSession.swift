@@ -253,33 +253,36 @@ public struct ManualSimulationSession: Equatable, Sendable {
         clearStatus = .idle
       }
       status = selected.map(ManualSimulationStatus.selected) ?? .noSelection
-    case .active(let operationID, let location, let automaticClearAt),
-      .uncertain(let operationID, let location?, let automaticClearAt):
-      replaceWithTrackedControllerSnapshot(
-        operationID: operationID,
+    case .active(let operationID, let location, let automaticClearAt):
+      let existing = activeAppliedRequest
+      let isSameOperation = existing?.requestID == operationID
+      let request = ManualSimulationRequest(
+        requestID: operationID,
         location: location,
-        automaticClearAt: automaticClearAt,
-        isClearPending: false,
-        at: date
+        requestedAt: isSameOperation ? existing?.requestedAt ?? date : date,
+        automaticClearAt: automaticClearAt
       )
-    case .clearPending(let operationID, let location?, let automaticClearAt):
-      replaceWithTrackedControllerSnapshot(
-        operationID: operationID,
-        location: location,
-        automaticClearAt: automaticClearAt,
-        isClearPending: true,
-        at: date
-      )
-    case .uncertain:
-      // An uncertain legacy snapshot without a coordinate cannot identify an
-      // active request. It remains informational and never blocks selection.
-      activeAppliedRequest = nil
-      status = selected.map(ManualSimulationStatus.selected) ?? .noSelection
+      activeAppliedRequest = request
+      status = statusPreservingLocalEvidence(for: request)
+      if !isSameOperation { clearStatus = .idle }
+    case .uncertain(let operationID, let location, let automaticClearAt):
+      // The coordinate identifies an attempted Apply, not an execution receipt.
+      // Keep A as last confirmed, and never let an observation verify unknown B.
+      if let location {
+        let request = ManualSimulationRequest(
+          requestID: operationID,
+          location: location,
+          requestedAt: date,
+          automaticClearAt: automaticClearAt
+        )
+        status = .failed(request, .controllerUnavailable)
+      } else {
+        status = selected.map(ManualSimulationStatus.selected) ?? .noSelection
+      }
       clearStatus = .idle
-    case .clearPending(let operationID, nil, _):
-      // A failed real Clear can outlive missing controller bookkeeping. Keep
-      // any local active request and the explicit failure so Clear Now remains
-      // honestly retryable after status reconciliation.
+    case .clearPending(let operationID, _, _):
+      // This may follow a timed-out Apply or a clear with no tracked operation.
+      // Its coordinate cannot manufacture an Applied Simulation after restart.
       if activeAppliedRequest == nil {
         status = selected.map(ManualSimulationStatus.selected) ?? .noSelection
       }
@@ -291,44 +294,6 @@ public struct ManualSimulationSession: Equatable, Sendable {
           .requestRejected(stableCode: "clearPending")
         )
       }
-    }
-  }
-
-  private mutating func replaceWithTrackedControllerSnapshot(
-    operationID: UUID,
-    location: SelectedLocation,
-    automaticClearAt: Date?,
-    isClearPending: Bool,
-    at date: Date
-  ) {
-    let existing = activeAppliedRequest
-    let isSameOperation = existing?.requestID == operationID
-    let request = ManualSimulationRequest(
-      requestID: operationID,
-      location: location,
-      requestedAt: isSameOperation ? existing?.requestedAt ?? date : date,
-      automaticClearAt: automaticClearAt
-    )
-    activeAppliedRequest = request
-    status = statusPreservingLocalEvidence(for: request)
-    if isClearPending {
-      if case .unconfirmed = clearStatus {
-        // Keep the explicit Clear request correlation while the Mac retries.
-      } else {
-        clearStatus = .unconfirmed(
-          requestID: operationID,
-          .requestRejected(stableCode: "clearPending")
-        )
-      }
-    } else if isSameOperation {
-      switch clearStatus {
-      case .cleared, .unconfirmed:
-        break
-      case .idle, .clearing:
-        clearStatus = .idle
-      }
-    } else {
-      clearStatus = .idle
     }
   }
 

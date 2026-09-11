@@ -89,7 +89,7 @@ final class PinshiftUITests: XCTestCase {
     XCTAssertTrue(
       app.descendants(matching: .any)["home-map"].waitForExistence(timeout: 5)
     )
-    XCTAssertTrue(app.buttons["open-location-picker"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.textFields["place-search-input"].waitForExistence(timeout: 5))
     XCTAssertTrue(app.buttons["open-settings"].waitForExistence(timeout: 5))
 
     let homeScreenshot = XCTAttachment(screenshot: app.screenshot())
@@ -118,6 +118,7 @@ final class PinshiftUITests: XCTestCase {
     app.launch()
     app.tap()
 
+    openSettings(in: app)
     let initialSimulationStatus =
       app.staticTexts.matching(identifier: "simulation-status").firstMatch
     scrollUp(until: initialSimulationStatus, in: app)
@@ -150,7 +151,7 @@ final class PinshiftUITests: XCTestCase {
       )
     )
 
-    returnHome(in: app)
+    scrollToTop(in: app)
     let simulationStatus = app.staticTexts.matching(identifier: "simulation-status").firstMatch
     scrollToTop(in: app)
     scrollUp(until: simulationStatus, in: app)
@@ -163,6 +164,8 @@ final class PinshiftUITests: XCTestCase {
     scrollUp(until: export, in: app)
     XCTAssertTrue(export.waitForExistence(timeout: 5))
     export.tap()
+    XCTAssertTrue(
+      app.descendants(matching: .any)["diagnostics-share-sheet"].waitForExistence(timeout: 5))
   }
 
   func testDiagnosticsSurviveFixtureApplyObservationClearAndAppRelaunch() {
@@ -284,7 +287,7 @@ final class PinshiftUITests: XCTestCase {
     XCTAssertTrue(clearDiagnostic.waitForExistence(timeout: 5))
     XCTAssertEqual(
       clearDiagnostic.label,
-      "Keep the Mac session open and tap Clear Now again when the device is reachable."
+      "Keep the Mac session open. Automatic clear will retry when the device is reachable; you can also retry now."
     )
 
     let activeCard = app.otherElements["active-simulation-card"]
@@ -293,8 +296,7 @@ final class PinshiftUITests: XCTestCase {
     XCTAssertTrue(clear.isEnabled)
 
     openLocationPicker(in: app)
-    XCTAssertTrue(app.buttons["use-map-center"].waitForExistence(timeout: 5))
-    app.buttons["close-location-picker"].tap()
+    XCTAssertTrue(app.textFields["place-search-input"].waitForExistence(timeout: 5))
     let replacementApply = app.buttons["apply-selected-location"]
     scrollUp(until: replacementApply, in: app)
     XCTAssertTrue(replacementApply.waitForExistence(timeout: 5))
@@ -540,8 +542,7 @@ final class PinshiftUITests: XCTestCase {
     )
   }
 
-  func testSavedLocationSelectionAndDeletionPreserveAppliedSimulationUntilReplacementOrClear()
-  {
+  func testSavedLocationSelectionAndDeletionPreserveAppliedSimulationUntilReplacementOrClear() {
     let app = savedLocationsFixtureApp()
     app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
     app.launch()
@@ -605,6 +606,7 @@ final class PinshiftUITests: XCTestCase {
       .matching(NSPredicate(format: "label == %@", "Simulated Location cleared"))
       .firstMatch
     XCTAssertTrue(cleared.waitForExistence(timeout: 5))
+    openSettings(in: app)
     let inactive = app.staticTexts.matching(identifier: "simulation-status")
       .matching(NSPredicate(format: "label == %@", "Selected — waiting to apply"))
       .firstMatch
@@ -749,419 +751,197 @@ final class PinshiftUITests: XCTestCase {
     applyAndVerify(coordinateB, in: app)
   }
 
-  func testMapSelectionReachesTheFreshObservationVerificationSeam() {
-    let app = pinshiftApp()
-    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
+  func testHomeSearchPreservesCoordinatesAndRequiresExplicitApply() {
+    let app = dailyApp()
+    app.launchEnvironment["PINSHIFT_E2E_DIAGNOSTICS_ARTIFACT_FIXTURE"] = "1"
     app.launch()
-    app.tap()
-
-    openLocationPicker(in: app)
-
-    XCTAssertTrue(app.otherElements["location-map"].waitForExistence(timeout: 5))
-    XCTAssertTrue(app.buttons["use-map-center"].exists)
-    app.buttons["use-map-center"].tap()
+    let original = app.staticTexts["selected-location-name"].label
+    search("failure", in: app)
+    XCTAssertTrue(app.staticTexts["place-search-status"].waitForExistence(timeout: 5))
+    app.buttons["cancel-place-search"].tap()
+    XCTAssertEqual(app.staticTexts["selected-location-name"].label, original)
+    search("empty", in: app)
+    XCTAssertTrue(app.staticTexts["place-search-status"].waitForExistence(timeout: 5))
+    app.buttons["cancel-place-search"].tap()
+    XCTAssertEqual(app.staticTexts["selected-location-name"].label, original)
+    search("fixture", in: app)
+    app.buttons["place-search-result"].tap()
+    XCTAssertEqual(app.staticTexts["selected-location-name"].label, "Search Fixture")
+    XCTAssertFalse(app.staticTexts["active-simulation-location"].exists)
+    openSettings(in: app)
+    capture("Gemini More", in: app)
+    let latitude = app.staticTexts["selected-latitude"]
+    scrollUp(until: latitude, in: app)
+    XCTAssertTrue(latitude.label.hasSuffix("35.676212"))
+    XCTAssertTrue(app.staticTexts["selected-longitude"].label.hasSuffix("139.650312"))
+    returnHome(in: app)
+    app.buttons["apply-selected-location"].tap()
+    XCTAssertTrue(app.staticTexts["active-simulation-location"].waitForExistence(timeout: 5))
+    XCTAssertEqual(app.staticTexts["active-simulation-location"].label, "Search Fixture")
+    guard let artifact = exportDiagnosticsArtifact(in: app) else { return }
     XCTAssertTrue(
-      app.staticTexts["location-selection-confirmation"].waitForExistence(timeout: 5)
-    )
-    app.buttons["close-location-picker"].tap()
-
-    let selectionSource = app.staticTexts["selection-source"]
-    scrollUp(until: selectionSource, in: app)
-    XCTAssertTrue(selectionSource.waitForExistence(timeout: 5))
-    XCTAssertTrue(selectionSource.label.hasSuffix("Map"))
-    let selectedStatus = app.staticTexts.matching(identifier: "simulation-status")
-      .matching(NSPredicate(format: "label == %@", "Selected — waiting to apply"))
-      .firstMatch
-    for _ in 0..<4 where !selectedStatus.exists {
-      primaryScrollContainer(in: app).swipeUp()
-    }
-    XCTAssertTrue(selectedStatus.waitForExistence(timeout: 5))
-
-    let coordinate = CLLocationCoordinate2D(latitude: 31.2304, longitude: 121.4737)
-    scrollToTop(in: app)
-    let selectedLatitude = app.staticTexts["selected-latitude"]
-    let selectedLongitude = app.staticTexts["selected-longitude"]
-    scrollUp(until: selectedLatitude, in: app)
-    XCTAssertTrue(selectedLatitude.waitForExistence(timeout: 5))
-    scrollUp(until: selectedLongitude, in: app)
-    XCTAssertTrue(selectedLongitude.waitForExistence(timeout: 5))
-    XCTAssertTrue(selectedLatitude.label.hasSuffix("31.230400"))
-    XCTAssertTrue(selectedLongitude.label.hasSuffix("121.473700"))
-    applyAndVerifySimulation(of: coordinate, in: app)
-    clearFixtureSimulation(in: app)
+      artifact.events.contains { event in
+        guard event.kind == "app.apply.started",
+          case .number(let latitude)? = event.fields["latitude"],
+          case .number(let longitude)? = event.fields["longitude"]
+        else { return false }
+        return latitude == 35.676212345678 && longitude == 139.650312345678
+      },
+      "Apply must send the full search coordinate, not rounded display text or an old map center.")
   }
 
-  func testLocationPickerKeepsMapActionsVisibleAndRequiresExplicitDismissal() {
-    let app = pinshiftApp()
-    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
+  func testAppliedAndSelectedStayDistinctAndReturnDoesNotReapply() {
+    let app = dailyApp()
     app.launch()
-    app.tap()
-
-    openLocationPicker(in: app)
-
-    let picker = app.otherElements["location-picker"]
-    let map = app.otherElements["location-map"]
-    let selectMapCenter = app.buttons["use-map-center"]
-    let done = app.buttons["close-location-picker"]
-
-    XCTAssertTrue(picker.waitForExistence(timeout: 5))
-    XCTAssertTrue(map.waitForExistence(timeout: 5))
-    XCTAssertEqual(map.label, "Map center")
-    XCTAssertTrue(selectMapCenter.waitForExistence(timeout: 5))
-    XCTAssertFalse(selectMapCenter.isSelected)
-    XCTAssertTrue(done.waitForExistence(timeout: 5))
-    XCTAssertFalse(app.staticTexts["map-visible-range"].exists)
-    XCTAssertFalse(app.buttons["restore-opening-location"].exists)
-    XCTAssertTrue(selectMapCenter.isHittable)
-    XCTAssertTrue(done.isHittable)
-    XCTAssertGreaterThanOrEqual(selectMapCenter.frame.width, 44)
-    XCTAssertGreaterThanOrEqual(selectMapCenter.frame.height, 44)
-
-    map.swipeDown()
-    XCTAssertTrue(picker.waitForExistence(timeout: 2))
-
-    selectMapCenter.tap()
-    XCTAssertTrue(selectMapCenter.isSelected)
-    XCTAssertTrue(
-      app.staticTexts["location-selection-confirmation"].waitForExistence(timeout: 5)
-    )
-    done.tap()
-    XCTAssertFalse(picker.waitForExistence(timeout: 2))
-  }
-
-  func testFineAdjustmentOpensAroundSelectedLocationWithOriginFeedback() {
-    let app = selectedLocationFixtureApp()
-    app.launch()
-    app.tap()
-
-    openLocationPicker(in: app)
-
-    let mapCenter = app.staticTexts["map-center-coordinate"]
-    let displacement = app.staticTexts["fine-adjustment-displacement"]
-    let visibleRange = app.staticTexts["map-visible-range"]
-    let restore = app.buttons["restore-opening-location"]
-
-    XCTAssertTrue(mapCenter.waitForExistence(timeout: 5))
-    XCTAssertTrue(mapCenter.label.contains("31.230400"))
-    XCTAssertTrue(mapCenter.label.contains("121.473700"))
-    XCTAssertTrue(displacement.waitForExistence(timeout: 5))
-    XCTAssertTrue(displacement.label.contains("0"))
-    XCTAssertTrue(visibleRange.waitForExistence(timeout: 5))
-    XCTAssertTrue(visibleRange.label.contains("500"))
-    XCTAssertTrue(restore.waitForExistence(timeout: 5))
-    XCTAssertTrue(restore.isHittable)
-  }
-
-  func testFineAdjustmentPinchInShrinksVisibleRangeWithoutCommittingSelection() {
-    let app = selectedLocationFixtureApp()
-    app.launch()
-    app.tap()
-
-    openLocationPicker(in: app)
-
-    let map = app.otherElements["location-map"]
-    let visibleRange = app.staticTexts["map-visible-range"]
-    XCTAssertTrue(map.waitForExistence(timeout: 5))
-    XCTAssertTrue(map.isHittable)
-    XCTAssertTrue(visibleRange.waitForExistence(timeout: 5))
-    guard let openingRange = distanceMeters(from: visibleRange.label) else {
-      return XCTFail("The initial visible map range was not accessible.")
-    }
-    map.pinch(withScale: 2.0, velocity: 1.0)
-    let zoomedInRange = waitForVisibleRange(visibleRange) { current in
-      return current < openingRange * 0.9
-    }
-
-    XCTAssertLessThan(zoomedInRange, openingRange * 0.9)
-    assertFineAdjustmentMapRemainsInteractive(in: app)
-    closeFineAdjustmentAndAssertSelectionWasNotApplied(in: app)
-  }
-
-  func testFineAdjustmentPinchOutExpandsVisibleRangeWithoutCommittingSelection() {
-    let app = selectedLocationFixtureApp()
-    app.launch()
-    app.tap()
-
-    openLocationPicker(in: app)
-
-    let map = app.otherElements["location-map"]
-    let visibleRange = app.staticTexts["map-visible-range"]
-    XCTAssertTrue(map.waitForExistence(timeout: 5))
-    XCTAssertTrue(map.isHittable)
-    XCTAssertTrue(visibleRange.waitForExistence(timeout: 5))
-    guard let openingRange = distanceMeters(from: visibleRange.label) else {
-      return XCTFail("The initial visible map range was not accessible.")
-    }
-    map.pinch(withScale: 0.5, velocity: -1.0)
-    let zoomedOutRange = waitForVisibleRange(visibleRange) { current in
-      return current > openingRange * 1.1
-    }
-
-    XCTAssertGreaterThan(zoomedOutRange, openingRange * 1.1)
-    assertFineAdjustmentMapRemainsInteractive(in: app)
-    closeFineAdjustmentAndAssertSelectionWasNotApplied(in: app)
-  }
-
-  func testFineAdjustmentPanLeavesSelectedLocationUnchangedUntilMapCenterCommit() {
-    let app = selectedLocationFixtureApp()
-    app.launch()
-    app.tap()
-
-    openLocationPicker(in: app)
-    panMapAndWaitForDisplacement(in: app)
-    app.buttons["close-location-picker"].tap()
-
-    let selectedLatitude = app.staticTexts["selected-latitude"]
-    let selectedLongitude = app.staticTexts["selected-longitude"]
-    scrollUp(until: selectedLatitude, in: app)
-    XCTAssertTrue(selectedLatitude.waitForExistence(timeout: 5))
-    XCTAssertTrue(selectedLatitude.label.hasSuffix("31.230400"))
-    scrollUp(until: selectedLongitude, in: app)
-    XCTAssertTrue(selectedLongitude.waitForExistence(timeout: 5))
-    XCTAssertTrue(selectedLongitude.label.hasSuffix("121.473700"))
-
-    openLocationPicker(in: app)
-    panMapAndWaitForDisplacement(in: app)
-    app.buttons["use-map-center"].tap()
-    waitForSelectionConfirmation(in: app)
-    app.buttons["close-location-picker"].tap()
-
-    scrollToTop(in: app)
-    scrollUp(until: selectedLatitude, in: app)
-    XCTAssertTrue(selectedLatitude.waitForExistence(timeout: 5))
-    scrollUp(until: selectedLongitude, in: app)
-    XCTAssertTrue(selectedLongitude.waitForExistence(timeout: 5))
-    XCTAssertFalse(selectedLongitude.label.hasSuffix("121.473700"))
-  }
-
-  func testFineAdjustmentRestoreReplacesACommittedCenterWithTheOpeningLocation() {
-    let app = selectedLocationFixtureApp()
-    app.launch()
-    app.tap()
-
-    openLocationPicker(in: app)
-    panMapAndWaitForDisplacement(in: app)
-    app.buttons["use-map-center"].tap()
-    waitForSelectionConfirmation(in: app)
-    scrollPickerToTop(in: app)
-    app.buttons["restore-opening-location"].tap()
-
-    let restoreConfirmation = app.staticTexts["location-restoration-confirmation"]
-    XCTAssertTrue(restoreConfirmation.waitForExistence(timeout: 5))
-    app.buttons["close-location-picker"].tap()
-
-    let selectedLatitude = app.staticTexts["selected-latitude"]
-    let selectedLongitude = app.staticTexts["selected-longitude"]
-    scrollUp(until: selectedLatitude, in: app)
-    XCTAssertTrue(selectedLatitude.waitForExistence(timeout: 5))
-    scrollUp(until: selectedLongitude, in: app)
-    XCTAssertTrue(selectedLongitude.waitForExistence(timeout: 5))
-    XCTAssertTrue(selectedLatitude.label.hasSuffix("31.230400"))
-    XCTAssertTrue(selectedLongitude.label.hasSuffix("121.473700"))
-  }
-
-  func testFineAdjustmentCanReplaceAnAppliedSimulationWithoutClearingFirst() {
-    let app = selectedLocationFixtureApp()
-    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
-    app.launch()
-    app.navigationBars["Pinshift"].tap()
-
-    let apply = app.buttons["apply-selected-location"]
-    scrollUp(until: apply, in: app)
-    XCTAssertTrue(apply.waitForExistence(timeout: 5))
-    apply.tap()
-    XCTAssertTrue(
-      app.staticTexts["applied-acknowledgement"].waitForExistence(timeout: 5)
-    )
-
-    openLocationPicker(in: app)
-    panMapAndWaitForDisplacement(in: app)
-    app.buttons["use-map-center"].tap()
-    waitForSelectionConfirmation(in: app)
-    app.buttons["close-location-picker"].tap()
-
-    let acknowledgement = app.staticTexts["applied-acknowledgement"]
-    XCTAssertTrue(acknowledgement.waitForExistence(timeout: 5))
-    let replacementApply = app.buttons["apply-selected-location"]
-    scrollUp(until: replacementApply, in: app)
-    XCTAssertTrue(replacementApply.waitForExistence(timeout: 5))
-    XCTAssertTrue(replacementApply.isEnabled)
-    replacementApply.tap()
-    XCTAssertTrue(acknowledgement.waitForExistence(timeout: 5))
-    clearFixtureSimulation(in: app)
-  }
-
-  func testTemporarySimulationHasFixedCountdownReplacementAndClearNow() {
-    let app = selectedLocationFixtureApp()
-    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
-    app.launch()
-    app.navigationBars["Pinshift"].tap()
-
-    let apply = app.buttons["apply-selected-location"]
-    scrollUp(until: apply, in: app)
-    XCTAssertTrue(apply.waitForExistence(timeout: 5))
-    XCTAssertTrue(apply.isEnabled)
-    apply.tap()
-
-    let card = app.otherElements["active-simulation-card"]
-    scrollUp(until: card, in: app)
-    XCTAssertTrue(card.waitForExistence(timeout: 5))
-    XCTAssertTrue(app.staticTexts["simulation-auto-clear-time"].exists)
+    app.buttons["apply-selected-location"].tap()
+    let active = app.staticTexts["active-simulation-location"]
+    XCTAssertTrue(active.waitForExistence(timeout: 5))
+    let original = active.label
+    capture("Gemini active", in: app)
+    XCTAssertFalse(app.buttons["apply-selected-location"].exists)
+    app.buttons["choose-another-place"].tap()
+    search("fixture", in: app)
+    app.buttons["place-search-result"].tap()
+    XCTAssertEqual(active.label, original)
+    XCTAssertEqual(app.staticTexts["selected-location-name"].label, "Search Fixture")
+    capture("Gemini current A selected B", in: app)
+    XCTAssertEqual(app.buttons["apply-selected-location"].label, "Move here · 3 minutes")
+    app.buttons["back-to-current-location"].tap()
+    XCTAssertEqual(active.label, original)
+    XCTAssertFalse(app.buttons["apply-selected-location"].exists)
+    search("fixture", in: app)
+    app.buttons["place-search-result"].tap()
+    app.buttons["apply-selected-location"].tap()
+    XCTAssertTrue(waitForLabel(active, equalTo: "Search Fixture"))
     XCTAssertTrue(app.staticTexts["simulation-auto-clear-countdown"].exists)
-    XCTAssertTrue(app.buttons["apply-selected-location"].exists)
-    XCTAssertTrue(app.buttons["apply-selected-location"].isEnabled)
-    XCTAssertFalse(
-      app.staticTexts.matching(identifier: "clear-status")
-        .matching(NSPredicate(format: "label == %@", "Simulated Location cleared"))
-        .firstMatch.exists
-    )
+    clearFixtureSimulation(in: app)
+  }
 
-    let clear = app.buttons["clear-simulation"]
-    XCTAssertTrue(clear.waitForExistence(timeout: 5))
-    clear.tap()
-    let cleared = app.staticTexts.matching(identifier: "clear-status")
-      .matching(NSPredicate(format: "label == %@", "Simulated Location cleared"))
-      .firstMatch
-    XCTAssertTrue(cleared.waitForExistence(timeout: 5))
+  func testHomeMapDragChangesOnlySelectionWithoutSeparateCommit() {
+    let app = dailyApp()
+    app.launch()
+    app.buttons["apply-selected-location"].tap()
+    let active = app.staticTexts["active-simulation-location"]
+    XCTAssertTrue(active.waitForExistence(timeout: 5))
+    let original = active.label
+    let map = app.maps.firstMatch
+    XCTAssertTrue(map.waitForExistence(timeout: 5))
+    map.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.5))
+      .press(
+        forDuration: 0.1,
+        thenDragTo: map.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5)))
+    XCTAssertTrue(app.buttons["apply-selected-location"].waitForExistence(timeout: 5))
+    XCTAssertEqual(active.label, original)
+    XCTAssertEqual(app.staticTexts["selected-location-name"].label, "Map Selection")
+    XCTAssertFalse(app.buttons["use-map-center"].exists)
+    XCTAssertFalse(app.buttons["close-location-picker"].exists)
+    app.buttons["apply-selected-location"].tap()
+    XCTAssertTrue(app.buttons["choose-another-place"].waitForExistence(timeout: 5))
+    XCTAssertFalse(
+      app.buttons["apply-selected-location"].exists,
+      "Panel resizing after Apply must not create another map selection.")
   }
 
   func testReplacementApplyRemainsEnabledWhileEarlierResponseIsPending() {
-    let app = selectedLocationFixtureApp()
-    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
-    app.launchEnvironment["PINSHIFT_E2E_APPLY_DELAY_MILLISECONDS"] = "2000"
+    let app = dailyApp()
+    app.launchEnvironment["PINSHIFT_E2E_APPLY_DELAY_MILLISECONDS"] = "3000"
     app.launch()
-    app.navigationBars["Pinshift"].tap()
+    app.buttons["apply-selected-location"].tap()
+    XCTAssertTrue(app.buttons["apply-selected-location"].isEnabled)
+    search("fixture", in: app)
+    app.buttons["place-search-result"].tap()
+    app.buttons["apply-selected-location"].tap()
+    let active = app.staticTexts["active-simulation-location"]
+    XCTAssertTrue(active.waitForExistence(timeout: 8))
+    XCTAssertTrue(waitForLabel(active, equalTo: "Search Fixture"))
+  }
 
-    let apply = app.buttons["apply-selected-location"]
-    scrollUp(until: apply, in: app)
-    XCTAssertTrue(apply.waitForExistence(timeout: 5))
-    XCTAssertTrue(apply.isEnabled)
-    apply.tap()
-
-    let applying = app.staticTexts.matching(identifier: "simulation-status")
-      .matching(
-        NSPredicate(
-          format: "label == %@",
-          "Applying temporary location…"
-        )
-      )
-      .firstMatch
-    XCTAssertTrue(applying.waitForExistence(timeout: 5))
+  func testHomeClearFailureKeepsSelectionAndReplacementAvailable() {
+    let app = dailyApp()
+    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FAILURE_FIXTURE"] = "failed-clear"
+    app.launch()
+    app.buttons["apply-selected-location"].tap()
+    XCTAssertTrue(app.staticTexts["active-simulation-location"].waitForExistence(timeout: 5))
+    app.buttons["clear-simulation"].tap()
+    XCTAssertTrue(app.staticTexts["clear-status"].waitForExistence(timeout: 5))
+    XCTAssertEqual(app.staticTexts["clear-status"].label, "Clear could not be confirmed")
+    XCTAssertTrue(app.buttons["clear-simulation"].isEnabled)
+    search("fixture", in: app)
+    app.buttons["place-search-result"].tap()
+    XCTAssertTrue(app.buttons["apply-selected-location"].isEnabled)
+    app.buttons["apply-selected-location"].tap()
     XCTAssertTrue(
-      apply.isEnabled,
-      "An earlier in-flight Apply must not disable replacement Apply."
-    )
-
-    apply.tap()
-    let card = app.otherElements["active-simulation-card"]
-    scrollUp(until: card, in: app)
-    XCTAssertTrue(card.waitForExistence(timeout: 8))
-    clearFixtureSimulation(in: app)
+      waitForLabel(app.staticTexts["active-simulation-location"], equalTo: "Search Fixture"))
   }
 
-  func testFineAdjustmentFeedbackIsLocalizedInSimplifiedChinese() {
-    let app = selectedLocationFixtureApp()
+  func testUnconfirmedReplacementNeverPromotesBAndRemainsRecoverable() {
+    let app = dailyApp()
+    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FAILURE_FIXTURE"] = "timed-out-replacement"
+    app.launch()
+    app.buttons["apply-selected-location"].tap()
+    let active = app.staticTexts["active-simulation-location"]
+    XCTAssertTrue(active.waitForExistence(timeout: 5))
+    let original = active.label
+    search("fixture", in: app)
+    app.buttons["place-search-result"].tap()
+    app.buttons["apply-selected-location"].tap()
+    XCTAssertTrue(app.staticTexts["simulation-status"].waitForExistence(timeout: 5))
+    let reconciled = expectation(description: "Read uncertain Controller Status")
+    DispatchQueue.main.asyncAfter(deadline: .now() + 6) { reconciled.fulfill() }
+    wait(for: [reconciled], timeout: 7)
+    XCTAssertEqual(active.label, original)
+    XCTAssertTrue(app.staticTexts["Last confirmed location"].exists)
+    XCTAssertEqual(app.staticTexts["selected-location-name"].label, "Search Fixture")
+    XCTAssertTrue(app.buttons["apply-selected-location"].isEnabled)
+    app.buttons["apply-selected-location"].tap()
+    XCTAssertTrue(waitForLabel(active, equalTo: "Search Fixture"))
+  }
+
+  func testGeminiHomeSupportsChineseAndLargeText() {
+    let app = dailyApp()
     app.launchEnvironment["PINSHIFT_E2E_APP_LANGUAGE"] = "zh-Hans"
+    app.launchArguments += [
+      "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
+    ]
     app.launch()
-    app.tap()
-
-    openLocationPicker(in: app)
-
-    let displacement = app.staticTexts["fine-adjustment-displacement"]
-    XCTAssertTrue(displacement.waitForExistence(timeout: 5))
-    XCTAssertTrue(displacement.label.contains("米"))
-    XCTAssertEqual(
-      app.buttons["restore-opening-location"].label,
-      "恢复打开时位置"
-    )
+    XCTAssertEqual(app.buttons["apply-selected-location"].label, "应用 3 分钟")
+    let clear = app.buttons["clear-simulation"]
+    scrollUp(until: clear, in: app)
+    XCTAssertTrue(clear.isHittable)
+    XCTAssertLessThan(
+      clear.frame.height, app.frame.height / 4,
+      "Secondary actions must not wrap into a column of single characters.")
+    XCTAssertEqual(app.buttons["open-settings"].label, "更多")
+    let screenshot = XCTAttachment(screenshot: app.screenshot())
+    screenshot.name = "Gemini Chinese large text"
+    screenshot.lifetime = .keepAlways
+    add(screenshot)
   }
 
-  func testSearchResultReachesTheFreshObservationVerificationSeam() {
-    let app = pinshiftApp()
-    app.launchEnvironment["PINSHIFT_E2E_SEARCH_FIXTURE"] = "1"
-    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
-    app.launch()
-    app.tap()
+  private func capture(_ name: String, in app: XCUIApplication) {
+    let attachment = XCTAttachment(screenshot: app.screenshot())
+    attachment.name = name
+    attachment.lifetime = .keepAlways
+    add(attachment)
+  }
 
-    openLocationPicker(in: app)
+  private func dailyApp() -> XCUIApplication {
+    let app = selectedLocationFixtureApp()
+    app.launchEnvironment["PINSHIFT_E2E_LOCATION_PERMISSION"] = "allowed"
+    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
+    app.launchEnvironment["PINSHIFT_E2E_SEARCH_FIXTURE"] = "1"
+    return app
+  }
+
+  private func search(_ query: String, in app: XCUIApplication) {
     let field = app.textFields["place-search-input"]
     XCTAssertTrue(field.waitForExistence(timeout: 5))
-    field.tap()
-    field.typeText("fixture")
+    replaceText(in: field, with: query)
     app.buttons["search-places"].tap()
-
-    let result = app.buttons["place-search-result"]
-    XCTAssertTrue(result.waitForExistence(timeout: 5))
-    result.tap()
-    waitForSelectionConfirmation(in: app)
-    app.buttons["close-location-picker"].tap()
-
-    scrollToTop(in: app)
-    let selectionSource = app.staticTexts["selection-source"]
-    let selectedLatitude = app.staticTexts["selected-latitude"]
-    let selectedLongitude = app.staticTexts["selected-longitude"]
-    scrollUp(until: selectionSource, in: app)
-    XCTAssertTrue(selectionSource.waitForExistence(timeout: 5))
-    scrollUp(until: selectedLatitude, in: app)
-    XCTAssertTrue(selectedLatitude.waitForExistence(timeout: 5))
-    scrollUp(until: selectedLongitude, in: app)
-    XCTAssertTrue(selectedLongitude.waitForExistence(timeout: 5))
-    XCTAssertTrue(selectionSource.label.hasSuffix("Place search"))
-    XCTAssertTrue(selectedLatitude.label.hasSuffix("35.676200"))
-    XCTAssertTrue(selectedLongitude.label.hasSuffix("139.650300"))
-    applyAndVerifySimulation(
-      of: CLLocationCoordinate2D(latitude: 35.6762, longitude: 139.6503),
-      in: app
-    )
-  }
-
-  func testSearchEmptyAndFailureStatesPreserveThePreviousSelection() {
-    let app = pinshiftApp()
-    app.launchEnvironment["PINSHIFT_E2E_SEARCH_FIXTURE"] = "1"
-    app.launch()
-    app.tap()
-
-    openLocationPicker(in: app)
-    app.buttons["use-map-center"].tap()
-    app.buttons["close-location-picker"].tap()
-    let selectedLatitude = app.staticTexts["selected-latitude"]
-    let selectedLongitude = app.staticTexts["selected-longitude"]
-    scrollUp(until: selectedLatitude, in: app)
-    XCTAssertTrue(selectedLatitude.waitForExistence(timeout: 5))
-    scrollUp(until: selectedLongitude, in: app)
-    XCTAssertTrue(selectedLongitude.waitForExistence(timeout: 5))
-    let previousLatitude = selectedLatitude.label
-    let previousLongitude = selectedLongitude.label
-
-    openLocationPicker(in: app)
-    let field = app.textFields["place-search-input"]
-    replaceText(in: field, with: "empty")
-    app.buttons["search-places"].tap()
-    let status = app.staticTexts["place-search-status"]
-    XCTAssertTrue(status.waitForExistence(timeout: 5))
-    XCTAssertEqual(status.label, "No places found. Try a more specific query.")
-
-    replaceText(in: field, with: "failure")
-    app.buttons["search-places"].tap()
-    XCTAssertTrue(
-      status.waitForExistence(timeout: 5)
-    )
-    XCTAssertEqual(
-      status.label,
-      "Place search is unavailable. Check your network connection and try again; your previous selection is unchanged."
-    )
-    app.buttons["close-location-picker"].tap()
-
-    let selectionSource = app.staticTexts["selection-source"]
-    scrollUp(until: selectionSource, in: app)
-    XCTAssertTrue(selectionSource.waitForExistence(timeout: 5))
-    scrollUp(until: selectedLatitude, in: app)
-    XCTAssertTrue(selectedLatitude.waitForExistence(timeout: 5))
-    scrollUp(until: selectedLongitude, in: app)
-    XCTAssertTrue(selectedLongitude.waitForExistence(timeout: 5))
-    XCTAssertTrue(selectionSource.label.hasSuffix("Map"))
-    XCTAssertEqual(selectedLatitude.label, previousLatitude)
-    XCTAssertEqual(selectedLongitude.label, previousLongitude)
+    if query == "fixture" {
+      XCTAssertTrue(app.buttons["place-search-result"].waitForExistence(timeout: 5))
+      capture("Gemini search results", in: app)
+    }
   }
 
   func testPublicLocationBackendRemainsStableForTenMinutes() throws {
@@ -1262,20 +1042,13 @@ final class PinshiftUITests: XCTestCase {
     XCTAssertTrue(apply.isEnabled)
     apply.tap()
 
-    let applied = app.staticTexts.matching(identifier: "simulation-status")
-      .matching(
-        NSPredicate(
-          format: "label == %@",
-          "Applied; waiting for a fresh observation"
-        )
-      )
-      .firstMatch
-    XCTAssertTrue(applied.waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["active-simulation-location"].waitForExistence(timeout: 5))
 
     XCUIDevice.shared.location = XCUILocation(
       location: CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
     )
 
+    openSettings(in: app)
     let verified = app.staticTexts.matching(identifier: "simulation-status")
       .matching(
         NSPredicate(
@@ -1284,7 +1057,9 @@ final class PinshiftUITests: XCTestCase {
         )
       )
       .firstMatch
+    scrollUp(until: verified, in: app)
     XCTAssertTrue(verified.waitForExistence(timeout: 15))
+    returnHome(in: app)
   }
 
   private func clearAndVerifyProxyInactive(in app: XCUIApplication) {
@@ -1370,113 +1145,7 @@ final class PinshiftUITests: XCTestCase {
 
   private func openLocationPicker(in app: XCUIApplication) {
     returnHome(in: app)
-    let button = app.buttons["open-location-picker"]
-    for _ in 0..<5 where !button.exists {
-      primaryScrollContainer(in: app).swipeUp()
-    }
-    XCTAssertTrue(button.waitForExistence(timeout: 5))
-    button.tap()
-  }
-
-  private func panMapAndWaitForDisplacement(in app: XCUIApplication) {
-    let map = app.otherElements["location-map"]
-    XCTAssertTrue(map.waitForExistence(timeout: 5))
-    map.swipeLeft()
-
-    let displacement = app.staticTexts["fine-adjustment-displacement"]
-    let startedAt = Date()
-    while Date().timeIntervalSince(startedAt) < 5 {
-      if let meters = distanceMeters(from: displacement.label), meters > 1 {
-        return
-      }
-      RunLoop.current.run(until: Date().addingTimeInterval(0.1))
-    }
-    XCTFail("The map displacement did not exceed 1 m.")
-  }
-
-  private func assertFineAdjustmentMapRemainsInteractive(in app: XCUIApplication) {
-    let map = app.otherElements["location-map"]
-    let useMapCenter = app.buttons["use-map-center"]
-    let done = app.buttons["close-location-picker"]
-
-    XCTAssertTrue(map.exists)
-    XCTAssertTrue(map.isHittable)
-    XCTAssertTrue(useMapCenter.exists)
-    XCTAssertTrue(useMapCenter.isHittable)
-    XCTAssertTrue(done.exists)
-    XCTAssertTrue(done.isHittable)
-  }
-
-  private func closeFineAdjustmentAndAssertSelectionWasNotApplied(
-    in app: XCUIApplication
-  ) {
-    app.buttons["close-location-picker"].tap()
-
-    let selectedLatitude = app.staticTexts["selected-latitude"]
-    let selectedLongitude = app.staticTexts["selected-longitude"]
-    scrollToTop(in: app)
-    scrollUp(until: selectedLatitude, in: app)
-    XCTAssertTrue(selectedLatitude.waitForExistence(timeout: 5))
-    scrollUp(until: selectedLongitude, in: app)
-    XCTAssertTrue(selectedLongitude.waitForExistence(timeout: 5))
-    XCTAssertTrue(selectedLatitude.label.hasSuffix("31.230400"))
-    XCTAssertTrue(selectedLongitude.label.hasSuffix("121.473700"))
-
-    let selectedStatus = app.staticTexts.matching(identifier: "simulation-status")
-      .matching(NSPredicate(format: "label == %@", "Selected — waiting to apply"))
-      .firstMatch
-    scrollUp(until: selectedStatus, in: app)
-    XCTAssertTrue(selectedStatus.waitForExistence(timeout: 5))
-    XCTAssertFalse(app.staticTexts["applied-acknowledgement"].exists)
-  }
-
-  private func waitForVisibleRange(
-    _ element: XCUIElement,
-    satisfying predicate: (Double) -> Bool,
-    timeout: TimeInterval = 5
-  ) -> Double {
-    let startedAt = Date()
-    while Date().timeIntervalSince(startedAt) < timeout {
-      if let value = distanceMeters(from: element.label), predicate(value) {
-        return value
-      }
-      RunLoop.current.run(until: Date().addingTimeInterval(0.1))
-    }
-
-    XCTFail("The visible map range did not reach the expected pinch direction.")
-    return distanceMeters(from: element.label) ?? .nan
-  }
-
-  private func distanceMeters(from label: String) -> Double? {
-    let regex = try! NSRegularExpression(
-      pattern: #"([0-9]+(?:\.[0-9]+)?)\s*(km|m)"#
-    )
-    let fullRange = NSRange(label.startIndex..<label.endIndex, in: label)
-    guard
-      let match = regex.firstMatch(in: label, range: fullRange),
-      let valueRange = Range(match.range(at: 1), in: label),
-      let unitRange = Range(match.range(at: 2), in: label),
-      let value = Double(label[valueRange])
-    else {
-      return nil
-    }
-
-    return value * (label[unitRange] == "km" ? 1_000 : 1)
-  }
-
-  private func waitForSelectionConfirmation(in app: XCUIApplication) {
-    let confirmation = app.staticTexts["location-selection-confirmation"]
-    for _ in 0..<4 where !confirmation.exists {
-      app.scrollViews.firstMatch.swipeUp()
-    }
-    XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
-  }
-
-  private func scrollPickerToTop(in app: XCUIApplication) {
-    let scrollView = app.scrollViews.firstMatch
-    for _ in 0..<6 {
-      scrollView.swipeDown()
-    }
+    XCTAssertTrue(app.textFields["place-search-input"].waitForExistence(timeout: 5))
   }
 
   private func permissionFixtureApp(
@@ -1522,7 +1191,6 @@ final class PinshiftUITests: XCTestCase {
     export.tap()
 
     let seam = app.descendants(matching: .any)["diagnostics-export-artifact"]
-    scrollUp(until: seam, in: app)
     XCTAssertTrue(seam.waitForExistence(timeout: 5))
     let rawArtifact = (seam.value as? String) ?? seam.label
     guard
@@ -1765,7 +1433,6 @@ final class PinshiftUITests: XCTestCase {
         || appliedStatus.label.hasSuffix("Unknown until the Mac reconnects")
     )
 
-    returnHome(in: app)
     let selected = app.staticTexts.matching(identifier: "simulation-status")
       .matching(NSPredicate(format: "label == %@", "Selected — waiting to apply"))
       .firstMatch
@@ -1778,6 +1445,7 @@ final class PinshiftUITests: XCTestCase {
     source: String,
     in app: XCUIApplication
   ) {
+    openSettings(in: app)
     scrollToTop(in: app)
     let selectedLatitude = app.staticTexts["selected-latitude"]
     scrollUp(until: selectedLatitude, in: app)
@@ -1803,7 +1471,7 @@ final class PinshiftUITests: XCTestCase {
   }
 
   private func openSettings(in app: XCUIApplication) {
-    if app.navigationBars["Settings"].exists || app.navigationBars["设置"].exists {
+    if app.buttons["close-more"].exists {
       return
     }
 
@@ -1816,18 +1484,8 @@ final class PinshiftUITests: XCTestCase {
   }
 
   private func returnHome(in app: XCUIApplication) {
-    if app.descendants(matching: .any)["pinshift-home"].exists {
-      return
-    }
-
-    let back = app.navigationBars.buttons
-      .matching(NSPredicate(format: "label == %@", "Pinshift"))
-      .firstMatch
-    XCTAssertTrue(back.waitForExistence(timeout: 5))
-    back.tap()
-    XCTAssertTrue(
-      app.descendants(matching: .any)["pinshift-home"].waitForExistence(timeout: 5)
-    )
+    if app.buttons["close-more"].exists { app.buttons["close-more"].tap() }
+    XCTAssertTrue(app.textFields["place-search-input"].waitForExistence(timeout: 5))
   }
 
   private func selectedLocationFixtureApp() -> XCUIApplication {
@@ -1862,21 +1520,33 @@ final class PinshiftUITests: XCTestCase {
 
   private func scrollUp(until element: XCUIElement, in app: XCUIApplication) {
     let scrollContainer = primaryScrollContainer(in: app)
-    for _ in 0..<8 where !element.exists || !element.isHittable {
+    for _ in 0..<8 where !isVisible(element, in: scrollContainer) {
       scrollContainer.swipeUp()
     }
   }
 
   private func scrollToTop(in app: XCUIApplication) {
     let scrollContainer = primaryScrollContainer(in: app)
-    for _ in 0..<6 {
+    let top =
+      app.buttons["close-more"].exists
+      ? app.segmentedControls["language-selector"] : app.buttons["apply-selected-location"]
+    for _ in 0..<8 where !isVisible(top, in: scrollContainer) {
       scrollContainer.swipeDown()
     }
   }
 
+  private func isVisible(_ element: XCUIElement, in container: XCUIElement) -> Bool {
+    guard element.exists else { return false }
+    let frame = element.frame
+    return !frame.isEmpty
+      && container.frame.insetBy(dx: 0, dy: 10).contains(
+        CGPoint(x: frame.midX, y: frame.midY)
+      )
+  }
+
   private func scrollUpInSmallSteps(until element: XCUIElement, in app: XCUIApplication) {
     let collectionView = primaryScrollContainer(in: app)
-    for _ in 0..<6 where !element.exists || !element.isHittable {
+    for _ in 0..<6 where !isVisible(element, in: collectionView) {
       let start = collectionView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.75))
       let finish = collectionView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.55))
       start.press(forDuration: 0.05, thenDragTo: finish)

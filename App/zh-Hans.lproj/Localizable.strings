@@ -284,3 +284,37 @@
 "Coordinates" = "坐标位置";
 "Map Selection" = "地图选点";
 "Search Result" = "搜索结果";
+
+"More" = "更多";
+
+"Current location" = "当前地点";
+
+"Current status unconfirmed" = "当前状态未确认";
+
+"Reconnect Mac" = "重连 Mac";
+
+"Ready to apply" = "准备应用";
+
+"Applying %@…" = "正在应用 %@…";
+
+"Automatic clear due — waiting for confirmation" = "正在等待自动解除确认";
+
+"Try Clear Now Again" = "再试立即解除";
+
+"Choose another place…" = "换个地点…";
+
+"Back to current location" = "回到当前地点";
+
+"Save place" = "收藏地点";
+
+"Apply for 3 minutes" = "应用 3 分钟";
+
+"Move here · 3 minutes" = "改到这里 · 3 分钟";
+
+"Keep the Mac session open. Automatic clear will retry when the device is reachable; you can also retry now." = "保持 Mac 会话开启，设备恢复可达后会自动补清理；也可立即重试。";
+
+"Awaiting clear confirmation" = "正在等待解除确认";
+
+"The request could not be confirmed. Check the Mac connection in More and try again." = "请求尚未确认。请在“更多”中检查 Mac 连接后重试。";
+
+"Last confirmed location" = "最后确认的地点";
