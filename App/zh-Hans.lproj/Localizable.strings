@@ -318,3 +318,9 @@
 "The request could not be confirmed. Check the Mac connection in More and try again." = "请求尚未确认。请在“更多”中检查 Mac 连接后重试。";
 
 "Last confirmed location" = "最后确认的地点";
+
+"App renewal" = "App 续签";
+
+"Run pinshift on your Mac to check the app signature and renew it when needed. Follow the Mac instructions if Apple sign-in or iPhone confirmation is required." = "在 Mac 上运行 pinshift，检查 App 签名并按需续签。如果需要 Apple 登录或 iPhone 确认，请按 Mac 上的提示操作。";
+
+"Save this place" = "收藏此地";

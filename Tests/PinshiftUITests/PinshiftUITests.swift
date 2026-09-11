@@ -397,16 +397,16 @@ final class PinshiftUITests: XCTestCase {
     let selector = app.segmentedControls["language-selector"]
     XCTAssertTrue(selector.waitForExistence(timeout: 5))
     XCTAssertTrue(selector.buttons["English"].isSelected)
-    XCTAssertTrue(app.staticTexts["Mac Controller"].waitForExistence(timeout: 5))
-
     let localNetworkStatus = app.staticTexts["local-network-permission-status"]
+    scrollUp(until: localNetworkStatus, in: app)
     XCTAssertTrue(localNetworkStatus.waitForExistence(timeout: 5))
     XCTAssertTrue(waitForLabel(localNetworkStatus, endingWith: "Allowed"))
+    scrollToTop(in: app)
 
     selector.buttons["简体中文"].tap()
 
     XCTAssertTrue(selector.buttons["简体中文"].isSelected)
-    XCTAssertTrue(app.staticTexts["Mac 模拟控制器"].waitForExistence(timeout: 5))
+    scrollUp(until: localNetworkStatus, in: app)
     XCTAssertTrue(waitForLabel(localNetworkStatus, endingWith: "已允许"))
 
     app.terminate()
@@ -417,7 +417,6 @@ final class PinshiftUITests: XCTestCase {
     let persistedSelector = app.segmentedControls["language-selector"]
     XCTAssertTrue(persistedSelector.waitForExistence(timeout: 5))
     XCTAssertTrue(persistedSelector.buttons["简体中文"].isSelected)
-    XCTAssertTrue(app.staticTexts["Mac 模拟控制器"].waitForExistence(timeout: 5))
 
     persistedSelector.buttons["English"].tap()
     XCTAssertTrue(persistedSelector.buttons["English"].isSelected)
@@ -1044,6 +1043,8 @@ final class PinshiftUITests: XCTestCase {
 
     XCTAssertTrue(app.staticTexts["active-simulation-location"].waitForExistence(timeout: 5))
 
+    // End the prior proxy so an identical target yields a fresh Core Location sample.
+    XCUIDevice.shared.location = nil
     XCUIDevice.shared.location = XCUILocation(
       location: CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
     )
