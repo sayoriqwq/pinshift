@@ -52,7 +52,7 @@ function pinshift_prepare_environment
     end
 
     if test (count $device_ids) -eq 0
-        echo "No paired physical iPhone was found. Connect and unlock it, then retry." >&2
+        echo "No paired physical iPhone was found. Connect and unlock it, accept Trust This Computer on the phone, then retry `pinshift`." >&2
     else
         echo "Multiple paired physical iPhones were found." >&2
     end

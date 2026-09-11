@@ -189,6 +189,7 @@ function pinshift_launch_pinshift_app --argument-names device bundle_identifier 
     end
 
     echo "Pinshift is installed, but automatic launch verification failed." >&2
-    echo "Unlock the iPhone and run `pinshift app --launch-only`, or open Pinshift manually." >&2
+    echo "Unlock the iPhone and open Pinshift. If prompted, trust the developer under Settings → General → VPN & Device Management and enable Developer Mode under Privacy & Security." >&2
+    echo "Then retry `pinshift`, or use `pinshift app --launch-only` to verify launch." >&2
     return 1
 end
