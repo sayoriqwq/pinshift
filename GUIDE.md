@@ -107,7 +107,7 @@ pinshift doctor
 - **Apply 按钮不可用**：确认已经选点；Controller Link、活动或重试状态都不会禁用按钮。
 - **本次 Apply 失败**：按界面显示恢复 Xcode/设备连接，然后直接重试或应用其他地点。
 - **控制器源码已变化**：运行 `pinshift setup`，不要用 `swift run` 代替已签名控制器。
-- **App 签名过期**：运行 `pinshift app --force`；账号错误需要先恢复 Xcode 登录。
+- **App 签名过期或安装未确认**：按终端提示恢复账号登录、设备连接和解锁，再运行 `pinshift`；日常恢复不需要选择额外参数。
 
 需要紧急幂等解除时运行：
 
