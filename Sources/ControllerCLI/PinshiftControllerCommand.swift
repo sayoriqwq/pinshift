@@ -268,6 +268,8 @@ public struct PinshiftControllerCommand: AsyncParsableCommand {
       }
 
       public func run() async throws {
+        let ownership = try ControllerSessionLock.acquire()
+        defer { ownership.release() }
         let tlsIdentity: SecIdentity
         do {
           tlsIdentity = try KeychainTLSIdentity.load(label: identityLabel)

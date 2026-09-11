@@ -120,6 +120,7 @@ public actor SimulationController {
   private var current: CurrentSimulation?
   private var untrackedClearFailure: UntrackedClearFailure?
   private var recentApplyReceipts: [ApplyReceipt] = []
+  private var acceptsApply = true
   private var operationInFlight = false
   private var operationWaiters: [CheckedContinuation<Void, Never>] = []
   private var automaticClearTask: Task<Void, Never>?
@@ -157,6 +158,9 @@ public actor SimulationController {
   ) async -> TemporarySimulationApplyResult {
     await acquireOperation()
     defer { releaseOperation() }
+    guard acceptsApply else {
+      return .failed(requestID: requestID, reason: .sessionNotReady)
+    }
     await record(
       kind: "controller.apply.started",
       requestID: requestID,
@@ -283,6 +287,13 @@ public actor SimulationController {
       requestID: requestID,
       automatic: false
     )
+  }
+
+  public func beginShutdown() async {
+    await acquireOperation()
+    defer { releaseOperation() }
+    acceptsApply = false
+    stopMaintenance()
   }
 
   public func stopMaintenance() {
