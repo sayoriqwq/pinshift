@@ -12,6 +12,8 @@ final class BaselineViewModel: ObservableObject {
   @Published private(set) var savedLocationError: String?
   @Published private(set) var savedLocationPersistenceError = false
 
+  private(set) var operationRevision = 0
+
   private let diagnostics: SimulationDiagnosticPipeline?
   private let manualSessionStore: FileManualSimulationSessionStore
   private var savedLocationRepository: SavedLocationRepository
@@ -65,16 +67,8 @@ final class BaselineViewModel: ObservableObject {
         manualSession = restored
         if let selected = restored.selected {
           selection.select(selected, source: .manual)
-          latitudeText = String(
-            format: "%.6f",
-            locale: Locale(identifier: "en_US_POSIX"),
-            selected.latitude
-          )
-          longitudeText = String(
-            format: "%.6f",
-            locale: Locale(identifier: "en_US_POSIX"),
-            selected.longitude
-          )
+          latitudeText = String(selected.latitude)
+          longitudeText = String(selected.longitude)
         }
       }
     } catch {
@@ -168,17 +162,11 @@ final class BaselineViewModel: ObservableObject {
     selection.select(location, source: source)
     session.select(location)
     manualSession.select(location)
-    persistManualSession()
-    latitudeText = String(
-      format: "%.6f", locale: Locale(identifier: "en_US_POSIX"), location.latitude)
-    longitudeText = String(
-      format: "%.6f",
-      locale: Locale(identifier: "en_US_POSIX"),
-      location.longitude
-    )
-    expirationTask?.cancel()
-    manualExpirationTask?.cancel()
     inputError = nil
+    persistManualSession()
+    latitudeText = String(location.latitude)
+    longitudeText = String(location.longitude)
+    expirationTask?.cancel()
     record(
       kind: "app.selection.replaced",
       fields: [
@@ -248,12 +236,13 @@ final class BaselineViewModel: ObservableObject {
 
   func beginManualApply(at date: Date = Date()) -> ManualSimulationRequest? {
     do {
+      operationRevision += 1
       let request = try manualSession.beginApply(
         requestID: UUID(),
         at: date
       )
-      persistManualSession()
       inputError = nil
+      persistManualSession()
       record(
         kind: "app.apply.started",
         requestID: request.requestID,
@@ -350,6 +339,7 @@ final class BaselineViewModel: ObservableObject {
   }
 
   func beginClear(at date: Date = Date()) -> ManualSimulationClearRequest {
+    operationRevision += 1
     let request = manualSession.beginClear(requestID: UUID(), at: date)
     record(
       kind: "app.clear.started",

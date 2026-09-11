@@ -23,7 +23,10 @@ final class ControllerLinkViewModel: ObservableObject {
   private var discoveryRetryPolicy = ControllerDiscoveryRetryPolicy()
   private var hasPairingCandidate = false
   private var pendingApply:
-    (request: ManualSimulationRequest, continuation: CheckedContinuation<ControllerLinkResponse, Never>)?
+    (
+      request: ManualSimulationRequest,
+      continuation: CheckedContinuation<ControllerLinkResponse, Never>
+    )?
   private var pendingApplyTimeoutTask: Task<Void, Never>?
 
   #if DEBUG
@@ -56,7 +59,7 @@ final class ControllerLinkViewModel: ObservableObject {
         ],
         let milliseconds = Int(value), milliseconds > 0
       else {
-        return 5_000 // Deferred Apply attempts are bounded to five seconds.
+        return 5_000  // Deferred Apply attempts are bounded to five seconds.
       }
       return milliseconds
     }
@@ -198,6 +201,21 @@ final class ControllerLinkViewModel: ObservableObject {
           try? await Task.sleep(for: .milliseconds(e2eApplyDelayMilliseconds))
         }
         let automaticClearAt = Date().addingTimeInterval(180)
+        if ProcessInfo.processInfo.environment["PINSHIFT_E2E_CONTROLLER_LINK_FAILURE_FIXTURE"]
+          == "timed-out-replacement",
+          case .active = controllerStatus?.simulation
+        {
+          controllerStatus = ControllerStatus(
+            readiness: .ready,
+            simulation: .uncertain(
+              operationID: request.requestID,
+              latitude: request.location.latitude,
+              longitude: request.location.longitude,
+              automaticClearAt: automaticClearAt,
+              reason: .timedOut
+            ))
+          return .failed(requestID: request.requestID, reason: .timedOut)
+        }
         controllerStatus = ControllerStatus(
           readiness: .ready,
           simulation: .active(
@@ -273,7 +291,10 @@ final class ControllerLinkViewModel: ObservableObject {
   }
 
   private func finishPendingApply(
-    _ pending: (request: ManualSimulationRequest, continuation: CheckedContinuation<ControllerLinkResponse, Never>),
+    _ pending: (
+      request: ManualSimulationRequest,
+      continuation: CheckedContinuation<ControllerLinkResponse, Never>
+    ),
     with response: ControllerLinkResponse
   ) {
     guard pendingApply?.request.requestID == pending.request.requestID else { return }

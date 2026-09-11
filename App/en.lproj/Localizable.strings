@@ -138,3 +138,37 @@
 "Coordinates" = "Coordinates";
 "Map Selection" = "Map Selection";
 "Search Result" = "Search Result";
+
+"More" = "More";
+
+"Current location" = "Current location";
+
+"Current status unconfirmed" = "Current status unconfirmed";
+
+"Reconnect Mac" = "Reconnect Mac";
+
+"Ready to apply" = "Ready to apply";
+
+"Applying %@…" = "Applying %@…";
+
+"Automatic clear due — waiting for confirmation" = "Automatic clear due — waiting for confirmation";
+
+"Try Clear Now Again" = "Try Clear Now Again";
+
+"Choose another place…" = "Choose another place…";
+
+"Back to current location" = "Back to current location";
+
+"Save place" = "Save place";
+
+"Apply for 3 minutes" = "Apply for 3 minutes";
+
+"Move here · 3 minutes" = "Move here · 3 minutes";
+
+"Keep the Mac session open. Automatic clear will retry when the device is reachable; you can also retry now." = "Keep the Mac session open. Automatic clear will retry when the device is reachable; you can also retry now.";
+
+"Awaiting clear confirmation" = "Awaiting clear confirmation";
+
+"The request could not be confirmed. Check the Mac connection in More and try again." = "The request could not be confirmed. Check the Mac connection in More and try again.";
+
+"Last confirmed location" = "Last confirmed location";

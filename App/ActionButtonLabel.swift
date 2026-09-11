@@ -12,9 +12,11 @@ struct ActionButtonLabel: View {
           .controlSize(.small)
       } else {
         Image(systemName: systemImage)
+          .font(.system(size: 18, weight: .semibold))
+          .accessibilityHidden(true)
       }
 
-      title
+      title.fixedSize(horizontal: false, vertical: true)
     }
     .font(.subheadline.weight(.semibold))
     .frame(maxWidth: .infinity, minHeight: 44)

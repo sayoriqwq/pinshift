@@ -7,6 +7,81 @@ final class ManualSimulationSessionTests: XCTestCase {
   private let startedAt = Date(timeIntervalSince1970: 1_000)
   private let deadline = Date(timeIntervalSince1970: 1_900)
 
+  func testUnconfirmedSnapshotsNeverManufactureAppliedOrVerifiedSimulation() throws {
+    let location = try SelectedLocation(latitude: 35.676212345678, longitude: 139.650312345678)
+    let operationID = UUID()
+    for snapshot in [
+      ManualSimulationControllerSnapshot.uncertain(
+        operationID: operationID, location: location, automaticClearAt: deadline),
+      .clearPending(operationID: operationID, location: location, automaticClearAt: deadline),
+    ] {
+      var session = ManualSimulationSession()
+      session.select(location)
+      session.replaceWithControllerSnapshot(snapshot, at: startedAt)
+      session.record(
+        LocationObservation(
+          coordinate: location, timestamp: startedAt.addingTimeInterval(1), horizontalAccuracy: 5,
+          isSimulatedBySoftware: true))
+      XCTAssertNil(session.activeAppliedRequest)
+      if case .verified = session.status {
+        XCTFail("An observation cannot replace a missing Apply receipt")
+      }
+      let next = try session.beginApply(requestID: UUID(), at: startedAt.addingTimeInterval(2))
+      XCTAssertEqual(next.location, location, "Uncertainty must not block new Apply")
+    }
+  }
+
+  func testUncertainReplacementKeepsOnlyLastConfirmedAAndCannotVerifyB() throws {
+    var session = ManualSimulationSession()
+    let a = try SelectedLocation(latitude: 31.2304, longitude: 121.4737)
+    let b = try SelectedLocation(latitude: 35.6762, longitude: 139.6503)
+    session.select(a)
+    let first = try session.beginApply(requestID: UUID(), at: startedAt)
+    XCTAssertTrue(
+      session.acknowledgeApplied(requestID: first.requestID, automaticClearAt: deadline))
+    session.select(b)
+    let second = try session.beginApply(requestID: UUID(), at: startedAt.addingTimeInterval(1))
+    XCTAssertTrue(session.fail(requestID: second.requestID, reason: .controllerUnavailable))
+    session.replaceWithControllerSnapshot(
+      .uncertain(operationID: second.requestID, location: b, automaticClearAt: deadline),
+      at: startedAt.addingTimeInterval(2))
+    session.record(
+      LocationObservation(
+        coordinate: b, timestamp: startedAt.addingTimeInterval(3), horizontalAccuracy: 5,
+        isSimulatedBySoftware: true))
+    XCTAssertEqual(session.activeAppliedRequest?.requestID, first.requestID)
+    XCTAssertEqual(session.selected, b)
+    guard case .failed(let unconfirmed, _) = session.status else {
+      return XCTFail("B is still unconfirmed")
+    }
+    XCTAssertEqual(unconfirmed.requestID, second.requestID)
+    session.replaceWithControllerSnapshot(
+      .clearPending(operationID: second.requestID, location: b, automaticClearAt: deadline),
+      at: startedAt.addingTimeInterval(4))
+    XCTAssertEqual(session.activeAppliedRequest?.requestID, first.requestID)
+    guard case .unconfirmed = session.clearStatus else {
+      return XCTFail("Clear remains unconfirmed")
+    }
+    session.replaceWithControllerSnapshot(
+      .active(operationID: second.requestID, location: b, automaticClearAt: deadline),
+      at: startedAt.addingTimeInterval(5))
+    XCTAssertEqual(session.activeAppliedRequest?.location, b)
+    session.record(
+      LocationObservation(
+        coordinate: b, timestamp: startedAt.addingTimeInterval(3), horizontalAccuracy: 5,
+        isSimulatedBySoftware: true))
+    guard case .appliedNotVerified(_, .notAfterRequest) = session.status else {
+      return XCTFail("The old sample cannot verify a newly confirmed operation")
+    }
+    session.record(
+      LocationObservation(
+        coordinate: b, timestamp: startedAt.addingTimeInterval(6), horizontalAccuracy: 5,
+        isSimulatedBySoftware: true))
+    guard case .verified = session.status else {
+      return XCTFail("A fresh sample can verify acknowledged B")
+    }
+  }
+
   func testDefaultStoreMigratesTheExistingAppFileInPlace() {
     let url = FileManualSimulationSessionStore.defaultFileURL(environment: [:])
 

@@ -38,10 +38,7 @@ final class PinshiftControllerLinkUITests: XCTestCase {
 
     let failed = app.staticTexts["simulation-status"]
     XCTAssertTrue(failed.waitForExistence(timeout: 5))
-    XCTAssertTrue(
-      app.staticTexts["simulation-diagnostic"]
-        .waitForExistence(timeout: 5)
-    )
+    XCTAssertTrue(failed.label.contains("Mac"))
     XCTAssertTrue(apply.isEnabled)
   }
 
@@ -86,12 +83,13 @@ final class PinshiftControllerLinkUITests: XCTestCase {
     try ensureConnected(app, pairingCode: pairingCode)
 
     openLocationPicker(in: app)
-    XCTAssertTrue(app.otherElements["location-map"].waitForExistence(timeout: 10))
-    app.buttons["use-map-center"].tap()
-    XCTAssertTrue(
-      app.staticTexts["location-selection-confirmation"].waitForExistence(timeout: 5)
-    )
-    app.buttons["close-location-picker"].tap()
+    let map = app.maps.firstMatch
+    XCTAssertTrue(map.waitForExistence(timeout: 10))
+    map.coordinate(withNormalizedOffset: CGVector(dx: 0.65, dy: 0.45))
+      .press(
+        forDuration: 0.1,
+        thenDragTo: map.coordinate(withNormalizedOffset: CGVector(dx: 0.35, dy: 0.45)))
+    XCTAssertTrue(app.staticTexts["selected-location-name"].waitForExistence(timeout: 5))
     applyAndWaitForVerification(in: app)
 
     openLocationPicker(in: app)
@@ -103,10 +101,7 @@ final class PinshiftControllerLinkUITests: XCTestCase {
     let result = app.buttons["place-search-result"]
     XCTAssertTrue(result.waitForExistence(timeout: 10))
     result.tap()
-    XCTAssertTrue(
-      app.staticTexts["location-selection-confirmation"].waitForExistence(timeout: 5)
-    )
-    app.buttons["close-location-picker"].tap()
+    XCTAssertTrue(app.staticTexts["selected-location-name"].waitForExistence(timeout: 5))
     applyAndWaitForVerification(in: app)
 
     let clear = app.buttons["clear-simulation"]
@@ -150,12 +145,7 @@ final class PinshiftControllerLinkUITests: XCTestCase {
 
   private func openLocationPicker(in app: XCUIApplication) {
     returnHome(in: app)
-    let button = app.buttons["open-location-picker"]
-    for _ in 0..<10 where !button.exists {
-      primaryScrollContainer(in: app).swipeDown()
-    }
-    XCTAssertTrue(button.waitForExistence(timeout: 5))
-    button.tap()
+    XCTAssertTrue(app.textFields["place-search-input"].waitForExistence(timeout: 5))
   }
 
   private func applyAndWaitForVerification(in app: XCUIApplication) {
@@ -165,6 +155,7 @@ final class PinshiftControllerLinkUITests: XCTestCase {
     XCTAssertTrue(waitUntilEnabled(apply, timeout: 15))
     apply.tap()
 
+    openSettings(in: app)
     let verified = app.staticTexts.matching(identifier: "simulation-status")
       .matching(
         NSPredicate(format: "label == %@", "Verified by a fresh observation in this app")
@@ -172,6 +163,7 @@ final class PinshiftControllerLinkUITests: XCTestCase {
       .firstMatch
     scroll(upTo: verified, in: app)
     XCTAssertTrue(verified.waitForExistence(timeout: 25))
+    returnHome(in: app)
   }
 
   private func scroll(upTo element: XCUIElement, in app: XCUIApplication) {
@@ -182,7 +174,7 @@ final class PinshiftControllerLinkUITests: XCTestCase {
   }
 
   private func openSettings(in app: XCUIApplication) {
-    if app.navigationBars["Settings"].exists || app.navigationBars["设置"].exists {
+    if app.buttons["close-more"].exists {
       return
     }
 
@@ -195,18 +187,8 @@ final class PinshiftControllerLinkUITests: XCTestCase {
   }
 
   private func returnHome(in app: XCUIApplication) {
-    if app.descendants(matching: .any)["pinshift-home"].exists {
-      return
-    }
-
-    let back = app.navigationBars.buttons
-      .matching(NSPredicate(format: "label == %@", "Pinshift"))
-      .firstMatch
-    XCTAssertTrue(back.waitForExistence(timeout: 5))
-    back.tap()
-    XCTAssertTrue(
-      app.descendants(matching: .any)["pinshift-home"].waitForExistence(timeout: 5)
-    )
+    if app.buttons["close-more"].exists { app.buttons["close-more"].tap() }
+    XCTAssertTrue(app.textFields["place-search-input"].waitForExistence(timeout: 5))
   }
 
   private func primaryScrollContainer(in app: XCUIApplication) -> XCUIElement {

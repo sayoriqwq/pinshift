@@ -54,9 +54,10 @@ final class SimulationDiagnosticsViewModel: ObservableObject {
         try data.write(to: destination, options: .atomic)
         exportedURL = destination
         #if DEBUG
-          let exposesArtifact = ProcessInfo.processInfo.environment[
-            "PINSHIFT_E2E_DIAGNOSTICS_ARTIFACT_FIXTURE"
-          ] == "1"
+          let exposesArtifact =
+            ProcessInfo.processInfo.environment[
+              "PINSHIFT_E2E_DIAGNOSTICS_ARTIFACT_FIXTURE"
+            ] == "1"
           if exposesArtifact {
             exportedArtifactJSON = String(data: data, encoding: .utf8)
           }
@@ -96,7 +97,9 @@ struct SimulationDiagnosticsShareSheet: UIViewControllerRepresentable {
   let url: URL
 
   func makeUIViewController(context: Context) -> UIActivityViewController {
-    UIActivityViewController(activityItems: [url], applicationActivities: nil)
+    let controller = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+    controller.view.accessibilityIdentifier = "diagnostics-share-sheet"
+    return controller
   }
 
   func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}

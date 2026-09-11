@@ -30,6 +30,7 @@ enum PinshiftDesign {
 
 struct PinshiftFilledButtonStyle: ButtonStyle {
   @Environment(\.isEnabled) private var isEnabled
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   let color: Color
   let foreground: Color
@@ -53,13 +54,14 @@ struct PinshiftFilledButtonStyle: ButtonStyle {
           style: .continuous
         )
       )
-      .scaleEffect(configuration.isPressed ? 0.985 : 1)
-      .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+      .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: configuration.isPressed)
   }
 }
 
 struct PinshiftSoftButtonStyle: ButtonStyle {
   @Environment(\.isEnabled) private var isEnabled
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   let foreground: Color
   let background: Color
@@ -83,8 +85,8 @@ struct PinshiftSoftButtonStyle: ButtonStyle {
           style: .continuous
         )
       )
-      .scaleEffect(configuration.isPressed ? 0.985 : 1)
-      .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+      .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: configuration.isPressed)
   }
 }
 
