@@ -6,6 +6,12 @@ Date: 2026-07-28
 
 This is a historical implementation requirement, not a Pinshift product-version declaration.
 
+The independent picker, map-center submission and Done requirements below are superseded by
+[issue #24](https://github.com/sayoriqwq/pinshift/issues/24): selection now happens directly on the
+main native map. The full-screen, trust-preservation and select-without-applying guarantees remain.
+Current owner acceptance is tracked in [the #24 checklist](../evidence/spec-24-owner-acceptance.md);
+this older milestone does not certify the new implementation.
+
 ## Motivation
 
 The first-round journey worked on the supported personal Mac, Xcode Beta, and iPhone, including Cross-App Propagation observed in QQ. Two usability defects remained:
