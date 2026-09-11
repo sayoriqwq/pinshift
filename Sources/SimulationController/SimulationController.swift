@@ -115,7 +115,7 @@ public actor SimulationController {
   private let diagnostics: SimulationDiagnosticRecorder?
   private let now: @Sendable () -> Date
   private let sleep: @Sendable (TimeInterval) async throws -> Void
-  private let automaticallySchedulesMaintenance: Bool
+  private var automaticallySchedulesMaintenance: Bool
 
   private var current: CurrentSimulation?
   private var untrackedClearFailure: UntrackedClearFailure?
@@ -123,6 +123,8 @@ public actor SimulationController {
   private var operationInFlight = false
   private var operationWaiters: [CheckedContinuation<Void, Never>] = []
   private var automaticClearTask: Task<Void, Never>?
+  private var maintenanceGeneration = UUID()
+  private var recoveryDelay: TimeInterval = 1
 
   public init(
     backend: any InjectionBackend,
@@ -283,13 +285,22 @@ public actor SimulationController {
     )
   }
 
-  private func automaticallyClear(operationID: UUID) async {
+  public func stopMaintenance() {
+    automaticallySchedulesMaintenance = false
+    maintenanceGeneration = UUID()
+    automaticClearTask?.cancel()
+    automaticClearTask = nil
+  }
+
+  private func automaticallyClear(generation: UUID) async {
     await acquireOperation()
     defer { releaseOperation() }
-    guard var current, current.operationID == operationID else { return }
-    current.phase = .clearPending
-    current.lastFailure = nil
-    self.current = current
+    guard generation == maintenanceGeneration, !Task.isCancelled else { return }
+    if var current {
+      current.phase = .clearPending
+      current.lastFailure = nil
+      self.current = current
+    }
 
     let requestID = UUID()
     _ = await finishClear(
@@ -308,6 +319,8 @@ public actor SimulationController {
     case .cleared(let responseID) where responseID == requestID:
       current = nil
       untrackedClearFailure = nil
+      maintenanceGeneration = UUID()
+      recoveryDelay = 1
       automaticClearTask?.cancel()
       automaticClearTask = nil
       await record(
@@ -348,6 +361,7 @@ public actor SimulationController {
     reason: InjectionBackendFailure,
     automatic: Bool
   ) async {
+    defer { scheduleAutomaticClear() }
     guard var current else {
       untrackedClearFailure = UntrackedClearFailure(
         requestID: requestID,
@@ -423,12 +437,23 @@ public actor SimulationController {
 
   private func scheduleAutomaticClear() {
     automaticClearTask?.cancel()
-    guard automaticallySchedulesMaintenance, let current else {
+    maintenanceGeneration = UUID()
+    guard automaticallySchedulesMaintenance else {
       automaticClearTask = nil
       return
     }
-    let operationID = current.operationID
-    let delay = max(0, current.automaticClearAt.timeIntervalSince(now()))
+    let delay: TimeInterval
+    if current?.phase == .clearPending || untrackedClearFailure != nil {
+      delay = recoveryDelay
+      recoveryDelay = min(recoveryDelay * 2, 30)
+    } else if let current {
+      recoveryDelay = 1
+      delay = max(0, current.automaticClearAt.timeIntervalSince(now()))
+    } else {
+      automaticClearTask = nil
+      return
+    }
+    let generation = maintenanceGeneration
     let sleep = self.sleep
     automaticClearTask = Task { [weak self] in
       do {
@@ -437,7 +462,7 @@ public actor SimulationController {
         return
       }
       guard !Task.isCancelled else { return }
-      await self?.automaticallyClear(operationID: operationID)
+      await self?.automaticallyClear(generation: generation)
     }
   }
 

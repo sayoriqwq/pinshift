@@ -308,6 +308,7 @@ public struct PinshiftControllerCommand: AsyncParsableCommand {
           developerDirectory: activeDevice.developerDirectory,
           diagnostics: diagnostics
         )
+        await ControllerCLIRuntime.prepareSession(controller: simulationController)
         let session = ControllerServerSession(
           identity: identity,
           pairingAuthority: authority,

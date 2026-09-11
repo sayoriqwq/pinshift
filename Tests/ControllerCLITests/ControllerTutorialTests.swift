@@ -23,6 +23,11 @@ final class ControllerTutorialTests: XCTestCase {
       "latest Apply replaces",
       "Historical state never blocks",
       "not persisted as background work",
+      "checks App signing",
+      "startup residual cleanup",
+      "automatically retries with bounded backoff",
+      "Normal exit waits until cleanup is acknowledged",
+      "explicitly force exit",
       "Location",
       "Local Network",
     ] {

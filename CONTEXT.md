@@ -53,7 +53,7 @@ One user request to apply the current Selected Location. Each genuinely new Appl
 _Avoid_: Session Generation, Coordinate Draft
 
 **Automatic Clear（自动解除）**:
-The Simulation Controller's one real attempt to clear a Temporary Simulation at its fixed deadline during the current testing session. Failure is reported as current status and remains manually retryable through Clear Now.
+The responsibility to end a Temporary Simulation at its fixed deadline. Closing the Pinshift app does not cancel that responsibility; an unconfirmed clear remains pending until it can be completed within an explicitly running Mac test session.
 _Avoid_: Durable Cleanup Responsibility, iOS Timer, Background Retry
 
 **Clear Now（立即解除）**:

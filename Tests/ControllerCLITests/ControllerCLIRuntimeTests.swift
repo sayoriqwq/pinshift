@@ -1,3 +1,4 @@
+import Darwin
 import ControllerLink
 import Foundation
 import LocationDomain
@@ -43,9 +44,12 @@ final class ControllerCLIRuntimeTests: XCTestCase {
     do {
       try await ControllerCLIRuntime.runSession(
         controller: controller,
+        cleanupFailed: { reason in
+          throw ControllerSessionTerminationError.clearFailed(reason)
+        },
         waitUntilStopped: {}
       )
-      XCTFail("A failed shutdown Clear must make the foreground process fail")
+      XCTFail("Explicit forced exit must report unconfirmed cleanup")
     } catch {
       XCTAssertEqual(
         error as? ControllerSessionTerminationError,
@@ -79,6 +83,78 @@ final class ControllerCLIRuntimeTests: XCTestCase {
 
     let recordedEvents = await events.values
     XCTAssertEqual(recordedEvents, ["apply", "server-stopped", "clear"])
+  }
+
+  func testSecondSignalForcesExitWithUnconfirmedCleanupWarning() async throws {
+    let marker = "PINSHIFT_TEST_FORCE_EXIT_CHILD"
+    if ProcessInfo.processInfo.environment[marker] == "1" {
+      let controller = SimulationController(
+        backend: RuntimeFailingClearBackend(), automaticallySchedulesMaintenance: false
+      )
+      try await ControllerCLIRuntime.runForegroundSession(controller: controller, runFor: nil)
+      return XCTFail("Unacknowledged cleanup must keep the child process alive")
+    }
+
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: CommandLine.arguments[0])
+    process.arguments = [
+      "-XCTest",
+      "ControllerCLITests.ControllerCLIRuntimeTests/testSecondSignalForcesExitWithUnconfirmedCleanupWarning",
+      Bundle(for: ControllerCLIRuntimeTests.self).bundlePath,
+    ]
+    process.environment = ProcessInfo.processInfo.environment.merging([marker: "1"]) { _, new in new }
+    let output = Pipe()
+    process.standardOutput = output
+    process.standardError = output
+    try process.run()
+    defer { if process.isRunning { process.terminate() } }
+
+    try await Task.sleep(for: .seconds(1))
+    kill(process.processIdentifier, SIGINT)
+    try await Task.sleep(for: .milliseconds(100))
+    XCTAssertTrue(process.isRunning, "A failed normal exit must remain in the foreground")
+    kill(process.processIdentifier, SIGINT)
+    for _ in 0..<100 where process.isRunning {
+      try await Task.sleep(for: .milliseconds(20))
+    }
+    guard !process.isRunning else {
+      kill(process.processIdentifier, SIGKILL)
+      return XCTFail("Explicit force exit must finish without waiting for cleanup")
+    }
+    let text = String(decoding: output.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+    XCTAssertEqual(process.terminationStatus, 1)
+    XCTAssertTrue(text.contains("Forced exit: cleanup is unconfirmed"))
+  }
+
+  func testNormalExitRetriesUntilAcknowledgedWithBoundedBackoff() async throws {
+    let backend = RuntimeRecoveringBackend(failures: 8)
+    let controller = SimulationController(backend: backend, automaticallySchedulesMaintenance: false)
+    let delays = RuntimeEventRecorder()
+    try await ControllerCLIRuntime.runSession(
+      controller: controller,
+      retrySleep: { seconds in await delays.append(String(Int(seconds))) },
+      cleanupFailed: { _ in },
+      waitUntilStopped: {}
+    )
+    let values = await delays.values
+    XCTAssertEqual(values, ["1", "2", "4", "8", "16", "30", "30", "30"])
+    let snapshot = await controller.snapshot()
+    XCTAssertEqual(snapshot.simulation, .idle)
+  }
+
+  func testStartupReallyClearsWithoutLocalRecordAndFailureDoesNotBlockApply() async throws {
+    let backend = RuntimeRecoveringBackend(failures: 1)
+    let controller = SimulationController(backend: backend, automaticallySchedulesMaintenance: false)
+    await ControllerCLIRuntime.prepareSession(controller: controller)
+    guard case .clearPending = await controller.snapshot().simulation else {
+      return XCTFail("Startup failure must remain visible")
+    }
+    let location = try SelectedLocation(latitude: 31, longitude: 121)
+    guard case .applied = await controller.apply(location) else {
+      return XCTFail("Startup failure must not block a new Apply")
+    }
+    let count = await backend.clearCount
+    XCTAssertEqual(count, 1)
   }
 
   func testResolvesExplicitValuesBeforeEnvironmentAndDefaults() {
@@ -262,6 +338,25 @@ private final class RuntimeRecordingDevicectlExecutor:
     lock.withLock {
       recordedInvocations.append(invocation)
       return pendingResults.removeFirst()
+    }
+  }
+}
+
+private actor RuntimeRecoveringBackend: InjectionBackend {
+  private var failures: Int
+  private(set) var clearCount = 0
+  init(failures: Int) { self.failures = failures }
+  func readiness() -> InjectionBackendReadiness { .ready }
+  func execute(_ command: InjectionBackendCommand) -> InjectionBackendResult {
+    switch command {
+    case .apply(let id, let location): return .applied(requestID: id, location: location)
+    case .clear(let id):
+      clearCount += 1
+      if failures > 0 {
+        failures -= 1
+        return .failed(requestID: id, reason: .clearFailed)
+      }
+      return .cleared(requestID: id)
     }
   }
 }
