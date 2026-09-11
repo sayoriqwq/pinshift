@@ -7,9 +7,14 @@ or exit 1
 argparse 'h/help' -- $argv
 or exit 2
 
+if test (count $argv) -gt 0
+    echo "pinshift start does not accept additional arguments." >&2
+    exit 2
+end
+
 if set --query _flag_help
     echo "Usage: pinshift-start"
-    echo "Starts the installed controller in this terminal and prints a fresh pairing code."
+    echo "Checks app signing, renews when needed, then starts the installed controller in this terminal."
     echo "Keep this terminal open while testing; Ctrl-C clears before the session exits."
     exit 0
 end
@@ -22,6 +27,18 @@ or exit $status
 if not test -x $controller
     echo "The controller is not installed. Run `pinshift setup` once." >&2
     exit 1
+end
+
+echo "Checking the Pinshift app signature and renewing when needed…"
+$script_dir/pinshift-resign-app
+set --local preparation_status $status
+switch $preparation_status
+    case 130 143
+        exit $preparation_status
+    case 0
+    case '*'
+        echo "App preparation was not confirmed. Continuing the foreground session; an existing usable app can still connect." >&2
+        echo "If Pinshift will not open, complete the steps above, then run `pinshift` again. This is not confirmation that the app is ready." >&2
 end
 
 echo "Keep this terminal open while using Pinshift. Ctrl-C ends the session after a real Clear."

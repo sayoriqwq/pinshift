@@ -6,8 +6,8 @@ function pinshift_usage
     echo "Pinshift — temporary iPhone test locations"
     echo
     echo "Usage:"
-    echo "  pinshift                 Start a foreground test session"
-    echo "  pinshift start           Start a foreground test session"
+    echo "  pinshift                 Prepare the app and start a foreground test session"
+    echo "  pinshift start           Prepare the app and start a foreground test session"
     echo "  pinshift setup           Build, sign, and update the Mac controller"
     echo "  pinshift clear           Clear the simulated location now"
     echo "  pinshift doctor          Run read-only readiness checks"

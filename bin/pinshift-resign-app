@@ -159,7 +159,8 @@ end
 
 if test (count $matched_profiles) -eq 0
     echo "No existing Pinshift app profile was found." >&2
-    echo "Open Xcode and complete one signed device build before using this renewal command." >&2
+    echo "Open Pinshift.xcodeproj in Xcode, sign in under Settings → Apple Accounts, and select your team in Signing & Capabilities." >&2
+    echo "Connect and unlock the iPhone, accept Trust This Computer, enable Developer Mode if requested, then run Pinshift once from Xcode." >&2
     exit 1
 end
 
@@ -207,11 +208,12 @@ set --local build_status $status
 if test $build_status -ne 0
     cp "$build_log" "$backup_directory/xcodebuild.log"
     chmod 600 "$backup_directory/xcodebuild.log"
-    if string match --quiet --regex 'No Accounts|Add a new account' -- (string collect <"$build_log")
-        echo "Xcode has no signed-in Apple Account. Sign in under Xcode → Settings → Apple Accounts." >&2
+    if string match --quiet --regex 'No Accounts|Add a new account|Unable to log in|Authentication|session.*expired' -- (string collect <"$build_log")
+        echo "Xcode could not authenticate the Apple Account. Sign in again under Xcode → Settings → Apple Accounts." >&2
     else
         echo "Xcode could not create a renewed app build." >&2
     end
+    echo "Check Xcode → Settings → Apple Accounts and Signing & Capabilities, then retry `pinshift`." >&2
     echo "The old profile will be restored; details are kept in the local backup directory." >&2
     exit $build_status
 end
@@ -290,6 +292,7 @@ if test $install_status -ne 0
     cp "$install_log" "$backup_directory/install.log"
     chmod 600 "$backup_directory/install.log"
     echo "The device did not provide a confirmed installation result." >&2
+    echo "Connect and unlock the iPhone, accept Trust This Computer and Developer Mode prompts, then retry `pinshift`." >&2
     echo "The phone may or may not contain the renewed app, so the new profile and candidate were preserved." >&2
     echo "Inspect the private transaction directory at $staging_root before retrying." >&2
     exit $install_status

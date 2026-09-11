@@ -186,6 +186,113 @@ final class AppResigningWorkflowTests: XCTestCase {
     XCTAssertFalse(recordedEvents.contains("xcrun launch"))
   }
 
+  func testExplicitStartSkipsFreshSigningAndStartsForegroundController() throws {
+    try writeProfile(
+      named: "app.mobileprovision",
+      applicationIdentifier: "\(teamIdentifier).\(bundleIdentifier)",
+      expiration: "2099-08-10T08:49:25Z"
+    )
+    let result = try runDaily(arguments: ["start"])
+    XCTAssertEqual(result.status, 0, result.output)
+    XCTAssertEqual(try events(), ["security app.mobileprovision", "controller link serve"])
+  }
+
+  func testDailyEntryRenewsExpiredSignatureBeforeStartingController() throws {
+    try writeProfile(
+      named: "app.mobileprovision",
+      applicationIdentifier: "\(teamIdentifier).\(bundleIdentifier)",
+      expiration: "2020-08-10T08:49:25Z"
+    )
+    try writeCandidate(expiration: "2099-08-17T08:49:25Z")
+    let result = try runDaily()
+    XCTAssertEqual(result.status, 0, result.output)
+    try assertEventsContainInOrder([
+      "xcodebuild", "codesign", "xcrun install", "xcrun launch", "controller link serve",
+    ])
+  }
+
+  func testDailyMaintenanceFailurePreservesExistingProfileAndSession() throws {
+    let expiration = ISO8601DateFormatter().string(from: Date().addingTimeInterval(3_600))
+    let profile = try writeProfile(
+      named: "app.mobileprovision",
+      applicationIdentifier: "\(teamIdentifier).\(bundleIdentifier)",
+      expiration: expiration
+    )
+    let result = try runDaily(environment: ["FAKE_XCODEBUILD_STATUS": "65"])
+    XCTAssertEqual(result.status, 0, result.output)
+    XCTAssertTrue(result.output.contains("App preparation was not confirmed"))
+    XCTAssertTrue(result.output.contains("Apple Accounts"))
+    XCTAssertTrue(FileManager.default.fileExists(atPath: profile.path))
+    try assertEventsContainInOrder(["xcodebuild", "controller link serve"])
+    XCTAssertFalse(try events().contains("xcrun install"))
+  }
+
+  func testInterruptedPreparationDoesNotStartController() throws {
+    try writeProfile(
+      named: "app.mobileprovision",
+      applicationIdentifier: "\(teamIdentifier).\(bundleIdentifier)",
+      expiration: "2020-08-10T08:49:25Z"
+    )
+    let result = try runDaily(environment: ["FAKE_XCODEBUILD_STATUS": "130"])
+    XCTAssertEqual(result.status, 130, result.output)
+    XCTAssertFalse(try events().contains("controller link serve"))
+  }
+
+  func testDailyMissingProfileExplainsSetupWithoutClaimingAppReadiness() throws {
+    let result = try runDaily()
+    XCTAssertEqual(result.status, 0, result.output)
+    XCTAssertTrue(result.output.contains("Signing & Capabilities"))
+    XCTAssertTrue(result.output.contains("Trust This Computer"))
+    XCTAssertTrue(result.output.contains("not confirmation that the app is ready"))
+    XCTAssertEqual(try events(), ["controller link serve"])
+  }
+
+  func testDailyHelpAndInvalidArgumentsDoNotPrepareOrStart() throws {
+    for arguments in [["--help"], ["start", "unexpected"]] {
+      let result = try runDaily(arguments: arguments)
+      XCTAssertEqual(result.status, arguments == ["--help"] ? 0 : 2, result.output)
+    }
+    XCTAssertEqual(try events(), [])
+  }
+
+  private func runDaily(
+    arguments: [String] = [], environment: [String: String] = [:]
+  ) throws -> (status: Int32, output: String) {
+    let scripts = fixtureRoot.appending(path: "bin")
+    try FileManager.default.createDirectory(at: scripts, withIntermediateDirectories: true)
+    for name in [
+      "pinshift", "pinshift-start", "pinshift-resign-app", "_pinshift-common.fish",
+      "_pinshift-app-signing.fish",
+    ] {
+      let source = resignScript.deletingLastPathComponent().appending(path: name)
+      let destination = scripts.appending(path: name)
+      if FileManager.default.fileExists(atPath: destination.path) {
+        try FileManager.default.removeItem(at: destination)
+      }
+      try FileManager.default.copyItem(at: source, to: destination)
+    }
+    // Only the stable-controller resolver is replaced; daily dispatch and signing run unchanged.
+    let common = scripts.appending(path: "_pinshift-common.fish")
+    var contents = try String(contentsOf: common, encoding: .utf8)
+    contents += "\nfunction pinshift_controller_executable\n echo $FAKE_CONTROLLER\nend\n"
+    try contents.write(to: common, atomically: true, encoding: .utf8)
+    try writeExecutable(
+      named: "controller",
+      contents: """
+        #!/bin/sh
+        printf 'controller %s %s\n' "$1" "$2" >> "$FAKE_EVENT_LOG"
+        """)
+    return try runResign(
+      arguments: arguments,
+      environment: environment.merging([
+        "FAKE_CONTROLLER": fakeBin.appending(path: "controller").path
+      ]) {
+        _, new in new
+      },
+      script: scripts.appending(path: "pinshift")
+    )
+  }
+
   private func installFakeTools() throws {
     try writeExecutable(
       named: "security",
@@ -304,12 +411,13 @@ final class AppResigningWorkflowTests: XCTestCase {
 
   private func runResign(
     arguments: [String] = [],
-    environment: [String: String] = [:]
+    environment: [String: String] = [:],
+    script: URL? = nil
   ) throws -> (status: Int32, output: String) {
     let process = Process()
     let output = Pipe()
     process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-    process.arguments = ["fish", resignScript.path] + arguments
+    process.arguments = ["fish", (script ?? resignScript).path] + arguments
     process.environment = ProcessInfo.processInfo.environment.merging(
       [
         "PATH": "\(fakeBin.path):/etc/profiles/per-user/sayori/bin:/usr/bin:/bin",
