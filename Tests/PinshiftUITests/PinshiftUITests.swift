@@ -55,7 +55,9 @@ final class PinshiftUITests: XCTestCase {
     let latitude = app.textFields["latitude-input"]
     scrollUp(until: latitude, in: app)
     XCTAssertTrue(latitude.waitForExistence(timeout: 5))
+    scrollUp(until: app.textFields["longitude-input"], in: app)
     XCTAssertTrue(app.textFields["longitude-input"].exists)
+    scrollUp(until: app.buttons["save-selection"], in: app)
     XCTAssertTrue(app.buttons["save-selection"].exists)
 
     let observedLatitude = app.staticTexts["observed-latitude"]
@@ -164,8 +166,7 @@ final class PinshiftUITests: XCTestCase {
     scrollUp(until: export, in: app)
     XCTAssertTrue(export.waitForExistence(timeout: 5))
     export.tap()
-    XCTAssertTrue(
-      app.descendants(matching: .any)["diagnostics-share-sheet"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.otherElements["ActivityListView"].waitForExistence(timeout: 5))
   }
 
   func testDiagnosticsSurviveFixtureApplyObservationClearAndAppRelaunch() {
@@ -1467,7 +1468,7 @@ final class PinshiftUITests: XCTestCase {
 
   private func pinshiftApp() -> XCUIApplication {
     let app = XCUIApplication()
-    app.launchEnvironment["PINSHIFT_E2E_APP_LANGUAGE"] = "en"
+    app.launchEnvironment = ["PINSHIFT_E2E_APP_LANGUAGE": "en"]
     return app
   }
 
