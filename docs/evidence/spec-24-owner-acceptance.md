@@ -2,8 +2,9 @@
 
 ## 当前交付边界
 
-本轮实现与自动化验证不使用物理 iPhone。模拟器界面测试和可记录后端测试不能证明真实签名安装、
-Bonjour/TLS 连接、Xcode 注入、睡眠/锁屏恢复、定位精度或其他 App 的传播已经通过。
+本轮先完成无真机实现与自动化验证，随后经本人授权开始真机连接验收。目前连接预检已确认设备可达、
+Developer Mode、设备支持镜像、开发签名与控制器密钥可用，并完成了 Xcode 必需组件初始化。
+这不等于本次版本的签名安装、Bonjour/TLS 连接、Xcode 注入、睡眠/锁屏恢复、定位精度或其他 App 的传播已经通过。
 [#21](https://github.com/sayoriqwq/pinshift/issues/21) 的取证与
 [#23](https://github.com/sayoriqwq/pinshift/issues/23) 的定量门槛保持未完成。
 本文件是本人验收步骤，不是真机通过报告；不得据此标记发布认证完成。
