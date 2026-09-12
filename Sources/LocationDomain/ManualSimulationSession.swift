@@ -369,18 +369,24 @@ public final class FileManualSimulationSessionStore: @unchecked Sendable {
       guard fileManager.fileExists(atPath: fileURL.path) else { return nil }
       let data = try Data(contentsOf: fileURL)
       if let current = try? Self.decoder().decode(PersistedSelection.self, from: data),
-        current.schemaVersion == PersistedSelection.currentSchemaVersion
+        current.schemaVersion != 1
       {
-        return ManualSimulationSession(selected: current.selected)
+        if current.schemaVersion == PersistedSelection.currentSchemaVersion {
+          return ManualSimulationSession(selected: current.selected)
+        }
+        guard current.schemaVersion == 2 else { throw CocoaError(.fileReadCorruptFile) }
+      } else {
+        let legacy = try Self.decoder().decode(LegacyPersistedSession.self, from: data)
+        guard legacy.schemaVersion == 1 else { throw CocoaError(.fileReadCorruptFile) }
       }
-      let legacy = try Self.decoder().decode(LegacyPersistedSession.self, from: data)
-      guard legacy.schemaVersion == 1 else {
-        throw CocoaError(.fileReadCorruptFile)
+      // Pre-WGS84 drafts carry no provenance. Keep the original file recoverable,
+      // but require a fresh selection rather than silently labelling an old map value WGS84.
+      let backup = fileURL.appendingPathExtension("before-coordinate-migration")
+      if !fileManager.fileExists(atPath: backup.path) {
+        try fileManager.copyItem(at: fileURL, to: backup)
       }
-      let migrated = ManualSimulationSession(selected: legacy.session.selected)
-      // Failure to rewrite must not restore the old control model or prevent
-      // the user from selecting and applying during this launch.
-      try? writeSelection(migrated)
+      let migrated = ManualSimulationSession()
+      try writeSelection(migrated)
       return migrated
     }
   }
@@ -406,7 +412,7 @@ public final class FileManualSimulationSessionStore: @unchecked Sendable {
   }
 
   private struct PersistedSelection: Codable {
-    static let currentSchemaVersion = 2
+    static let currentSchemaVersion = 3
     let schemaVersion: Int
     let selected: SelectedLocation?
 

@@ -16,6 +16,7 @@ extension LocationInputError: LocalizedError {
   }
 }
 
+/// A normalized WGS84 coordinate. Map values must cross MapCoordinateBoundary first.
 public struct SelectedLocation: Codable, Equatable, Sendable {
   public let latitude: Double
   public let longitude: Double

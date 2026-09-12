@@ -40,6 +40,19 @@ targets:
       gatherCoverageData: false
       testTargets:
         - PinshiftUITests
+        - PinshiftTests
+
+  PinshiftTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests/PinshiftTests
+    dependencies:
+      - target: Pinshift
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: true
+        PRODUCT_BUNDLE_IDENTIFIER: dev.sayori.pinshift.tests
 
   PinshiftUITests:
     type: bundle.ui-testing

@@ -50,6 +50,17 @@
                ReferencedContainer = "container:Pinshift.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "E3A124DAE1EE8A39807B6510"
+               BuildableName = "PinshiftTests.xctest"
+               BlueprintName = "PinshiftTests"
+               ReferencedContainer = "container:Pinshift.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
       <CommandLineArguments>
       </CommandLineArguments>

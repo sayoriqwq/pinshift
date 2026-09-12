@@ -138,6 +138,20 @@ final class BaselineViewModel: ObservableObject {
     }
   }
 
+  func updateSavedLocation(id: UUID, coordinate: SelectedLocation) -> Bool {
+    do {
+      try savedLocationRepository.updateCoordinate(id: id, coordinate: coordinate)
+      savedLocations = savedLocationRepository.collection
+      clearSavedLocationError()
+      return true
+    } catch {
+      savedLocationError =
+        "Saved Locations could not be saved. Your existing collection is unchanged."
+      savedLocationPersistenceError = true
+      return false
+    }
+  }
+
   func deleteSavedLocation(id: UUID) {
     do {
       try savedLocationRepository.delete(id: id)

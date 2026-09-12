@@ -178,3 +178,11 @@
 "Run pinshift on your Mac to check the app signature and renew it when needed. Follow the Mac instructions if Apple sign-in or iPhone confirmation is required." = "Run pinshift on your Mac to check the app signature and renew it when needed. Follow the Mac instructions if Apple sign-in or iPhone confirmation is required.";
 
 "Save this place" = "Save this place";
+
+"Enter WGS84 coordinates" = "Enter WGS84 coordinates";
+"Choose this place again" = "Choose this place again";
+"Choose a new point" = "Choose a new point";
+"This older bookmark needs a new map selection. Choose the place, then tap Update bookmark. Its name and original position will be kept." = "This older bookmark needs a new map selection. Choose the place, then tap Update bookmark. Its name and original position will be kept.";
+"Choose a new point for %@" = "Choose a new point for %@";
+"Update bookmark" = "Update bookmark";
+"Open-source notices" = "Open-source notices";

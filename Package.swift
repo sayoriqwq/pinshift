@@ -26,6 +26,7 @@ let package = Package(
     )
   ],
   targets: [
+    .testTarget(name: "MapCoordinateTests", dependencies: ["LocationDomain"]),
     .target(name: "LocationDomain"),
     .target(name: "SimulationDiagnostics"),
     .target(

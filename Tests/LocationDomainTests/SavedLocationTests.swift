@@ -85,12 +85,12 @@ final class SavedLocationTests: XCTestCase {
   }
 
   func testUnsupportedPayloadVersionIsRejected() {
-    let data = Data(#"{"version":2,"locations":[]}"#.utf8)
+    let data = Data(#"{"version":99,"locations":[]}"#.utf8)
 
     XCTAssertThrowsError(
       try JSONDecoder().decode(SavedLocationCollection.self, from: data)
     ) { error in
-      XCTAssertEqual(error as? SavedLocationError, .unsupportedVersion(2))
+      XCTAssertEqual(error as? SavedLocationError, .unsupportedVersion(99))
     }
   }
 

@@ -324,3 +324,11 @@
 "Run pinshift on your Mac to check the app signature and renew it when needed. Follow the Mac instructions if Apple sign-in or iPhone confirmation is required." = "在 Mac 上运行 pinshift，检查 App 签名并按需续签。如果需要 Apple 登录或 iPhone 确认，请按 Mac 上的提示操作。";
 
 "Save this place" = "收藏此地";
+
+"Enter WGS84 coordinates" = "输入 WGS84 经纬度";
+"Choose this place again" = "请重新选择这个地点";
+"Choose a new point" = "重新选点";
+"This older bookmark needs a new map selection. Choose the place, then tap Update bookmark. Its name and original position will be kept." = "这个旧收藏需要重新选点。选好地点后，点击“更新收藏位置”。收藏名称和原始位置都会保留。";
+"Choose a new point for %@" = "为“%@”重新选点";
+"Update bookmark" = "更新收藏位置";
+"Open-source notices" = "开源声明";
