@@ -414,43 +414,6 @@ struct ContentView: View {
     }
   }
 
-  private var homeReadinessTitle: String {
-    switch controllerLink.state {
-    case .notDiscovered:
-      return localized("Finding Mac")
-    case .awaitingPairing:
-      return localized("Pairing Required")
-    case .connected:
-      return localized("Ready")
-    case .unavailable, .localNetworkDenied:
-      return localized("Mac Unavailable")
-    }
-  }
-
-  private var homeReadinessIcon: String {
-    switch controllerLink.state {
-    case .notDiscovered:
-      return "antenna.radiowaves.left.and.right"
-    case .awaitingPairing:
-      return "link.badge.plus"
-    case .connected:
-      return "checkmark.circle.fill"
-    case .unavailable, .localNetworkDenied:
-      return "xmark.circle.fill"
-    }
-  }
-
-  private var homeReadinessColor: Color {
-    switch controllerLink.state {
-    case .notDiscovered, .awaitingPairing:
-      return PinshiftDesign.primary
-    case .connected:
-      return PinshiftDesign.positive
-    case .unavailable, .localNetworkDenied:
-      return PinshiftDesign.destructive
-    }
-  }
-
   private var controllerLinkSection: some View {
     Section(localized("Mac")) {
       LabeledContent("Local Network Permission") {

@@ -83,11 +83,13 @@ final class TemporarySimulationAcceptanceTests: XCTestCase {
     var app = ManualSimulationSession()
     try app.select(latitude: "31.2304", longitude: "121.4737")
     let first = try app.beginApply(requestID: UUID(), at: clock.now)
-    guard case .applied(let id, let deadline) = await link.apply(
-      requestID: first.requestID,
-      latitude: first.location.latitude,
-      longitude: first.location.longitude
-    ) else { return XCTFail("The initial Apply must be acknowledged") }
+    guard
+      case .applied(let id, let deadline) = await link.apply(
+        requestID: first.requestID,
+        latitude: first.location.latitude,
+        longitude: first.location.longitude
+      )
+    else { return XCTFail("The initial Apply must be acknowledged") }
     XCTAssertTrue(app.acknowledgeApplied(requestID: id, automaticClearAt: deadline))
     let originalDelay = await sleeper.waitUntilScheduled()
     XCTAssertEqual(originalDelay, 180)
@@ -118,7 +120,8 @@ final class TemporarySimulationAcceptanceTests: XCTestCase {
     await sleeper.resume()
     for _ in 0..<100 { await Task.yield() }
     await backend.releaseApply()
-    guard case .applied(let replacementID, let replacementDeadline) = await replacementTask.value else {
+    guard case .applied(let replacementID, let replacementDeadline) = await replacementTask.value
+    else {
       return XCTFail("Historical failed cleanup must not block replacement Apply")
     }
     XCTAssertEqual(replacementID, replacement.requestID)
@@ -140,15 +143,131 @@ final class TemporarySimulationAcceptanceTests: XCTestCase {
     guard commands.count == 3, case .clear(let clearID) = commands[1] else {
       return XCTFail("Expected Apply, failed expiry Clear, replacement Apply; got \(commands)")
     }
-    XCTAssertEqual(commands, [
-      .apply(requestID: first.requestID, location: first.location),
-      .clear(requestID: clearID),
-      .apply(requestID: replacement.requestID, location: replacement.location),
-    ])
+    XCTAssertEqual(
+      commands,
+      [
+        .apply(requestID: first.requestID, location: first.location),
+        .clear(requestID: clearID),
+        .apply(requestID: replacement.requestID, location: replacement.location),
+      ])
     let finalLocation = await backend.appliedLocation
     XCTAssertEqual(finalLocation, replacement.location)
     await controller.stopMaintenance()
     await sleeper.resume()
+  }
+
+  func testSupersededApplyRemainsRejectedAfterMoreThanEightLaterApplies() async throws {
+    let clock = TemporarySimulationTestClock(now: Date(timeIntervalSince1970: 20_000))
+    let backend = TemporarySimulationRecordingBackend()
+    let controller = SimulationController(
+      backend: backend, now: { clock.now }, automaticallySchedulesMaintenance: false
+    )
+    let link = try makeLink(controller: controller, clock: clock)
+    _ = await link.connect(to: ControllerService(name: "controller"))
+    var app = ManualSimulationSession()
+    var requests: [ManualSimulationRequest] = []
+    for index in 0..<10 {
+      app.select(try SelectedLocation(latitude: Double(index), longitude: 121))
+      let request = try app.beginApply(requestID: UUID(), at: clock.now)
+      requests.append(request)
+      guard
+        case .applied(let id, let deadline) = await link.apply(
+          requestID: request.requestID,
+          latitude: request.location.latitude, longitude: request.location.longitude
+        )
+      else { return XCTFail("Each new Apply must succeed") }
+      XCTAssertTrue(app.acknowledgeApplied(requestID: id, automaticClearAt: deadline))
+      clock.advance(by: 1)
+    }
+    let first = try XCTUnwrap(requests.first)
+    let active = try XCTUnwrap(app.activeAppliedRequest)
+    let stale = await link.apply(
+      requestID: first.requestID,
+      latitude: first.location.latitude, longitude: first.location.longitude
+    )
+    XCTAssertEqual(stale, .failed(requestID: first.requestID, reason: .timedOut))
+    clock.advance(by: 30)
+    let currentRetry = await link.apply(
+      requestID: active.requestID,
+      latitude: active.location.latitude, longitude: active.location.longitude
+    )
+    XCTAssertEqual(
+      currentRetry,
+      .applied(
+        requestID: active.requestID, automaticClearAt: try XCTUnwrap(active.automaticClearAt))
+    )
+    _ = await link.refresh()
+    let snapshot = await link.currentStatus()
+    XCTAssertEqual(
+      snapshot?.simulation,
+      .active(
+        operationID: active.requestID, latitude: active.location.latitude,
+        longitude: active.location.longitude,
+        automaticClearAt: try XCTUnwrap(active.automaticClearAt)
+      ))
+    let commands = await backend.commands
+    XCTAssertEqual(commands.count, 10, "Neither old nor current retries may replay backend Apply")
+  }
+
+  func testSupersededAcceptedFailedApplyCannotReplayButPreAcceptanceFailureCanRetry() async throws {
+    let clock = TemporarySimulationTestClock(now: Date(timeIntervalSince1970: 20_000))
+    let backend = TemporarySimulationRecordingBackend()
+    let controller = SimulationController(
+      backend: backend, now: { clock.now }, automaticallySchedulesMaintenance: false
+    )
+    let link = try makeLink(controller: controller, clock: clock)
+    _ = await link.connect(to: ControllerService(name: "controller"))
+    var app = ManualSimulationSession(selected: try SelectedLocation(latitude: 31, longitude: 121))
+    let attempted = try app.beginApply(requestID: UUID(), at: clock.now)
+    await backend.setReadiness(.unavailable(.sessionNotReady))
+    let notAccepted = await link.apply(
+      requestID: attempted.requestID,
+      latitude: attempted.location.latitude, longitude: attempted.location.longitude
+    )
+    XCTAssertEqual(notAccepted, .failed(requestID: attempted.requestID, reason: .sessionNotReady))
+    let beforeAcceptance = await backend.commands
+    XCTAssertTrue(beforeAcceptance.isEmpty)
+
+    await backend.setReadiness(.ready)
+    await backend.failNextApply()
+    let acceptedFailure = await link.apply(
+      requestID: attempted.requestID,
+      latitude: attempted.location.latitude, longitude: attempted.location.longitude
+    )
+    XCTAssertEqual(acceptedFailure, .failed(requestID: attempted.requestID, reason: .timedOut))
+    XCTAssertTrue(app.fail(requestID: attempted.requestID, reason: .controllerUnavailable))
+    app.select(try SelectedLocation(latitude: 35, longitude: 139))
+    clock.advance(by: 1)
+    let replacement = try app.beginApply(requestID: UUID(), at: clock.now)
+    guard
+      case .applied(let id, let deadline) = await link.apply(
+        requestID: replacement.requestID,
+        latitude: replacement.location.latitude, longitude: replacement.location.longitude
+      )
+    else { return XCTFail("Replacement must succeed after accepted Apply failure") }
+    XCTAssertTrue(app.acknowledgeApplied(requestID: id, automaticClearAt: deadline))
+
+    clock.advance(by: 30)
+    let stale = await link.apply(
+      requestID: attempted.requestID,
+      latitude: attempted.location.latitude, longitude: attempted.location.longitude
+    )
+    XCTAssertEqual(stale, .failed(requestID: attempted.requestID, reason: .timedOut))
+    _ = await link.refresh()
+    let snapshot = await link.currentStatus()
+    XCTAssertEqual(
+      snapshot?.simulation,
+      .active(
+        operationID: replacement.requestID, latitude: replacement.location.latitude,
+        longitude: replacement.location.longitude, automaticClearAt: deadline
+      ))
+    let commands = await backend.commands
+    XCTAssertEqual(
+      commands,
+      [
+        .apply(requestID: attempted.requestID, location: attempted.location),
+        .apply(requestID: replacement.requestID, location: replacement.location),
+      ])
   }
 
   private func makeLink(
@@ -242,6 +361,8 @@ private final class TemporarySimulationTestClock: @unchecked Sendable {
 private actor TemporarySimulationRecordingBackend: InjectionBackend {
   private(set) var appliedLocation: SelectedLocation?
   private(set) var commands: [InjectionBackendCommand] = []
+  private var currentReadiness: InjectionBackendReadiness = .ready
+  private var failsNextApply = false
   private var holdsNextApply = false
   private var applyHeld = false
   private var applyWaiters: [CheckedContinuation<Void, Never>] = []
@@ -251,14 +372,19 @@ private actor TemporarySimulationRecordingBackend: InjectionBackend {
   private var didClear = false
   private var clearWaiters: [CheckedContinuation<Void, Never>] = []
 
-  func readiness() -> InjectionBackendReadiness {
-    .ready
-  }
+  func readiness() -> InjectionBackendReadiness { currentReadiness }
+
+  func setReadiness(_ readiness: InjectionBackendReadiness) { currentReadiness = readiness }
+  func failNextApply() { failsNextApply = true }
 
   func execute(_ command: InjectionBackendCommand) async -> InjectionBackendResult {
     commands.append(command)
     switch command {
     case .apply(let requestID, let location):
+      if failsNextApply {
+        failsNextApply = false
+        return .failed(requestID: requestID, reason: .timedOut)
+      }
       if holdsNextApply {
         holdsNextApply = false
         applyHeld = true

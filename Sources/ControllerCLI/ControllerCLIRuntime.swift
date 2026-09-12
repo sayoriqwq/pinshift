@@ -145,10 +145,12 @@ public enum ControllerCLIRuntime {
   static func runForegroundSession(
     controller: SimulationController,
     runFor duration: TimeInterval?,
-    stopAcceptingCommands: @escaping @Sendable () async -> Void = {}
+    stopAcceptingCommands: @escaping @Sendable () async -> Void = {},
+    signalHandlersReady: @Sendable () -> Void = {}
   ) async throws {
     let signalWaiter = ControllerTerminationSignalWaiter()
     defer { signalWaiter.cancel() }
+    signalHandlersReady()
     try await runSession(
       controller: controller,
       stopAcceptingCommands: stopAcceptingCommands

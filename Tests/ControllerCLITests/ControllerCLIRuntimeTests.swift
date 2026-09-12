@@ -177,7 +177,15 @@ final class ControllerCLIRuntimeTests: XCTestCase {
       let controller = SimulationController(
         backend: RuntimeFailingClearBackend(), automaticallySchedulesMaintenance: false
       )
-      try await ControllerCLIRuntime.runForegroundSession(controller: controller, runFor: nil)
+      try await ControllerCLIRuntime.runForegroundSession(
+        controller: controller, runFor: nil,
+        stopAcceptingCommands: {
+          FileHandle.standardOutput.write(Data("PINSHIFT_EXIT_CLEANUP_STARTED\n".utf8))
+        },
+        signalHandlersReady: {
+          FileHandle.standardOutput.write(Data("PINSHIFT_SIGNAL_HANDLERS_READY\n".utf8))
+        }
+      )
       return XCTFail("Unacknowledged cleanup must keep the child process alive")
     }
 
@@ -193,11 +201,36 @@ final class ControllerCLIRuntimeTests: XCTestCase {
     process.standardOutput = output
     process.standardError = output
     try process.run()
-    defer { if process.isRunning { process.terminate() } }
+    // Bound both readiness waits even if the child never reaches either handshake.
+    let timeout = Task {
+      try await Task.sleep(for: .seconds(30))
+      if process.isRunning { kill(process.processIdentifier, SIGKILL) }
+    }
+    defer {
+      timeout.cancel()
+      if process.isRunning { kill(process.processIdentifier, SIGKILL) }
+    }
 
-    try await Task.sleep(for: .seconds(1))
+    var handlersReady = false
+    var lines = output.fileHandleForReading.bytes.lines.makeAsyncIterator()
+    while let line = try await lines.next() {
+      if line == "PINSHIFT_SIGNAL_HANDLERS_READY" {
+        handlersReady = true
+        break
+      }
+    }
+    guard handlersReady else {
+      return XCTFail("Child exited before its signal handlers were ready")
+    }
     kill(process.processIdentifier, SIGINT)
-    try await Task.sleep(for: .milliseconds(100))
+    var cleanupStarted = false
+    while let line = try await lines.next() {
+      if line == "PINSHIFT_EXIT_CLEANUP_STARTED" {
+        cleanupStarted = true
+        break
+      }
+    }
+    XCTAssertTrue(cleanupStarted, "First signal must reach shutdown cleanup")
     XCTAssertTrue(process.isRunning, "A failed normal exit must remain in the foreground")
     kill(process.processIdentifier, SIGINT)
     for _ in 0..<100 where process.isRunning {
@@ -207,9 +240,10 @@ final class ControllerCLIRuntimeTests: XCTestCase {
       kill(process.processIdentifier, SIGKILL)
       return XCTFail("Explicit force exit must finish without waiting for cleanup")
     }
-    let text = String(decoding: output.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
-    XCTAssertEqual(process.terminationStatus, 1)
-    XCTAssertTrue(text.contains("Forced exit: cleanup is unconfirmed"))
+    var text = ""
+    while let line = try await lines.next() { text += line + "\n" }
+    XCTAssertEqual(process.terminationStatus, 1, text)
+    XCTAssertTrue(text.contains("Forced exit: cleanup is unconfirmed"), text)
   }
 
   func testNormalExitRetriesUntilAcknowledgedWithBoundedBackoff() async throws {
