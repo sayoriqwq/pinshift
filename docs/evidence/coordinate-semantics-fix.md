@@ -51,10 +51,15 @@ On the owner's iPhone, the signed app was installed in place and launched on 202
 
 These are separate runs, not one uninterrupted full-suite execution. Public fixtures use a public landmark reference/search location, without device identifiers or session logs. Raw diagnostics, screenshots, build logs and result bundles stay local.
 
+## Post-fix physical B result
+
+On 2026-09-13 at approximately 00:54 CST, the owner selected B, confirmed its original WGS84 source, and applied it. Private App/Mac records correlate the same operation: the saved original value, selection, received request, backend arguments and fresh software-simulated sample agree numerically; the new sample arrived 0.738 seconds after the request. The saved collection is now version 2 and records B's WGS84 interpretation while retaining the original value.
+
+The owner's 00:54 Pinshift and 00:55 QQ screenshots both show the Oriental Pearl landmark vicinity. Pinshift no longer draws B in the river. This passes B's landmark-level display/cross-app check in the current environment. Different zoom/markers and QQ's “within 100 m” label do not measure residual error; no metre-level accuracy is claimed. Screenshots and operation identifiers remain private.
+
 ## Remaining owner acceptance
 
 1. Choose saved **A** and confirm its original Shanghai-map source. Apply, then compare Pinshift's landmark with QQ automatic positioning during the same operation.
-2. Choose saved **B** and confirm **WGS84 / independent reference**. Apply and compare again. Both apps should show the same landmark vicinity; the search POI and building reference need not be the exact same point.
-3. Repeat with a nearby Shanghai landmark and a non-mainland control, correlating each operation with a fresh sample. Record residual discrepancy rather than claiming five-metre accuracy.
+2. Repeat with a nearby Shanghai landmark and a non-mainland control, correlating each operation with a fresh sample. Record residual discrepancy rather than claiming five-metre accuracy.
 
-The post-fix cross-app checks remain pending. #21 and #23 stay open. Passing numeric/unit checks and successful installation do not close those physical evidence gaps.
+A, the nearby landmark and non-mainland post-fix physical controls remain pending. #21 and #23 stay open. Passing numeric/unit checks and successful installation do not close those physical evidence gaps.
