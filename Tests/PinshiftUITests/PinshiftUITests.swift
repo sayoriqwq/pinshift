@@ -1453,7 +1453,7 @@ final class PinshiftUITests: XCTestCase {
     openSettings(in: app)
     scrollToTop(in: app)
     let selectedLatitude = app.staticTexts["selected-latitude"]
-    scrollUp(until: selectedLatitude, in: app)
+    scrollUpInSmallSteps(until: selectedLatitude, in: app)
     XCTAssertTrue(selectedLatitude.waitForExistence(timeout: 5))
     XCTAssertTrue(
       selectedLatitude.label.hasSuffix(String(format: "%.6f", coordinate.latitude))
@@ -1464,7 +1464,7 @@ final class PinshiftUITests: XCTestCase {
       selectedLongitude.label.hasSuffix(String(format: "%.6f", coordinate.longitude))
     )
     let selectionSource = app.staticTexts["selection-source"]
-    scrollUp(until: selectionSource, in: app)
+    scrollUpInSmallSteps(until: selectionSource, in: app)
     XCTAssertTrue(selectionSource.waitForExistence(timeout: 5))
     XCTAssertTrue(selectionSource.label.hasSuffix(source))
   }
