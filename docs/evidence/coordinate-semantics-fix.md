@@ -57,9 +57,12 @@ On 2026-09-13 at approximately 00:54 CST, the owner selected B, confirmed its or
 
 The owner's 00:54 Pinshift and 00:55 QQ screenshots both show the Oriental Pearl landmark vicinity. Pinshift no longer draws B in the river. This passes B's landmark-level display/cross-app check in the current environment. Different zoom/markers and QQ's “within 100 m” label do not measure residual error; no metre-level accuracy is claimed. Screenshots and operation identifiers remain private.
 
+## Post-fix physical A result
+
+On 2026-09-13 at approximately 01:00 CST, the owner's A screenshots also show both apps at the Oriental Pearl vicinity. Private saved data confirms the legacy map value was normalized with `verifiedShanghai` and the original retained. Same-operation records agree across selection, received request, backend arguments and a fresh software-simulated sample arriving 0.485 seconds after the request; the maximum numeric difference was below 0.001 m (backend encoding), not a measurement of geographic accuracy. A therefore passes the landmark-level legacy-map-input check, complementing B's WGS84-input/display check.
+
 ## Remaining owner acceptance
 
-1. Choose saved **A** and confirm its original Shanghai-map source. Apply, then compare Pinshift's landmark with QQ automatic positioning during the same operation.
-2. Repeat with a nearby Shanghai landmark and a non-mainland control, correlating each operation with a fresh sample. Record residual discrepancy rather than claiming five-metre accuracy.
+Repeat with a newly searched nearby Shanghai landmark and a non-mainland control, correlating each operation with a fresh sample. Record residual discrepancy rather than claiming five-metre accuracy.
 
-A, the nearby landmark and non-mainland post-fix physical controls remain pending. #21 and #23 stay open. Passing numeric/unit checks and successful installation do not close those physical evidence gaps.
+The nearby landmark and non-mainland post-fix physical controls remain pending. #21 and #23 stay open. Passing numeric/unit checks and successful installation do not close those physical evidence gaps.
