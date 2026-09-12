@@ -46,7 +46,7 @@ On the owner's iPhone, the signed app was installed in place and launched on 202
 - Location domain: 44 existing tests and 7 new coordinate/migration checks passed. New checks cover map input, output, public landmark correspondence, WGS84/non-Shanghai controls, 100 map round-trips, supported-area edges, mixed legacy sources and recoverable draft migration.
 - Other Swift packages: 136 existing tests passed in the broader run. That run initially exposed a legacy draft decoder failure; the final location-domain run passed after fixing it.
 - App integration: three tests passed against the real MapKit-result adapter, BaselineViewModel and file stores. They cover search → selection → Apply request → save → relaunch, reversible legacy repair, and prevention of overwriting an unreadable collection.
-- UI: legacy confirmation, cancellation and selection across relaunch passed. Final map-drag and return-to-current regression results are recorded below when available.
+- UI: three regressions passed: legacy confirmation/cancellation/selection across relaunch, map drag changing selection only, and return to current location without reapplying.
 - Signed physical iPhone build, in-place install, launch and private migration read-back passed.
 
 These are separate runs, not one uninterrupted full-suite execution. Public fixtures use a public landmark reference/search location, without device identifiers or session logs. Raw diagnostics, screenshots, build logs and result bundles stay local.
