@@ -81,6 +81,43 @@ final class PinshiftUITests: XCTestCase {
     XCTAssertTrue(matchStatus.waitForExistence(timeout: 5))
   }
 
+  func testLegacySavedCoordinatesRequireSourceConfirmationBeforeSelection() {
+    let app = pinshiftApp()
+    let id = UUID().uuidString
+    app.launchEnvironment["PINSHIFT_E2E_LOCATION_PERMISSION"] = "allowed"
+    app.launchEnvironment["PINSHIFT_E2E_LOCAL_NETWORK_PERMISSION"] = "allowed"
+    app.launchEnvironment["PINSHIFT_E2E_SAVED_LOCATIONS_RESET_TOKEN"] = UUID().uuidString
+    app.launchEnvironment["PINSHIFT_E2E_LEGACY_SAVED_FIXTURE"] = """
+      {"version":1,"locations":[{"id":"\(id)","name":"Legacy reference","coordinate":{"latitude":31.2419382,"longitude":121.4951673}}]}
+      """
+    app.launch()
+    let choose = app.buttons["saved-location-select-\(id)"].firstMatch
+    XCTAssertTrue(choose.waitForExistence(timeout: 10))
+    let selectedName = app.staticTexts["selected-location-name"]
+    let initialName = selectedName.exists ? selectedName.label : ""
+    choose.tap()
+    let confirmWGS84 = app.buttons["Already WGS84 / independent reference"]
+    XCTAssertTrue(confirmWGS84.waitForExistence(timeout: 5))
+    // iOS 27 presents a popover without a Cancel row; tapping outside cancels.
+    app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap()
+    XCTAssertFalse(confirmWGS84.exists)
+    XCTAssertEqual(selectedName.exists ? selectedName.label : "", initialName)
+    choose.tap()
+    XCTAssertTrue(confirmWGS84.waitForExistence(timeout: 5))
+    confirmWGS84.tap()
+    XCTAssertTrue(
+      waitForLabel(app.staticTexts["selected-location-name"], equalTo: "Legacy reference"))
+    XCTAssertFalse(app.buttons["back-to-current-location"].exists)
+    app.terminate()
+    app.launch()
+    let savedAfterRelaunch = app.buttons["saved-location-select-\(id)"].firstMatch
+    XCTAssertTrue(savedAfterRelaunch.waitForExistence(timeout: 10))
+    savedAfterRelaunch.tap()
+    XCTAssertFalse(confirmWGS84.exists)
+    XCTAssertTrue(
+      waitForLabel(app.staticTexts["selected-location-name"], equalTo: "Legacy reference"))
+  }
+
   func testPinshiftMapFirstHomeKeepsSecondaryToolsInSettings() {
     let app = selectedLocationFixtureApp()
     app.launchEnvironment["PINSHIFT_E2E_LOCATION_PERMISSION"] = "allowed"

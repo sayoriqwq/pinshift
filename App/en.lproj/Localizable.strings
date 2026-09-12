@@ -178,3 +178,15 @@
 "Run pinshift on your Mac to check the app signature and renew it when needed. Follow the Mac instructions if Apple sign-in or iPhone confirmation is required." = "Run pinshift on your Mac to check the app signature and renew it when needed. Follow the Mac instructions if Apple sign-in or iPhone confirmation is required.";
 
 "Save this place" = "Save this place";
+
+"Map coordinate alignment" = "Map coordinate alignment";
+"Verified Shanghai map" = "Verified Shanghai map";
+"WGS84 map" = "WGS84 map";
+"Shanghai alignment corrects map input and display only within 30.7–31.6° N, 120.9–122.0° E. Outside this area coordinates pass through unchanged. Choose WGS84 if the map provider changes. Entered coordinates and saved values are WGS84." = "Shanghai alignment corrects map input and display only within 30.7–31.6° N, 120.9–122.0° E. Outside this area coordinates pass through unchanged. Choose WGS84 if the map provider changes. Entered coordinates and saved values are WGS84.";
+"Coordinate conversion notices" = "Coordinate conversion notices";
+"Confirm saved coordinate source" = "Confirm saved coordinate source";
+"Originally chosen on the Shanghai map" = "Originally chosen on the Shanghai map";
+"Already WGS84 / independent reference" = "Already WGS84 / independent reference";
+"Older saved locations have no coordinate source. Confirm the original source before choosing. Original values are retained; you can change this choice in More. Nothing is applied automatically." = "Older saved locations have no coordinate source. Confirm the original source before choosing. Original values are retained; you can change this choice in More. Nothing is applied automatically.";
+"Coordinate source needs confirmation" = "Coordinate source needs confirmation";
+"Enter WGS84 coordinates" = "Enter WGS84 coordinates";

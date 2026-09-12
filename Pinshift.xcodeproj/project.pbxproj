@@ -10,8 +10,10 @@
 		15953420A837293C53A8CAB9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 559DB6E0E2CD26084FB7E526 /* ContentView.swift */; };
 		1BE44D9D19EAE01B24350C31 /* LocationPickerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAB0E8F3CD5BA3E65B28DEAB /* LocationPickerViewModel.swift */; };
 		1EF3B39FB66C61C7ABD4F745 /* Pairing.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7B5C926E3E85E459AEA4B7E /* Pairing.swift */; };
+		200EFF6276EFCF41F556249F /* CoordinateBoundaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D37AD7DA1CEA5E0DC18D5A45 /* CoordinateBoundaryTests.swift */; };
 		3C149C84D989BB81128F8353 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 82D0E69E60C7C72AEA5FB7A7 /* Localizable.strings */; };
 		4704AB4A9FF03F17ADA2A6C7 /* ControllerServerSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318A64B1CDE67C93D86DAED5 /* ControllerServerSession.swift */; };
+		48D03D6698C6066279C56D29 /* MapCoordinateBoundary.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD891953BC6815AB6EAB8DF /* MapCoordinateBoundary.swift */; };
 		4FDAA9B835DD2EB3EF430BDC /* PinshiftApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F221E02F577319085D683B02 /* PinshiftApp.swift */; };
 		50CA543709A8AA655927CC35 /* NetworkControllerLinkTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C36A1722A694C247499910E /* NetworkControllerLinkTransport.swift */; };
 		5A4DF40BE4A512E84E7C9B98 /* ControllerAuthorization.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0A93517ECCC69F00028C27 /* ControllerAuthorization.swift */; };
@@ -20,6 +22,7 @@
 		5FF00F781C76C18F0E887B28 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = BD2A7C4D3C499825A8E361E6 /* InfoPlist.strings */; };
 		700BD25D6DCB7E7ACBBD178A /* SimulationDiagnosticsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2761D347293149A6DB5A2229 /* SimulationDiagnosticsViewModel.swift */; };
 		72C1C57A40F4DF4CCE3362CB /* ControllerIdentitySecurity.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBDA4F56E5AEE0A196394911 /* ControllerIdentitySecurity.swift */; };
+		736ED2592A38ED44B24260D8 /* ThirdPartyNotices.txt in Resources */ = {isa = PBXBuildFile; fileRef = 8EEC83CF97ADE717B1727187 /* ThirdPartyNotices.txt */; };
 		7E74EC276731C3AE2FC91855 /* ActionButtonLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C6AF1791B17E4CB78F06DD3 /* ActionButtonLabel.swift */; };
 		7F3E0A61E16505138F2B9D43 /* TLSControllerServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8849994E5324F1A9101F4BA8 /* TLSControllerServer.swift */; };
 		906F405A80453E17B60025E1 /* LocationPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63BA287725671E9F8A3B7E21 /* LocationPickerView.swift */; };
@@ -50,6 +53,13 @@
 			remoteGlobalIDString = B7021D3DBB60E7F32EBA6E61;
 			remoteInfo = Pinshift;
 		};
+		B19A919BCEF7F433AC3E413B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1FCECCEB795F522793D12CCE /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B7021D3DBB60E7F32EBA6E61;
+			remoteInfo = Pinshift;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
@@ -62,6 +72,7 @@
 		2C36A1722A694C247499910E /* NetworkControllerLinkTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkControllerLinkTransport.swift; sourceTree = "<group>"; };
 		318A64B1CDE67C93D86DAED5 /* ControllerServerSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerServerSession.swift; sourceTree = "<group>"; };
 		384FBF121EC8EF6D8DA1CF20 /* BaselineViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaselineViewModel.swift; sourceTree = "<group>"; };
+		3FF12D26019F9588D1A32019 /* PinshiftTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PinshiftTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4A0B0F10BFB0FCD59E64C31F /* LocationDomain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationDomain.swift; sourceTree = "<group>"; };
 		505FEFAF432894313B0FF079 /* ControllerLinkViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerLinkViewModel.swift; sourceTree = "<group>"; };
 		559DB6E0E2CD26084FB7E526 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -74,11 +85,14 @@
 		84F131553411B25C82BE6E51 /* PinshiftControllerLinkUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinshiftControllerLinkUITests.swift; sourceTree = "<group>"; };
 		8849994E5324F1A9101F4BA8 /* TLSControllerServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TLSControllerServer.swift; sourceTree = "<group>"; };
 		89025DEC3CF68412744EC94C /* BonjourControllerDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BonjourControllerDiscovery.swift; sourceTree = "<group>"; };
+		8EEC83CF97ADE717B1727187 /* ThirdPartyNotices.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = ThirdPartyNotices.txt; sourceTree = "<group>"; };
 		98B80186C2885AC72A31379A /* ControllerTrust.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerTrust.swift; sourceTree = "<group>"; };
+		ADD891953BC6815AB6EAB8DF /* MapCoordinateBoundary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapCoordinateBoundary.swift; sourceTree = "<group>"; };
 		AF9C95CECF2193B56008FE4F /* PinshiftDesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinshiftDesignSystem.swift; sourceTree = "<group>"; };
 		B12AADD1AA55A09BE8D2B5B8 /* TrustedControllerLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrustedControllerLink.swift; sourceTree = "<group>"; };
 		BD2A7C4D3C499825A8E361E6 /* InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = InfoPlist.strings; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		C5D97EE47241D82050A36675 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
+		D37AD7DA1CEA5E0DC18D5A45 /* CoordinateBoundaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoordinateBoundaryTests.swift; sourceTree = "<group>"; };
 		D7B5C926E3E85E459AEA4B7E /* Pairing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pairing.swift; sourceTree = "<group>"; };
 		D95CB9D282C35DFE3BECF170 /* PinshiftUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinshiftUITests.swift; sourceTree = "<group>"; };
 		DA0A93517ECCC69F00028C27 /* ControllerAuthorization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerAuthorization.swift; sourceTree = "<group>"; };
@@ -108,6 +122,7 @@
 				4A0B0F10BFB0FCD59E64C31F /* LocationDomain.swift */,
 				5FF167419CFAFE19700BEA9E /* LocationSelectionState.swift */,
 				E51D096596A719DB7E3FE6E9 /* ManualSimulationSession.swift */,
+				ADD891953BC6815AB6EAB8DF /* MapCoordinateBoundary.swift */,
 				FC6769CE9F8E503B07026CE1 /* SavedLocation.swift */,
 			);
 			path = LocationDomain;
@@ -119,6 +134,14 @@
 				C5D97EE47241D82050A36675 /* Signing.xcconfig */,
 			);
 			path = Config;
+			sourceTree = "<group>";
+		};
+		623880CE07556F931D0D3D68 /* PinshiftTests */ = {
+			isa = PBXGroup;
+			children = (
+				D37AD7DA1CEA5E0DC18D5A45 /* CoordinateBoundaryTests.swift */,
+			);
+			path = PinshiftTests;
 			sourceTree = "<group>";
 		};
 		83804A800B27FC09E5477E90 = {
@@ -173,6 +196,7 @@
 			isa = PBXGroup;
 			children = (
 				1BEF6C45ADAEA560937FB9C0 /* Pinshift.app */,
+				3FF12D26019F9588D1A32019 /* PinshiftTests.xctest */,
 				258B3ECCA6FC250DA2F0EE36 /* PinshiftUITests.xctest */,
 			);
 			name = Products;
@@ -181,6 +205,7 @@
 		BD169F5E62B64595CC5B706E /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				623880CE07556F931D0D3D68 /* PinshiftTests */,
 				CE8E870F87171BD4C884C277 /* PinshiftUITests */,
 			);
 			path = Tests;
@@ -204,7 +229,6 @@
 				559DB6E0E2CD26084FB7E526 /* ContentView.swift */,
 				505FEFAF432894313B0FF079 /* ControllerLinkViewModel.swift */,
 				BD2A7C4D3C499825A8E361E6 /* InfoPlist.strings */,
-				82D0E69E60C7C72AEA5FB7A7 /* Localizable.strings */,
 				E67F3879FD8D45AA7CB0A39E /* LocationObserver.swift */,
 				63BA287725671E9F8A3B7E21 /* LocationPickerView.swift */,
 				EAB0E8F3CD5BA3E65B28DEAB /* LocationPickerViewModel.swift */,
@@ -213,6 +237,8 @@
 				621696227B4DB33F21A65072 /* SavedLocationStore.swift */,
 				DF7F8780E733910149967CFD /* SimulationDiagnosticPipeline.swift */,
 				2761D347293149A6DB5A2229 /* SimulationDiagnosticsViewModel.swift */,
+				8EEC83CF97ADE717B1727187 /* ThirdPartyNotices.txt */,
+				82D0E69E60C7C72AEA5FB7A7 /* Localizable.strings */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -256,6 +282,24 @@
 			productReference = 1BEF6C45ADAEA560937FB9C0 /* Pinshift.app */;
 			productType = "com.apple.product-type.application";
 		};
+		E3A124DAE1EE8A39807B6510 /* PinshiftTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A0B1181BC1F1EE1BCB417860 /* Build configuration list for PBXNativeTarget "PinshiftTests" */;
+			buildPhases = (
+				F40E08BBA8BB276B4915E3DF /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4098D1075C1FCBD881E2A8A3 /* PBXTargetDependency */,
+			);
+			name = PinshiftTests;
+			packageProductDependencies = (
+			);
+			productName = PinshiftTests;
+			productReference = 3FF12D26019F9588D1A32019 /* PinshiftTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -275,7 +319,6 @@
 				};
 			};
 			buildConfigurationList = BDA9AE46892FB557F5606D45 /* Build configuration list for PBXProject "Pinshift" */;
-			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -286,10 +329,12 @@
 			mainGroup = 83804A800B27FC09E5477E90;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
+			productRefGroup = B2314D0251BC6CAEE2A734AC /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				B7021D3DBB60E7F32EBA6E61 /* Pinshift */,
+				E3A124DAE1EE8A39807B6510 /* PinshiftTests */,
 				ACDEDCF5A1FDC6D873AABB92 /* PinshiftUITests */,
 			);
 		};
@@ -303,6 +348,7 @@
 				E6426BC63774B81D4E97AEE2 /* Assets.xcassets in Resources */,
 				5FF00F781C76C18F0E887B28 /* InfoPlist.strings in Resources */,
 				3C149C84D989BB81128F8353 /* Localizable.strings in Resources */,
+				736ED2592A38ED44B24260D8 /* ThirdPartyNotices.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -339,6 +385,7 @@
 				1BE44D9D19EAE01B24350C31 /* LocationPickerViewModel.swift in Sources */,
 				FD1C1C01CCED6EAD5B86DB00 /* LocationSelectionState.swift in Sources */,
 				ECC58FBFA23EA8CD7DEB58B5 /* ManualSimulationSession.swift in Sources */,
+				48D03D6698C6066279C56D29 /* MapCoordinateBoundary.swift in Sources */,
 				50CA543709A8AA655927CC35 /* NetworkControllerLinkTransport.swift in Sources */,
 				1EF3B39FB66C61C7ABD4F745 /* Pairing.swift in Sources */,
 				4FDAA9B835DD2EB3EF430BDC /* PinshiftApp.swift in Sources */,
@@ -353,9 +400,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		F40E08BBA8BB276B4915E3DF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				200EFF6276EFCF41F556249F /* CoordinateBoundaryTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		4098D1075C1FCBD881E2A8A3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B7021D3DBB60E7F32EBA6E61 /* Pinshift */;
+			targetProxy = B19A919BCEF7F433AC3E413B /* PBXContainerItemProxy */;
+		};
 		783458BEC801CD85204BF0E7 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = B7021D3DBB60E7F32EBA6E61 /* Pinshift */;
@@ -518,6 +578,23 @@
 			};
 			name = Debug;
 		};
+		C7EB265055ABB16A66FD2084 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.sayori.pinshift.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Pinshift.app/Pinshift";
+			};
+			name = Release;
+		};
 		EAEE1A7F27E802A96255B8E2 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -581,6 +658,23 @@
 			};
 			name = Debug;
 		};
+		F618CDE2DF6C54E1F701C92E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.sayori.pinshift.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Pinshift.app/Pinshift";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -598,6 +692,15 @@
 			buildConfigurations = (
 				BC1585A7CF2AB4B64536DC8C /* Debug */,
 				99337C34C65F383FD5C8A51F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A0B1181BC1F1EE1BCB417860 /* Build configuration list for PBXNativeTarget "PinshiftTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F618CDE2DF6C54E1F701C92E /* Debug */,
+				C7EB265055ABB16A66FD2084 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

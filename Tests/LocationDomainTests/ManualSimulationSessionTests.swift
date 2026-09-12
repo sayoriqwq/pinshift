@@ -338,7 +338,7 @@ final class ManualSimulationSessionTests: XCTestCase {
     XCTAssertEqual(session.clearStatus, .clearing(requestID: clear.requestID))
   }
 
-  func testLegacyPendingStopIsDiscardedWhileSelectionSurvivesRelaunch() throws {
+  func testLegacyControlAndAmbiguousDraftAreDiscardedWithRecoverableBackup() throws {
     let directory = FileManager.default.temporaryDirectory
       .appendingPathComponent("pinshift-app-migration-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: directory) }
@@ -361,16 +361,16 @@ final class ManualSimulationSessionTests: XCTestCase {
     try Data(legacy.utf8).write(to: file)
 
     let restored = try XCTUnwrap(FileManualSimulationSessionStore(fileURL: file).load())
+    XCTAssertNil(restored.selected)
     XCTAssertEqual(
-      restored.selected,
-      try SelectedLocation(latitude: 31.2304, longitude: 121.4737)
-    )
+      try Data(contentsOf: file.appendingPathExtension("before-coordinate-migration")),
+      Data(legacy.utf8))
     XCTAssertNil(restored.activeAppliedRequest)
     XCTAssertEqual(restored.clearStatus, .idle)
     let migrated = try XCTUnwrap(
       JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any]
     )
-    XCTAssertEqual(migrated["schemaVersion"] as? Int, 2)
+    XCTAssertEqual(migrated["schemaVersion"] as? Int, 3)
     XCTAssertNil(migrated["session"])
   }
 }

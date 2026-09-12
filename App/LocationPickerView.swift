@@ -5,13 +5,28 @@ import SwiftUI
 struct LocationPickerView: View {
   let selected: SelectedLocation?
   let applied: SelectedLocation?
+  let boundary: MapCoordinateBoundary
   @Binding var searchFocused: Bool
   let onSelect: (SelectedLocation, LocationSelectionSource, String?) -> Void
-  @StateObject private var searchModel = LocationPickerViewModel.homeSearcher()
+  @StateObject private var searchModel: LocationPickerViewModel
   @State private var lastMapSelection: SelectedLocation?
   @State private var cameraPosition: MapCameraPosition = .automatic
   @FocusState private var fieldFocused: Bool
   @Environment(\.locale) private var locale
+
+  init(
+    selected: SelectedLocation?, applied: SelectedLocation?, boundary: MapCoordinateBoundary,
+    searchFocused: Binding<Bool>,
+    onSelect: @escaping (SelectedLocation, LocationSelectionSource, String?) -> Void
+  ) {
+    self.selected = selected
+    self.applied = applied
+    self.boundary = boundary
+    self._searchFocused = searchFocused
+    self.onSelect = onSelect
+    self._searchModel = StateObject(
+      wrappedValue: LocationPickerViewModel.homeSearcher(boundary: boundary))
+  }
 
   var body: some View {
     Map(position: $cameraPosition) {
@@ -24,16 +39,17 @@ struct LocationPickerView: View {
       // Programmatic search/saved recentering must never round-trip MapKit's
       // projected center back into the full-precision selected coordinate.
       guard cameraPosition.positionedByUser,
-        let location = try? SelectedLocation(
+        let location = try? MapLocationCoordinate(
           latitude: context.region.center.latitude,
           longitude: context.region.center.longitude
         )
       else { return }
-      lastMapSelection = location
+      let normalized = boundary.selection(fromMap: location)
+      lastMapSelection = normalized
       // Consume the user movement. Later safe-area/layout changes are not
       // additional selections merely because the last movement was a gesture.
       cameraPosition = .camera(context.camera)
-      onSelect(location, .map, nil)
+      onSelect(normalized, .map, nil)
     }
     .onChange(of: selected, initial: true) { _, location in
       guard let location, location != lastMapSelection else { return }
@@ -151,6 +167,7 @@ struct LocationPickerView: View {
 
   private func localized(_ key: String) -> String { AppLocalization.string(key, locale: locale) }
   private func coordinate(_ location: SelectedLocation) -> CLLocationCoordinate2D {
-    CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude)
+    let mapped = boundary.mapCoordinate(for: location)
+    return CLLocationCoordinate2D(latitude: mapped.latitude, longitude: mapped.longitude)
   }
 }

@@ -22,32 +22,39 @@ protocol LocationSearching {
 }
 
 struct MapKitLocationSearcher: LocationSearching {
+  let boundary: MapCoordinateBoundary
+
+  init(boundary: MapCoordinateBoundary = .verifiedShanghai) {
+    self.boundary = boundary
+  }
   func search(query: String) async throws -> [LocationSearchResult] {
     let request = MKLocalSearch.Request()
     request.naturalLanguageQuery = query
     request.resultTypes = [.address, .pointOfInterest]
     let response = try await MKLocalSearch(request: request).start()
 
-    return response.mapItems.prefix(10).compactMap { item in
-      let coordinate = item.placemark.coordinate
-      guard
-        let location = try? SelectedLocation(
-          latitude: coordinate.latitude,
-          longitude: coordinate.longitude
-        )
-      else {
-        return nil
-      }
-      let name = item.name ?? item.placemark.title ?? "Unnamed Place"
-      let placemarkTitle = item.placemark.title
-      let detail = placemarkTitle == name ? nil : placemarkTitle
-      return LocationSearchResult(
-        id: "\(coordinate.latitude),\(coordinate.longitude),\(name)",
-        name: name,
-        detail: detail,
-        location: location
+    return response.mapItems.prefix(10).compactMap { result(for: $0) }
+  }
+
+  func result(for item: MKMapItem) -> LocationSearchResult? {
+    let coordinate = item.placemark.coordinate
+    guard
+      let location = try? MapLocationCoordinate(
+        latitude: coordinate.latitude,
+        longitude: coordinate.longitude
       )
+    else {
+      return nil
     }
+    let name = item.name ?? item.placemark.title ?? "Unnamed Place"
+    let placemarkTitle = item.placemark.title
+    let detail = placemarkTitle == name ? nil : placemarkTitle
+    return LocationSearchResult(
+      id: "\(coordinate.latitude),\(coordinate.longitude),\(name)",
+      name: name,
+      detail: detail,
+      location: boundary.selection(fromMap: location)
+    )
   }
 }
 
@@ -93,13 +100,13 @@ final class LocationPickerViewModel: ObservableObject {
     self.searcher = searcher
   }
 
-  static func homeSearcher() -> LocationPickerViewModel {
+  static func homeSearcher(boundary: MapCoordinateBoundary) -> LocationPickerViewModel {
     #if DEBUG
       if ProcessInfo.processInfo.environment["PINSHIFT_E2E_SEARCH_FIXTURE"] == "1" {
         return LocationPickerViewModel(searcher: FixtureLocationSearcher())
       }
     #endif
-    return LocationPickerViewModel()
+    return LocationPickerViewModel(searcher: MapKitLocationSearcher(boundary: boundary))
   }
 
   func cancel() {
