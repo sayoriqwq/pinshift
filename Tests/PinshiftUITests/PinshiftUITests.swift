@@ -610,6 +610,7 @@ final class PinshiftUITests: XCTestCase {
     let inactive = app.staticTexts.matching(identifier: "simulation-status")
       .matching(NSPredicate(format: "label == %@", "Selected — waiting to apply"))
       .firstMatch
+    scrollUpInSmallSteps(until: inactive, in: app)
     XCTAssertTrue(inactive.waitForExistence(timeout: 5))
     openSettings(in: app)
     scrollToTop(in: app)
