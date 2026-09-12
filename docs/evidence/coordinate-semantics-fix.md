@@ -6,9 +6,9 @@
 
 The owner's original landmark A/B experiment found a geographic mismatch despite numerically identical App, Mac and fresh software-location values. An independent WGS84 reference appeared at the landmark in QQ but in the river on Pinshift's map. A MapKit search value produced the opposite mismatch. That evidence identifies the map ingress/egress boundary in this environment; it is not a universal statement about MapKit or other apps.
 
-The default **Verified Shanghai map** mode applies an approximate GCJ-02 transformation in the verified working area (WGS84 latitude 30.7–31.6, longitude 120.9–122.0). It normalizes map input to WGS84 and projects WGS84 values for map display. Inverse lookup includes the slightly displaced image of that area, so map values crossing its numeric bounds still round-trip. Coordinates outside the area pass through. The narrow area is an explicit support limit, not a mainland-China boundary or a fixed offset fitted to one landmark. Other mainland areas and the transition outside this area remain unverified.
+The internal verified Shanghai map adapter applies an approximate GCJ-02 transformation in the verified working area (WGS84 latitude 30.7–31.6, longitude 120.9–122.0). It normalizes map input to WGS84 and projects WGS84 values for map display. Inverse lookup includes the slightly displaced image of that area, so map values crossing its numeric bounds still round-trip. Coordinates outside the area pass through. The narrow area is an explicit support limit, not a mainland-China boundary or a fixed offset fitted to one landmark. Other mainland areas and the transition outside this area remain unverified.
 
-**More → Map coordinate alignment → WGS84 map** disables the conversion for an environment whose map already uses WGS84. Changing this setting recreates the map/search presentation but does not rewrite the selected coordinate, saved values or active simulation. The implementation does not infer a map provider from the user's language, SIM, IP address or injected location. If the provider/environment changes, select the appropriate mode and repeat landmark acceptance.
+The app chooses its map adapter internally for the supported personal environment. There is no coordinate-system picker or bookmark-source choice. It does not infer a provider from language, SIM, IP address or the injected location; a provider/environment change requires a new engineering validation rather than a user-facing technical setting.
 
 | Entry or output | Treatment |
 | --- | --- |
@@ -28,13 +28,7 @@ The transform adapts the BSD-licensed [eviltransform implementation](https://git
 
 Saved collection version 2 marks new values as WGS84. Version 1 values remain unchanged and decode as `legacyUnknown`; names, identities and order survive. Reading an ambiguous collection creates `saved-locations.json.before-coordinate-migration` before any rewrite. A failed read or backup cannot be bypassed by saving the view model's empty fallback.
 
-Choosing an old bookmark asks for its original source:
-
-- **Originally chosen on the Shanghai map** normalizes the original map value.
-- **Already WGS84 / independent reference** retains the original value.
-- Cancel leaves selection and storage unchanged. If the source is unknown, cancel and search/select the place again, then save it under a new name.
-
-A repaired record retains both its original value and the chosen interpretation. Its globe button in More allows another confirmation. Every repair starts from the original value, so repeated confirmation cannot double-convert a bookmark; choosing WGS84 again restores its original numbers. Save failures leave the collection and selection unchanged. These actions never apply a simulation.
+Previously confirmed WGS84 bookmarks (including the owner's A/B acceptance records) remain usable without any prompt. An ambiguous older bookmark instead asks the user to choose the place again on the map or through search, then explicitly **Update bookmark**. This preserves its name, identity, order and original value. Cancellation or a failed save leaves the bookmark unchanged; no simulation is applied. The source-selection UI and its globe button have been removed. Existing interpretation metadata is still decoded for compatibility with the acceptance build, but is not presented as a product choice.
 
 Older persisted drafts also lack coordinate provenance. Their original file is retained as `session.json.before-coordinate-migration`, and the WGS84 draft schema becomes version 3. The ambiguous draft is not restored as a new WGS84 selection. A new selection remains available, and no old control state is restored.
 
@@ -61,8 +55,8 @@ The owner's 00:54 Pinshift and 00:55 QQ screenshots both show the Oriental Pearl
 
 On 2026-09-13 at approximately 01:00 CST, the owner's A screenshots also show both apps at the Oriental Pearl vicinity. Private saved data confirms the legacy map value was normalized with `verifiedShanghai` and the original retained. Same-operation records agree across selection, received request, backend arguments and a fresh software-simulated sample arriving 0.485 seconds after the request; the maximum numeric difference was below 0.001 m (backend encoding), not a measurement of geographic accuracy. A therefore passes the landmark-level legacy-map-input check, complementing B's WGS84-input/display check.
 
-## Remaining owner acceptance
+## Acceptance scope accepted by the owner
 
-Repeat with a newly searched nearby Shanghai landmark and a non-mainland control, correlating each operation with a fresh sample. Record residual discrepancy rather than claiming five-metre accuracy.
+The owner declined further detailed physical testing after A/B passed. Nearby-landmark and non-mainland physical controls were not run, and remain evidence limits rather than requested next steps. No five-metre or universal regional guarantee is claimed. #21 and #23 are not closed by this change.
 
-The nearby landmark and non-mainland post-fix physical controls remain pending. #21 and #23 stay open. Passing numeric/unit checks and successful installation do not close those physical evidence gaps.
+After that decision, the coordinate-mode and bookmark-source selectors were removed. The existing coordinate regressions passed again; the replacement bookmark-update flow is checked by focused App/UI tests before delivery.

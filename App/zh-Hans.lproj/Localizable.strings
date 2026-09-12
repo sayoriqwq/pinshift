@@ -325,14 +325,10 @@
 
 "Save this place" = "收藏此地";
 
-"Map coordinate alignment" = "地图坐标对齐";
-"Verified Shanghai map" = "已验证的上海地图";
-"WGS84 map" = "WGS84 地图";
-"Shanghai alignment corrects map input and display only within 30.7–31.6° N, 120.9–122.0° E. Outside this area coordinates pass through unchanged. Choose WGS84 if the map provider changes. Entered coordinates and saved values are WGS84." = "上海对齐仅修正北纬 30.7–31.6°、东经 120.9–122.0° 内的地图选点与显示，区域外原样传递。地图提供方变化时可切换 WGS84。手动输入和新收藏均为 WGS84。";
-"Coordinate conversion notices" = "坐标转换开源声明";
-"Confirm saved coordinate source" = "确认收藏坐标来源";
-"Originally chosen on the Shanghai map" = "原来从上海地图搜索或选点";
-"Already WGS84 / independent reference" = "原本就是 WGS84／独立参考点";
-"Older saved locations have no coordinate source. Confirm the original source before choosing. Original values are retained; you can change this choice in More. Nothing is applied automatically." = "旧收藏没有记录坐标来源，请先确认原始来源。原始数值会保留，之后可在“更多”中重新确认。此操作不会自动应用模拟。";
-"Coordinate source needs confirmation" = "待确认坐标来源";
 "Enter WGS84 coordinates" = "输入 WGS84 经纬度";
+"Choose this place again" = "请重新选择这个地点";
+"Choose a new point" = "重新选点";
+"This older bookmark needs a new map selection. Choose the place, then tap Update bookmark. Its name and original position will be kept." = "这个旧收藏需要重新选点。选好地点后，点击“更新收藏位置”。收藏名称和原始位置都会保留。";
+"Choose a new point for %@" = "为“%@”重新选点";
+"Update bookmark" = "更新收藏位置";
+"Open-source notices" = "开源声明";

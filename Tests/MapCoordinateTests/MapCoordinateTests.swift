@@ -90,7 +90,7 @@ struct CoordinateProvenanceTests {
     #expect(session.activeAppliedRequest?.automaticClearAt == Date(timeIntervalSince1970: 1_180))
   }
 
-  @Test func oldMixedSourcesStayUnknownUntilExplicitlyResolved() throws {
+  @Test func oldMixedSourcesStayUnknownUntilReselected() throws {
     let firstID = UUID()
     let secondID = UUID()
     let legacy = Data(
@@ -102,8 +102,10 @@ struct CoordinateProvenanceTests {
       """.utf8)
     let decoded = try JSONDecoder().decode(SavedLocationCollection.self, from: legacy)
     #expect(decoded.locations.allSatisfy { $0.coordinateSystem == .legacyUnknown })
-    let first = try decoded.resolving(id: firstID, originalMapBoundary: .verifiedShanghai)
-    let resolved = try first.resolving(id: secondID, originalMapBoundary: .wgs84)
+    let replacement = try SelectedLocation(latitude: 31.2419382, longitude: 121.4951673)
+    let first = try decoded.updatingCoordinate(id: firstID, coordinate: replacement)
+    let resolved = try first.updatingCoordinate(
+      id: secondID, coordinate: decoded.locations[1].coordinate)
     #expect(resolved.locations.map(\.id) == [firstID, secondID])
     #expect(resolved.locations.map(\.name) == decoded.locations.map(\.name))
     #expect(resolved.locations.map(\.originalCoordinate) == decoded.locations.map(\.coordinate))
@@ -115,8 +117,9 @@ struct CoordinateProvenanceTests {
     let relaunched = try JSONDecoder().decode(SavedLocationCollection.self, from: persisted)
     #expect(relaunched == resolved)
     #expect(
-      try relaunched.resolving(id: firstID, originalMapBoundary: .verifiedShanghai) == resolved)
-    let restored = try relaunched.resolving(id: firstID, originalMapBoundary: .wgs84)
+      try relaunched.updatingCoordinate(id: firstID, coordinate: replacement) == resolved)
+    let restored = try relaunched.updatingCoordinate(
+      id: firstID, coordinate: decoded.locations[0].coordinate)
     #expect(restored.locations[0].coordinate == decoded.locations[0].coordinate)
     let renamed = try resolved.renaming(id: firstID, to: "Renamed")
     #expect(renamed.locations[0].originalCoordinate == decoded.locations[0].coordinate)

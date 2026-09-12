@@ -20,10 +20,9 @@ struct ContentView: View {
   @State private var renameSavedLocationName = ""
   @State private var showingDeleteSavedLocationConfirmation = false
   @State private var deletingSavedLocation: SavedLocation?
-  @State private var resolvingSavedLocation: SavedLocation?
-  @State private var showingCoordinateSourcePrompt = false
-  @AppStorage("pinshift-map-coordinate-boundary") private var mapBoundary = MapCoordinateBoundary
-    .verifiedShanghai
+  @State private var updatingSavedLocation: SavedLocation?
+  @State private var hasReplacementSelection = false
+  @State private var showingSavedLocationUpdatePrompt = false
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.locale) private var locale
   @Environment(\.openURL) private var openURL
@@ -145,22 +144,20 @@ struct ContentView: View {
 
   private func savedLocationAlerts<Presented: View>(_ view: Presented, inMore: Bool) -> some View {
     view
-      .confirmationDialog(
-        localized("Confirm saved coordinate source"),
-        isPresented: presentationBinding($showingCoordinateSourcePrompt, inMore: inMore),
-        titleVisibility: .visible
+      .alert(
+        localized("Choose this place again"),
+        isPresented: presentationBinding($showingSavedLocationUpdatePrompt, inMore: inMore)
       ) {
-        Button(localized("Originally chosen on the Shanghai map")) {
-          resolveSavedLocation(using: .verifiedShanghai)
+        Button(localized("Choose a new point")) {
+          hasReplacementSelection = false
+          showingMore = false
+          showingLocationPicker = true
         }
-        Button(localized("Already WGS84 / independent reference")) {
-          resolveSavedLocation(using: .wgs84)
-        }
-        Button(localized("Cancel"), role: .cancel) {}
+        Button(localized("Cancel"), role: .cancel) { updatingSavedLocation = nil }
       } message: {
         Text(
           localized(
-            "Older saved locations have no coordinate source. Confirm the original source before choosing. Original values are retained; you can change this choice in More. Nothing is applied automatically."
+            "This older bookmark needs a new map selection. Choose the place, then tap Update bookmark. Its name and original position will be kept."
           ))
       }
       .alert(
@@ -263,15 +260,16 @@ struct ContentView: View {
       LocationPickerView(
         selected: model.selection.selected,
         applied: model.manualSession.activeAppliedRequest?.location,
-        boundary: mapBoundary,
+        boundary: .verifiedShanghai,
         searchFocused: $showingLocationPicker
       ) { location, source, name in
         if let name { locationNames[String(describing: location)] = name }
         _ = model.select(location, source: source)
+        if updatingSavedLocation != nil { hasReplacementSelection = true }
       }
-      .id(mapBoundary)
       .safeAreaInset(edge: .bottom, spacing: 0) {
         VStack(spacing: 8) {
+          savedLocationUpdateBar
           homeSavedLocations.padding(.horizontal, 16)
           ScrollView {
             simulationSection.padding(20)
@@ -413,21 +411,10 @@ struct ContentView: View {
         .accessibilityIdentifier("language-selector")
       }
       .padding(.vertical, PinshiftDesign.spaceXS)
-      Picker(localized("Map coordinate alignment"), selection: $mapBoundary) {
-        Text(localized("Verified Shanghai map")).tag(MapCoordinateBoundary.verifiedShanghai)
-        Text(localized("WGS84 map")).tag(MapCoordinateBoundary.wgs84)
-      }
-      .accessibilityIdentifier("map-coordinate-alignment")
-      Text(
-        localized(
-          "Shanghai alignment corrects map input and display only within 30.7–31.6° N, 120.9–122.0° E. Outside this area coordinates pass through unchanged. Choose WGS84 if the map provider changes. Entered coordinates and saved values are WGS84."
-        )
-      )
-      .font(.footnote)
       if let notices = Bundle.main.url(forResource: "ThirdPartyNotices", withExtension: "txt"),
         let text = try? String(contentsOf: notices, encoding: .utf8)
       {
-        DisclosureGroup(localized("Coordinate conversion notices")) {
+        DisclosureGroup(localized("Open-source notices")) {
           Text(verbatim: text).font(.caption).textSelection(.enabled)
         }
       }
@@ -785,7 +772,7 @@ struct ContentView: View {
               .font(.footnote.monospacedDigit())
               .foregroundStyle(.secondary)
             if savedLocation.coordinateSystem == .legacyUnknown {
-              Text(localized("Coordinate source needs confirmation")).font(.caption)
+              Text(localized("Choose this place again")).font(.caption)
             }
           }
           .frame(maxWidth: .infinity, alignment: .leading)
@@ -823,19 +810,6 @@ struct ContentView: View {
       .accessibilityIdentifier(
         "saved-location-select-\(savedLocation.id.uuidString)"
       )
-
-      if savedLocation.coordinateSystem == .legacyUnknown || savedLocation.originalCoordinate != nil
-      {
-        Button {
-          resolvingSavedLocation = savedLocation
-          showingCoordinateSourcePrompt = true
-        } label: {
-          Image(systemName: "globe").frame(width: 44, height: 44)
-        }
-        .buttonStyle(.borderless)
-        .accessibilityLabel(localized("Confirm saved coordinate source"))
-        .accessibilityIdentifier("saved-location-coordinate-source-\(savedLocation.id.uuidString)")
-      }
 
       Button {
         model.clearSavedLocationError()
@@ -883,20 +857,35 @@ struct ContentView: View {
 
   private func chooseSavedLocation(_ savedLocation: SavedLocation) {
     guard savedLocation.coordinateSystem == .wgs84 else {
-      resolvingSavedLocation = savedLocation
-      showingCoordinateSourcePrompt = true
+      updatingSavedLocation = savedLocation
+      showingSavedLocationUpdatePrompt = true
       return
     }
     _ = model.select(savedLocation.coordinate, source: .saved)
   }
 
-  private func resolveSavedLocation(using boundary: MapCoordinateBoundary) {
-    guard let saved = resolvingSavedLocation,
-      model.resolveSavedLocation(id: saved.id, originalMapBoundary: boundary),
-      let repaired = model.savedLocations.locations.first(where: { $0.id == saved.id })
-    else { return }
-    chooseSavedLocation(repaired)
-    resolvingSavedLocation = nil
+  @ViewBuilder private var savedLocationUpdateBar: some View {
+    if let saved = updatingSavedLocation, !showingSavedLocationUpdatePrompt {
+      VStack(alignment: .leading, spacing: 8) {
+        Text(localizedFormat("Choose a new point for %@", saved.name)).font(.subheadline)
+        HStack {
+          Button(localized("Update bookmark")) {
+            guard let coordinate = model.selection.selected,
+              model.updateSavedLocation(id: saved.id, coordinate: coordinate)
+            else { return }
+            updatingSavedLocation = nil
+            hasReplacementSelection = false
+          }
+          .disabled(!hasReplacementSelection)
+          .accessibilityIdentifier("update-saved-location-coordinate")
+          Spacer()
+          Button(localized("Cancel")) { updatingSavedLocation = nil }
+        }
+      }
+      .padding(12)
+      .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+      .padding(.horizontal, 16)
+    }
   }
 
   private func savedLocationCoordinateDescription(

@@ -153,22 +153,17 @@ public struct SavedLocationCollection: Codable, Equatable, Sendable {
     )
   }
 
-  public func resolving(id: UUID, originalMapBoundary: MapCoordinateBoundary) throws
+  public func updatingCoordinate(id: UUID, coordinate: SelectedLocation) throws
     -> SavedLocationCollection
   {
     guard let index = locations.firstIndex(where: { $0.id == id }) else {
       throw SavedLocationError.notFound
     }
     let current = locations[index]
-    // Always interpret the original, never transform a previously repaired value.
-    let original = current.originalCoordinate ?? current.coordinate
     var updated = locations
     updated[index] = try SavedLocation(
-      id: current.id, name: current.name,
-      coordinate: originalMapBoundary.selection(
-        fromMap: MapLocationCoordinate(latitude: original.latitude, longitude: original.longitude)),
-      originalCoordinate: original,
-      originalMapBoundary: originalMapBoundary
+      id: current.id, name: current.name, coordinate: coordinate,
+      originalCoordinate: current.originalCoordinate ?? current.coordinate
     )
     return try SavedLocationCollection(locations: updated)
   }
@@ -262,8 +257,8 @@ public struct SavedLocationRepository {
     collection = updatedCollection
   }
 
-  public mutating func resolve(id: UUID, originalMapBoundary: MapCoordinateBoundary) throws {
-    let updated = try collection.resolving(id: id, originalMapBoundary: originalMapBoundary)
+  public mutating func updateCoordinate(id: UUID, coordinate: SelectedLocation) throws {
+    let updated = try collection.updatingCoordinate(id: id, coordinate: coordinate)
     try store.save(updated)
     collection = updated
   }

@@ -138,9 +138,9 @@ final class BaselineViewModel: ObservableObject {
     }
   }
 
-  func resolveSavedLocation(id: UUID, originalMapBoundary: MapCoordinateBoundary) -> Bool {
+  func updateSavedLocation(id: UUID, coordinate: SelectedLocation) -> Bool {
     do {
-      try savedLocationRepository.resolve(id: id, originalMapBoundary: originalMapBoundary)
+      try savedLocationRepository.updateCoordinate(id: id, coordinate: coordinate)
       savedLocations = savedLocationRepository.collection
       clearSavedLocationError()
       return true

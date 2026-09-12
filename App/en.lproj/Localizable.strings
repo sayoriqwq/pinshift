@@ -179,14 +179,10 @@
 
 "Save this place" = "Save this place";
 
-"Map coordinate alignment" = "Map coordinate alignment";
-"Verified Shanghai map" = "Verified Shanghai map";
-"WGS84 map" = "WGS84 map";
-"Shanghai alignment corrects map input and display only within 30.7–31.6° N, 120.9–122.0° E. Outside this area coordinates pass through unchanged. Choose WGS84 if the map provider changes. Entered coordinates and saved values are WGS84." = "Shanghai alignment corrects map input and display only within 30.7–31.6° N, 120.9–122.0° E. Outside this area coordinates pass through unchanged. Choose WGS84 if the map provider changes. Entered coordinates and saved values are WGS84.";
-"Coordinate conversion notices" = "Coordinate conversion notices";
-"Confirm saved coordinate source" = "Confirm saved coordinate source";
-"Originally chosen on the Shanghai map" = "Originally chosen on the Shanghai map";
-"Already WGS84 / independent reference" = "Already WGS84 / independent reference";
-"Older saved locations have no coordinate source. Confirm the original source before choosing. Original values are retained; you can change this choice in More. Nothing is applied automatically." = "Older saved locations have no coordinate source. Confirm the original source before choosing. Original values are retained; you can change this choice in More. Nothing is applied automatically.";
-"Coordinate source needs confirmation" = "Coordinate source needs confirmation";
 "Enter WGS84 coordinates" = "Enter WGS84 coordinates";
+"Choose this place again" = "Choose this place again";
+"Choose a new point" = "Choose a new point";
+"This older bookmark needs a new map selection. Choose the place, then tap Update bookmark. Its name and original position will be kept." = "This older bookmark needs a new map selection. Choose the place, then tap Update bookmark. Its name and original position will be kept.";
+"Choose a new point for %@" = "Choose a new point for %@";
+"Update bookmark" = "Update bookmark";
+"Open-source notices" = "Open-source notices";
