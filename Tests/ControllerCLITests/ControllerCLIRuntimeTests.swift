@@ -208,8 +208,8 @@ final class ControllerCLIRuntimeTests: XCTestCase {
       return XCTFail("Explicit force exit must finish without waiting for cleanup")
     }
     let text = String(decoding: output.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
-    XCTAssertEqual(process.terminationStatus, 1)
-    XCTAssertTrue(text.contains("Forced exit: cleanup is unconfirmed"))
+    XCTAssertEqual(process.terminationStatus, 1, text)
+    XCTAssertTrue(text.contains("Forced exit: cleanup is unconfirmed"), text)
   }
 
   func testNormalExitRetriesUntilAcknowledgedWithBoundedBackoff() async throws {

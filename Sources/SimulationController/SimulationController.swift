@@ -98,12 +98,7 @@ public actor SimulationController {
     let automaticClearAt: Date
     var phase: Phase
     var lastFailure: InjectionBackendFailure?
-  }
-
-  private struct ApplyReceipt {
-    let operationID: UUID
-    let location: SelectedLocation
-    let automaticClearAt: Date
+    var hasApplyReceipt = false
   }
 
   private struct UntrackedClearFailure {
@@ -119,7 +114,8 @@ public actor SimulationController {
 
   private var current: CurrentSimulation?
   private var untrackedClearFailure: UntrackedClearFailure?
-  private var recentApplyReceipts: [ApplyReceipt] = []
+  // Session-lifetime tombstones prevent any superseded accepted request from replaying.
+  private var acceptedApplyIDs: Set<UUID> = []
   private var acceptsApply = true
   private var operationInFlight = false
   private var operationWaiters: [CheckedContinuation<Void, Never>] = []
@@ -167,25 +163,15 @@ public actor SimulationController {
       fields: coordinateFields(location)
     )
 
-    if let receipt = recentApplyReceipts.last(where: { $0.operationID == requestID }) {
-      guard receipt.location == location else {
-        return .failed(requestID: requestID, reason: .backendUnavailable)
-      }
-      guard current?.operationID == requestID else {
-        return .failed(requestID: requestID, reason: .timedOut)
-      }
-      return .applied(
-        requestID: requestID,
-        location: receipt.location,
-        automaticClearAt: receipt.automaticClearAt
-      )
+    if acceptedApplyIDs.contains(requestID), current?.operationID != requestID {
+      return .failed(requestID: requestID, reason: .timedOut)
     }
 
     if let current, current.operationID == requestID {
       guard current.location == location else {
         return .failed(requestID: requestID, reason: .backendUnavailable)
       }
-      if current.phase == .active {
+      if current.hasApplyReceipt {
         return .applied(
           requestID: requestID,
           location: location,
@@ -211,6 +197,7 @@ public actor SimulationController {
       automaticClearAt = now().addingTimeInterval(
         TemporarySimulationPolicy.automaticClearInterval
       )
+      acceptedApplyIDs.insert(requestID)
       current = CurrentSimulation(
         operationID: requestID,
         location: location,
@@ -234,16 +221,10 @@ public actor SimulationController {
     where responseID == requestID && appliedLocation == location:
       if var current, current.operationID == requestID {
         current.phase = .active
+        current.hasApplyReceipt = true
         current.lastFailure = nil
         self.current = current
       }
-      appendReceipt(
-        ApplyReceipt(
-          operationID: requestID,
-          location: location,
-          automaticClearAt: automaticClearAt
-        )
-      )
       scheduleAutomaticClear()
       await record(
         kind: "controller.temporary-simulation.applied",
@@ -435,14 +416,6 @@ public actor SimulationController {
         automaticClearAt: current.automaticClearAt,
         reason: current.lastFailure
       )
-    }
-  }
-
-  private func appendReceipt(_ receipt: ApplyReceipt) {
-    recentApplyReceipts.removeAll { $0.operationID == receipt.operationID }
-    recentApplyReceipts.append(receipt)
-    if recentApplyReceipts.count > 8 {
-      recentApplyReceipts.removeFirst(recentApplyReceipts.count - 8)
     }
   }
 

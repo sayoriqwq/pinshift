@@ -51,7 +51,7 @@ final class AppResigningWorkflowTests: XCTestCase {
     let result = try runResign()
 
     XCTAssertEqual(result.status, 0, result.output)
-    XCTAssertTrue(result.output.contains("no rebuild or reinstall was needed"))
+    XCTAssertTrue(result.output.contains("skipping renewal"))
     XCTAssertTrue(FileManager.default.fileExists(atPath: appProfile.path))
     XCTAssertEqual(try events(), ["security app.mobileprovision"])
   }
@@ -184,6 +184,180 @@ final class AppResigningWorkflowTests: XCTestCase {
     let recordedEvents = try events()
     XCTAssertTrue(recordedEvents.contains("xcrun install"))
     XCTAssertFalse(recordedEvents.contains("xcrun launch"))
+  }
+
+  func testDailyRetryResumesInstallationAfterDeviceFailureDespiteFreshCachedProfile() throws {
+    try assertDailyRetryResumesInstallation(initialFailure: ["FAKE_INSTALL_STATUS": "1"])
+  }
+
+  func testDailyRetryRequiresFreshInstallAcknowledgementAfterUnconfirmedResult() throws {
+    try assertDailyRetryResumesInstallation(initialFailure: ["FAKE_INSTALL_UNCONFIRMED": "1"])
+  }
+
+  private func assertDailyRetryResumesInstallation(initialFailure: [String: String]) throws {
+    let profile = try writeProfile(
+      named: "app.mobileprovision",
+      applicationIdentifier: "\(teamIdentifier).\(bundleIdentifier)",
+      expiration: "2020-08-10T08:49:25Z"
+    )
+    try writeCandidate(expiration: "2099-08-17T08:49:25Z")
+    let first = try runDaily(
+      environment: initialFailure.merging([
+        "FAKE_REGENERATED_PROFILE_PATH": profile.path
+      ]) { _, new in new })
+    XCTAssertEqual(first.status, 0, first.output)
+    XCTAssertTrue(first.output.contains("App preparation was not confirmed"))
+    XCTAssertTrue(try String(contentsOf: profile, encoding: .utf8).contains("2099-08-17"))
+    XCTAssertTrue(FileManager.default.fileExists(atPath: pendingInstall.path))
+
+    // Default daily startup must install the preserved build, not skip because its cache is fresh.
+    let second = try runDaily()
+    XCTAssertEqual(second.status, 0, second.output)
+    XCTAssertTrue(second.output.contains("Resuming the unconfirmed Pinshift installation"))
+    XCTAssertTrue(second.output.contains("installed without uninstalling"))
+    XCTAssertFalse(second.output.contains("skipping renewal"))
+    XCTAssertFalse(FileManager.default.fileExists(atPath: pendingInstall.path))
+    let recorded = try events()
+    XCTAssertEqual(recorded.filter { $0 == "xcodebuild" }.count, 1)
+    XCTAssertEqual(recorded.filter { $0 == "codesign" }.count, 2)
+    XCTAssertEqual(recorded.filter { $0 == "xcrun install" }.count, 2)
+    XCTAssertEqual(recorded.filter { $0 == "xcrun launch" }.count, 1)
+    XCTAssertEqual(recorded.filter { $0 == "controller link serve" }.count, 2)
+  }
+
+  func testForceBuildsCurrentSourceInsteadOfInstallingAnOlderPendingCandidate() throws {
+    try preparePendingInstallation()
+    try writeCandidate(expiration: "2100-08-17T08:49:25Z")
+    let installedProfile = fixtureRoot.appending(path: "installed.mobileprovision")
+    let result = try runResign(
+      arguments: ["--force"],
+      environment: [
+        "FAKE_REGENERATED_PROFILE_PATH": profiles.appending(path: "app.mobileprovision").path,
+        "FAKE_INSTALLED_PROFILE_PATH": installedProfile.path,
+      ])
+    XCTAssertEqual(result.status, 0, result.output)
+    XCTAssertTrue(result.output.contains("building the current source"))
+    XCTAssertFalse(result.output.contains("Resuming the unconfirmed"))
+    XCTAssertEqual(try events().filter { $0 == "xcodebuild" }.count, 2)
+    XCTAssertEqual(try events().filter { $0 == "xcrun install" }.count, 2)
+    XCTAssertTrue(
+      try String(
+        contentsOf: profiles.appending(path: "app.mobileprovision"), encoding: .utf8
+      ).contains("2100-08-17"))
+    XCTAssertEqual(try Data(contentsOf: installedProfile), try Data(contentsOf: candidateProfile))
+    XCTAssertFalse(FileManager.default.fileExists(atPath: pendingInstall.path))
+  }
+
+  func testFailedForcedRebuildPreservesEarlierPendingInstallationForDailyRetry() throws {
+    try preparePendingInstallation()
+    let pendingBefore = try Data(contentsOf: pendingInstall)
+    let forced = try runResign(
+      arguments: ["--force"], environment: ["FAKE_XCODEBUILD_STATUS": "1"]
+    )
+    XCTAssertNotEqual(forced.status, 0, forced.output)
+    XCTAssertEqual(try Data(contentsOf: pendingInstall), pendingBefore)
+    XCTAssertEqual(try events().filter { $0 == "xcrun install" }.count, 1)
+
+    let retry = try runDaily()
+    XCTAssertEqual(retry.status, 0, retry.output)
+    XCTAssertTrue(retry.output.contains("Resuming the unconfirmed"))
+    XCTAssertEqual(try events().filter { $0 == "xcrun install" }.count, 2)
+    XCTAssertFalse(FileManager.default.fileExists(atPath: pendingInstall.path))
+  }
+
+  func testExpiredPendingBuildRenewsAgainOnDefaultDailyStartup() throws {
+    try preparePendingInstallation()
+    var record = try XCTUnwrap(
+      JSONSerialization.jsonObject(with: Data(contentsOf: pendingInstall)) as? [String: Any]
+    )
+    // Represent returning after the pending build's expiry, without waiting on wall-clock time.
+    record["expiry"] = 1_600_000_000
+    try JSONSerialization.data(withJSONObject: record).write(to: pendingInstall)
+    try writeProfile(
+      named: "app.mobileprovision",
+      applicationIdentifier: "\(teamIdentifier).\(bundleIdentifier)",
+      expiration: "2020-08-17T08:49:25Z"
+    )
+    let result = try runDaily()
+    XCTAssertEqual(result.status, 0, result.output)
+    XCTAssertTrue(result.output.contains("pending app build has expired"))
+    XCTAssertTrue(result.output.contains("installed without uninstalling"))
+    XCTAssertEqual(try events().filter { $0 == "xcodebuild" }.count, 2)
+    XCTAssertEqual(try events().filter { $0 == "xcrun install" }.count, 2)
+    XCTAssertFalse(FileManager.default.fileExists(atPath: pendingInstall.path))
+  }
+
+  func testPendingInstallationCannotResumeOnADifferentDevice() throws {
+    try preparePendingInstallation()
+    let result = try runResign(environment: ["PINSHIFT_DEVICE": "different-iphone"])
+    XCTAssertNotEqual(result.status, 0, result.output)
+    XCTAssertTrue(result.output.contains("original Active Test Device"))
+    XCTAssertEqual(try events().filter { $0 == "xcrun install" }.count, 1)
+    XCTAssertTrue(FileManager.default.fileExists(atPath: pendingInstall.path))
+  }
+
+  func testPendingRetryDoesNotAcceptAnOldSuccessfulLookingInstallResult() throws {
+    // The first tool invocation writes success JSON but exits nonzero.
+    try preparePendingInstallation()
+    let retry = try runResign(environment: ["FAKE_INSTALL_UNCONFIRMED": "1"])
+    XCTAssertNotEqual(retry.status, 0, retry.output)
+    XCTAssertTrue(retry.output.contains("installation result could not be verified"))
+    XCTAssertTrue(FileManager.default.fileExists(atPath: pendingInstall.path))
+    XCTAssertEqual(try events().filter { $0 == "xcrun install" }.count, 2)
+    XCTAssertFalse(try events().contains("xcrun launch"))
+  }
+
+  func testPendingInstallationRevalidatesSignatureBeforeTouchingDevice() throws {
+    try preparePendingInstallation()
+    let retry = try runResign(environment: ["FAKE_CODESIGN_STATUS": "1"])
+    XCTAssertNotEqual(retry.status, 0, retry.output)
+    XCTAssertTrue(retry.output.contains("failed code-signature verification"))
+    XCTAssertEqual(try events().filter { $0 == "xcrun install" }.count, 1)
+    XCTAssertTrue(FileManager.default.fileExists(atPath: pendingInstall.path))
+  }
+
+  func testPendingInstallationRejectsChangedIdentityAndExpiredCandidate() throws {
+    try preparePendingInstallation()
+    let record = try XCTUnwrap(
+      JSONSerialization.jsonObject(with: Data(contentsOf: pendingInstall)) as? [String: Any]
+    )
+    let staging = try XCTUnwrap(record["staging"] as? String)
+    let preservedProfile = workRoot.appending(
+      path:
+        "\(staging)/DerivedData/Build/Products/Debug-iphoneos/Pinshift.app/embedded.mobileprovision"
+    )
+    let original = try String(contentsOf: preservedProfile, encoding: .utf8)
+    try original.replacingOccurrences(of: teamIdentifier, with: "OTHERTEAM")
+      .write(to: preservedProfile, atomically: true, encoding: .utf8)
+    let changedIdentity = try runResign()
+    XCTAssertNotEqual(changedIdentity.status, 0, changedIdentity.output)
+    XCTAssertTrue(changedIdentity.output.contains("changed the app signing identity"))
+
+    try original.replacingOccurrences(of: "2099-08-17", with: "2020-08-17")
+      .write(to: preservedProfile, atomically: true, encoding: .utf8)
+    let expired = try runResign()
+    XCTAssertNotEqual(expired.status, 0, expired.output)
+    XCTAssertTrue(expired.output.contains("did not advance"))
+    XCTAssertEqual(try events().filter { $0 == "xcrun install" }.count, 1)
+    XCTAssertTrue(FileManager.default.fileExists(atPath: pendingInstall.path))
+  }
+
+  private var pendingInstall: URL {
+    workRoot.appending(path: "pinshift-pending-install.json")
+  }
+
+  private func preparePendingInstallation() throws {
+    let profile = try writeProfile(
+      named: "app.mobileprovision",
+      applicationIdentifier: "\(teamIdentifier).\(bundleIdentifier)",
+      expiration: "2020-08-10T08:49:25Z"
+    )
+    try writeCandidate(expiration: "2099-08-17T08:49:25Z")
+    let result = try runResign(environment: [
+      "FAKE_INSTALL_STATUS": "1", "FAKE_REGENERATED_PROFILE_PATH": profile.path,
+    ])
+    XCTAssertNotEqual(result.status, 0)
+    XCTAssertTrue(FileManager.default.fileExists(atPath: pendingInstall.path))
   }
 
   func testExplicitStartSkipsFreshSigningAndStartsForegroundController() throws {
@@ -355,6 +529,12 @@ final class AppResigningWorkflowTests: XCTestCase {
         case " $* " in
         *' device install app '*)
           printf 'xcrun install\n' >> "$FAKE_EVENT_LOG"
+          if [ -n "${FAKE_INSTALLED_PROFILE_PATH:-}" ]; then
+            /bin/cp "$previous/embedded.mobileprovision" "$FAKE_INSTALLED_PROFILE_PATH"
+          fi
+          if [ "${FAKE_INSTALL_UNCONFIRMED:-0}" -eq 1 ]; then
+            exit 0
+          fi
           /usr/bin/printf '%s\n' '{"info":{"outcome":"success"}}' > "$json_output"
           exit "${FAKE_INSTALL_STATUS:-0}"
           ;;
