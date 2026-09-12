@@ -218,7 +218,7 @@ if test $resuming_install -eq 0
     end
 
     set --local remaining_seconds (math "$old_max_expiration_epoch - $now_epoch")
-    if not set --query _flag_force; and test $remaining_seconds -gt $renewal_threshold_seconds
+    if not set --query _flag_force; and not test -e "$pending_install"; and test $remaining_seconds -gt $renewal_threshold_seconds
         echo "The cached Pinshift signing profile expires at "(pinshift_local_expiration $old_max_expiration_epoch)"."
         echo "More than 24 hours remain; skipping renewal. This cache does not verify installation on the iPhone."
         echo "Open Pinshift on the iPhone to confirm it is usable."

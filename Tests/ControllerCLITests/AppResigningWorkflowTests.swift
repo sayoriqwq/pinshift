@@ -276,7 +276,7 @@ final class AppResigningWorkflowTests: XCTestCase {
     try writeProfile(
       named: "app.mobileprovision",
       applicationIdentifier: "\(teamIdentifier).\(bundleIdentifier)",
-      expiration: "2020-08-17T08:49:25Z"
+      expiration: "2098-08-17T08:49:25Z"
     )
     let result = try runDaily()
     XCTAssertEqual(result.status, 0, result.output)
