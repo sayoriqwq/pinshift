@@ -9,6 +9,56 @@ final class RepositoryProductRequirementsTests: XCTestCase {
       .deletingLastPathComponent()
   }
 
+  func testSingleDailyEntrypointDispatchesToTheExistingHelpers() throws {
+    let helperURL = repositoryRoot.appending(path: "bin/pinshift")
+    XCTAssertTrue(FileManager.default.isExecutableFile(atPath: helperURL.path))
+    let contents = try String(contentsOf: helperURL, encoding: .utf8)
+
+    for requiredText in [
+      "case start",
+      "pinshift-start",
+      "case setup install",
+      "pinshift-install",
+      "case clear reset",
+      "pinshift-reset",
+      "case doctor check",
+      "pinshift-doctor",
+      "case app resign-app",
+      "pinshift-resign-app",
+      "case logs diagnostics",
+      "pinshift-diagnostics",
+    ] {
+      XCTAssertTrue(contents.contains(requiredText), requiredText)
+    }
+    XCTAssertTrue(contents.contains("set --local command start"))
+    XCTAssertFalse(contents.contains("launchctl"))
+    XCTAssertFalse(contents.contains("pinshift-controller link serve"))
+  }
+
+  func testSingleDailyEntrypointHelpIsShortAndSideEffectFree() throws {
+    let process = Process()
+    let output = Pipe()
+    process.executableURL = repositoryRoot.appending(path: "bin/pinshift")
+    process.arguments = ["help"]
+    process.standardOutput = output
+    try process.run()
+    process.waitUntilExit()
+
+    XCTAssertEqual(process.terminationStatus, 0)
+    let help = String(
+      decoding: output.fileHandleForReading.readDataToEndOfFile(),
+      as: UTF8.self
+    )
+    for command in [
+      "pinshift setup", "pinshift clear", "pinshift doctor", "pinshift app", "pinshift logs",
+    ] {
+      XCTAssertTrue(help.contains(command), command)
+    }
+    XCTAssertFalse(help.contains("--device"))
+    XCTAssertFalse(help.contains("--developer-directory"))
+    XCTAssertFalse(help.contains("link serve"))
+  }
+
   func testDailyHelpersUseOnlyTheInstalledController() throws {
     for helper in ["pinshift-start", "pinshift-doctor", "pinshift-reset"] {
       let contents = try String(
@@ -23,16 +73,39 @@ final class RepositoryProductRequirementsTests: XCTestCase {
     }
   }
 
-  func testDailyStartDefersItsDefaultLeaseToTheControllerOwnedPolicy() throws {
+  func testDailyStartRunsTheInstalledControllerInTheForeground() throws {
     let contents = try String(
       contentsOf: repositoryRoot.appending(path: "bin/pinshift-start"),
       encoding: .utf8
     )
 
-    XCTAssertFalse(contents.contains("set --local lease_seconds 300"))
-    XCTAssertFalse(contents.contains("after 300 seconds by default"))
-    XCTAssertTrue(contents.contains("15 minutes by default"))
-    XCTAssertTrue(contents.contains("set --append serve_arguments --lease-seconds"))
+    XCTAssertTrue(contents.contains("exec $controller link serve"))
+    XCTAssertTrue(contents.contains("Keep this terminal open"))
+    XCTAssertFalse(contents.contains("launchctl"))
+    XCTAssertFalse(contents.contains("pairing_code_file"))
+    XCTAssertFalse(contents.contains("background controller"))
+  }
+
+  func testResetDirectlyExecutesTheInstalledControllerWithoutLaunchd() throws {
+    let contents = try String(
+      contentsOf: repositoryRoot.appending(path: "bin/pinshift-reset"),
+      encoding: .utf8
+    )
+
+    XCTAssertTrue(contents.contains("exec $controller reset"))
+    XCTAssertFalse(contents.contains("launchctl"))
+    XCTAssertFalse(contents.contains("authority_plist"))
+  }
+
+  func testAppCopyDoesNotExposeTheInjectionBackendImplementation() throws {
+    let contents = try String(
+      contentsOf: repositoryRoot.appending(path: "App/ContentView.swift"),
+      encoding: .utf8
+    )
+
+    XCTAssertFalse(contents.contains("Injection Backend"))
+    XCTAssertTrue(contents.contains("Applying temporary location…"))
+    XCTAssertTrue(contents.contains("Mac location service"))
   }
 
   func testDiagnosticsHelperLocatesOrCopiesTheMacPackageWithoutRunningRecovery() throws {
@@ -107,28 +180,54 @@ final class RepositoryProductRequirementsTests: XCTestCase {
     XCTAssertTrue(contents.contains("codesign --verify"))
   }
 
-  func testInstallRegistersCleanupGuardianOutsideTheControllerLinkProcess() throws {
+  func testInstallRemovesPersistentAuthoritiesWithoutRegisteringOne() throws {
     let contents = try String(
       contentsOf: repositoryRoot.appending(path: "bin/pinshift-install"),
       encoding: .utf8
     )
-    let template = try String(
-      contentsOf: repositoryRoot.appending(
-        path: "Support/dev.sayori.pinshift.cleanup-guardian.plist"
-      ),
+
+    XCTAssertFalse(contents.contains("launchctl bootstrap"))
+    XCTAssertFalse(contents.contains("launchctl kickstart"))
+    let authorityBootout = try XCTUnwrap(
+      contents.range(of: "launchctl bootout gui/$user_id/$authority_label")
+    )
+    let migrationClear = try XCTUnwrap(contents.range(of: "\"$candidate\" reset"))
+    let lifecycleRemoval = try XCTUnwrap(
+      contents.range(of: "command rm -f -- $legacy_lifecycle_file")
+    )
+    let executablePublish = try XCTUnwrap(contents.range(of: "cp $candidate $executable"))
+    XCTAssertLessThan(authorityBootout.lowerBound, migrationClear.lowerBound)
+    XCTAssertLessThan(migrationClear.lowerBound, lifecycleRemoval.lowerBound)
+    XCTAssertLessThan(lifecycleRemoval.lowerBound, executablePublish.lowerBound)
+    XCTAssertLessThan(authorityBootout.lowerBound, executablePublish.lowerBound)
+    XCTAssertTrue(contents.contains("--device \"$PINSHIFT_DEVICE\""))
+    XCTAssertTrue(contents.contains("--developer-directory \"$PINSHIFT_DEVELOPER_DIR\""))
+    XCTAssertTrue(contents.contains("command rm -f -- $authority_plist"))
+    XCTAssertTrue(contents.contains("legacy_guardian_label"))
+    XCTAssertTrue(contents.contains("command rm -f -- $legacy_guardian_plist"))
+    XCTAssertTrue(contents.contains("command rm -f -- $legacy_lifecycle_file"))
+    XCTAssertTrue(contents.contains("command rm -f -- $legacy_pairing_code_file"))
+    XCTAssertFalse(
+      FileManager.default.fileExists(
+        atPath: repositoryRoot.appending(
+          path: "Support/dev.sayori.pinshift.controller.plist"
+        ).path
+      )
+    )
+  }
+
+  func testInstallStopsOnlyTheExactSupersededForegroundController() throws {
+    let contents = try String(
+      contentsOf: repositoryRoot.appending(path: "bin/pinshift-install"),
       encoding: .utf8
     )
 
-    XCTAssertTrue(contents.contains("launchctl bootstrap"))
-    XCTAssertTrue(contents.contains("launchctl kickstart -k"))
-    let guardianBootout = try XCTUnwrap(
-      contents.range(of: "launchctl bootout gui/$user_id/$guardian_label")
-    )
-    let executablePublish = try XCTUnwrap(contents.range(of: "cp $candidate $executable"))
-    XCTAssertLessThan(guardianBootout.lowerBound, executablePublish.lowerBound)
-    XCTAssertTrue(template.contains("cleanup-guardian"))
-    XCTAssertTrue(template.contains("<key>KeepAlive</key>"))
-    XCTAssertTrue(template.contains("<key>RunAtLoad</key>"))
+    XCTAssertTrue(contents.contains("ps -p $candidate_pid -o command="))
+    XCTAssertTrue(contents.contains("$executable link serve*"))
+    XCTAssertTrue(contents.contains("kill -TERM $candidate_pid"))
+    XCTAssertTrue(contents.contains("kill -0 $candidate_pid"))
+    XCTAssertFalse(contents.contains("pkill"))
+    XCTAssertFalse(contents.contains("killall"))
   }
 
   func testSuccessfulInstallRemovesOnlyItsValidatedGeneratedStagingDirectory() throws {
@@ -139,14 +238,16 @@ final class RepositoryProductRequirementsTests: XCTestCase {
 
     XCTAssertTrue(contents.contains("path dirname \"$staging_root\""))
     XCTAssertTrue(contents.contains("^controller-install\\.[[:alnum:]]+$"))
-    let guardianStart = try XCTUnwrap(contents.range(of: "launchctl kickstart -k"))
+    let authorization = try XCTUnwrap(
+      contents.range(of: "authorize-current-executable")
+    )
     let cleanup = try XCTUnwrap(
       contents.range(of: "command rm -rf -- \"$staging_root\"")
     )
     let success = try XCTUnwrap(
-      contents.range(of: "Stable controller and persistent Cleanup Guardian installed")
+      contents.range(of: "Stable foreground controller installed")
     )
-    XCTAssertLessThan(guardianStart.lowerBound, cleanup.lowerBound)
+    XCTAssertLessThan(authorization.lowerBound, cleanup.lowerBound)
     XCTAssertLessThan(cleanup.lowerBound, success.lowerBound)
   }
 

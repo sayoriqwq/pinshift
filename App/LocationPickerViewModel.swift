@@ -68,7 +68,7 @@ struct MapKitLocationSearcher: LocationSearching {
       if query.localizedCaseInsensitiveCompare("failure") == .orderedSame {
         throw FixtureLocationSearchError.unavailable
       }
-      let location = try SelectedLocation(latitude: 35.6762, longitude: 139.6503)
+      let location = try SelectedLocation(latitude: 35.676212345678, longitude: 139.650312345678)
       return [
         LocationSearchResult(
           id: "fixture-search-result",
@@ -93,19 +93,33 @@ final class LocationPickerViewModel: ObservableObject {
     self.searcher = searcher
   }
 
+  static func homeSearcher() -> LocationPickerViewModel {
+    #if DEBUG
+      if ProcessInfo.processInfo.environment["PINSHIFT_E2E_SEARCH_FIXTURE"] == "1" {
+        return LocationPickerViewModel(searcher: FixtureLocationSearcher())
+      }
+    #endif
+    return LocationPickerViewModel()
+  }
+
+  func cancel() {
+    searchTask?.cancel()
+    query = ""
+    status = .idle
+  }
+
   var canSearch: Bool {
     !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-      && status != .searching
   }
 
   func search() {
+    searchTask?.cancel()
     let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !query.isEmpty else {
       status = .idle
       return
     }
 
-    searchTask?.cancel()
     status = .searching
     searchTask = Task { [weak self] in
       guard let self else { return }

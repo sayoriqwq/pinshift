@@ -72,148 +72,204 @@ if set --query _flag_launch_only
     exit $status
 end
 
-set --local profile_directories \
-    "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles" \
-    "$HOME/Library/MobileDevice/Provisioning Profiles"
-if set --query PINSHIFT_PROVISIONING_PROFILE_DIRECTORY
-    set profile_directories "$PINSHIFT_PROVISIONING_PROFILE_DIRECTORY"
-end
-set --global _pinshift_resign_profile_directories $profile_directories
-set --global _pinshift_resign_bundle_identifier "$bundle_identifier"
-
-set --local matched_profiles
+# An unconfirmed install must be resumed before considering the fresh-profile cache.
+# Only names within this work directory are persisted; no shell code or arbitrary path is loaded.
+set --local pending_install "$work_root/pinshift-pending-install.json"
+set --local resuming_install 0
 set --local old_team_identifier
 set --local old_application_prefix
 set --local old_max_expiration_epoch 0
-set --local profile_index 0
-
-for profile_directory in $profile_directories
-    if not test -d "$profile_directory"
-        continue
-    end
-    if test -L "$profile_directory"
-        echo "A provisioning-profile directory is a symbolic link; refusing to modify it." >&2
-        exit 1
-    end
-
-    set --local cached_profiles (
-        find "$profile_directory" -maxdepth 1 -name '*.mobileprovision'
-    )
-    or begin
-        echo "A provisioning-profile directory could not be inspected." >&2
-        exit 1
-    end
-
-    for profile in $cached_profiles
-        if test -L "$profile"
-            echo "A cached provisioning profile is a symbolic link; refusing to modify it." >&2
-            exit 1
-        end
-        if not test -f "$profile"
-            continue
-        end
-
-        set profile_index (math $profile_index + 1)
-        set --local decoded "$staging_root/cached-profile-$profile_index.plist"
-        pinshift_decode_mobileprovision "$profile" "$decoded"
-        or begin
-            echo "A cached provisioning profile could not be decoded. No signing state was changed." >&2
-            exit 1
-        end
-
-        if not pinshift_decoded_profile_is_ios_app "$decoded" "$bundle_identifier"
-            continue
-        end
-
-        set --local team_identifier (pinshift_plist_raw "$decoded" TeamIdentifier.0)
-        or exit 1
-        set --local application_prefix (
-            pinshift_plist_raw "$decoded" ApplicationIdentifierPrefix.0
-        )
-        or exit 1
-        set --local expiration (pinshift_plist_raw "$decoded" ExpirationDate)
-        or exit 1
-        set --local expiration_epoch (pinshift_iso8601_epoch "$expiration")
-        or begin
-            echo "A matching provisioning profile has an invalid expiration date." >&2
-            exit 1
-        end
-
-        if test -n "$old_team_identifier"; and test "$team_identifier" != "$old_team_identifier"
-            echo "Matching profiles disagree about the development team; refusing to renew." >&2
-            exit 1
-        end
-        if test -n "$old_application_prefix"; and test "$application_prefix" != "$old_application_prefix"
-            echo "Matching profiles disagree about the application prefix; refusing to renew." >&2
-            exit 1
-        end
-
-        set old_team_identifier "$team_identifier"
-        set old_application_prefix "$application_prefix"
-        set --append matched_profiles "$profile"
-        if test $expiration_epoch -gt $old_max_expiration_epoch
-            set old_max_expiration_epoch $expiration_epoch
-        end
-    end
-end
-
-if test (count $matched_profiles) -eq 0
-    echo "No existing Pinshift app profile was found." >&2
-    echo "Open Xcode and complete one signed device build before using this renewal command." >&2
-    exit 1
-end
-
+set --local backup_directory
 set --local now_epoch (/bin/date '+%s')
-set --local remaining_seconds (math "$old_max_expiration_epoch - $now_epoch")
-if not set --query _flag_force; and test $remaining_seconds -gt $renewal_threshold_seconds
-    echo "Pinshift remains signed until "(pinshift_local_expiration $old_max_expiration_epoch)"."
-    echo "More than 24 hours remain, so no rebuild or reinstall was needed."
-    exit 0
-end
-
-set --local backup_parent "$work_root/resign-profile-backups"
-mkdir -p "$backup_parent"
-or exit $status
-set --local backup_directory (mktemp -d "$backup_parent/session.XXXXXX")
-or exit $status
-chmod 700 "$backup_directory"
-or exit $status
-set --global _pinshift_resign_backup_directory "$backup_directory"
-
-set --local move_index 0
-for profile in $matched_profiles
-    set move_index (math $move_index + 1)
-    set --local backup_path "$backup_directory/$move_index-"(path basename "$profile")
-    mv "$profile" "$backup_path"
-    or exit $status
-    set --global --append _pinshift_resign_moved_sources "$profile"
-    set --global --append _pinshift_resign_moved_backups "$backup_path"
-end
-
-echo "Requesting a new Personal Team provisioning profile from Xcode…"
-set --local derived_data "$staging_root/DerivedData"
-set --local build_log "$staging_root/xcodebuild.log"
-xcodebuild \
-    -project "$project" \
-    -scheme "$scheme" \
-    -configuration Debug \
-    -destination 'generic/platform=iOS' \
-    -derivedDataPath "$derived_data" \
-    -allowProvisioningUpdates \
-    -allowProvisioningDeviceRegistration \
-    DEVELOPMENT_TEAM="$old_team_identifier" \
-    build >"$build_log" 2>&1
-set --local build_status $status
-if test $build_status -ne 0
-    cp "$build_log" "$backup_directory/xcodebuild.log"
-    chmod 600 "$backup_directory/xcodebuild.log"
-    if string match --quiet --regex 'No Accounts|Add a new account' -- (string collect <"$build_log")
-        echo "Xcode has no signed-in Apple Account. Sign in under Xcode → Settings → Apple Accounts." >&2
-    else
-        echo "Xcode could not create a renewed app build." >&2
+if test -e "$pending_install"; or test -L "$pending_install"
+    if not test -f "$pending_install"; or test -L "$pending_install"; or not jq --exit-status '
+        .version == 1
+        and (.staging | type == "string" and test("^pinshift-resign-staging[.][A-Za-z0-9]+$"))
+        and (.backup | type == "string" and test("^session[.][A-Za-z0-9]+$"))
+        and (.device | type == "string" and length > 0 and (contains("\n") | not))
+        and (.team | type == "string" and test("^[A-Za-z0-9]+$"))
+        and (.prefix | type == "string" and test("^[A-Za-z0-9]+$"))
+        and (.previousExpiry | type == "number")
+        and (.expiry | type == "number")
+    ' "$pending_install" >/dev/null 2>&1
+        echo "The pending app installation record is invalid; no signing or installation state was changed." >&2
+        exit 1
     end
-    echo "The old profile will be restored; details are kept in the local backup directory." >&2
-    exit $build_status
+    set --local pending_values (jq --raw-output '.staging, .backup, .device, .team, .prefix, .previousExpiry, .expiry' "$pending_install")
+    if test "$pending_values[3]" != "$PINSHIFT_DEVICE"
+        echo "An app installation is pending for a different iPhone. Reconnect the original Active Test Device and retry pinshift." >&2
+        exit 1
+    end
+    if set --query _flag_force
+        echo "A forced rebuild supersedes the pending installation. Keeping its files and building the current source."
+    else if test "$pending_values[7]" -le "$now_epoch"
+        echo "The pending app build has expired. Keeping its files and requesting a fresh build."
+    else
+        set --local pending_staging "$work_root/$pending_values[1]"
+        set backup_directory "$work_root/resign-profile-backups/$pending_values[2]"
+        if not test -d "$pending_staging"; or test -L "$pending_staging"; or not test -d "$backup_directory"; or test -L "$backup_directory"
+            echo "The pending app installation files are missing or unsafe; no app was installed." >&2
+            exit 1
+        end
+        command rmdir "$staging_root"
+        or exit $status
+        set staging_root "$pending_staging"
+        set old_team_identifier "$pending_values[4]"
+        set old_application_prefix "$pending_values[5]"
+        set old_max_expiration_epoch "$pending_values[6]"
+        set resuming_install 1
+        set --global _pinshift_resign_staging_root "$staging_root"
+        set --global _pinshift_resign_backup_directory "$backup_directory"
+        set --global _pinshift_resign_profiles_committed 1
+        set --global _pinshift_resign_preserve_staging 1
+        echo "Resuming the unconfirmed Pinshift installation; revalidating the preserved app first."
+    end
+end
+
+set --local derived_data "$staging_root/DerivedData"
+if test $resuming_install -eq 0
+    set --local profile_directories \
+        "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles" \
+        "$HOME/Library/MobileDevice/Provisioning Profiles"
+    if set --query PINSHIFT_PROVISIONING_PROFILE_DIRECTORY
+        set profile_directories "$PINSHIFT_PROVISIONING_PROFILE_DIRECTORY"
+    end
+    set --global _pinshift_resign_profile_directories $profile_directories
+    set --global _pinshift_resign_bundle_identifier "$bundle_identifier"
+
+    set --local matched_profiles
+    set --local profile_index 0
+
+    for profile_directory in $profile_directories
+        if not test -d "$profile_directory"
+            continue
+        end
+        if test -L "$profile_directory"
+            echo "A provisioning-profile directory is a symbolic link; refusing to modify it." >&2
+            exit 1
+        end
+
+        set --local cached_profiles (
+            find "$profile_directory" -maxdepth 1 -name '*.mobileprovision'
+        )
+        or begin
+            echo "A provisioning-profile directory could not be inspected." >&2
+            exit 1
+        end
+
+        for profile in $cached_profiles
+            if test -L "$profile"
+                echo "A cached provisioning profile is a symbolic link; refusing to modify it." >&2
+                exit 1
+            end
+            if not test -f "$profile"
+                continue
+            end
+
+            set profile_index (math $profile_index + 1)
+            set --local decoded "$staging_root/cached-profile-$profile_index.plist"
+            pinshift_decode_mobileprovision "$profile" "$decoded"
+            or begin
+                echo "A cached provisioning profile could not be decoded. No signing state was changed." >&2
+                exit 1
+            end
+
+            if not pinshift_decoded_profile_is_ios_app "$decoded" "$bundle_identifier"
+                continue
+            end
+
+            set --local team_identifier (pinshift_plist_raw "$decoded" TeamIdentifier.0)
+            or exit 1
+            set --local application_prefix (
+                pinshift_plist_raw "$decoded" ApplicationIdentifierPrefix.0
+            )
+            or exit 1
+            set --local expiration (pinshift_plist_raw "$decoded" ExpirationDate)
+            or exit 1
+            set --local expiration_epoch (pinshift_iso8601_epoch "$expiration")
+            or begin
+                echo "A matching provisioning profile has an invalid expiration date." >&2
+                exit 1
+            end
+
+            if test -n "$old_team_identifier"; and test "$team_identifier" != "$old_team_identifier"
+                echo "Matching profiles disagree about the development team; refusing to renew." >&2
+                exit 1
+            end
+            if test -n "$old_application_prefix"; and test "$application_prefix" != "$old_application_prefix"
+                echo "Matching profiles disagree about the application prefix; refusing to renew." >&2
+                exit 1
+            end
+
+            set old_team_identifier "$team_identifier"
+            set old_application_prefix "$application_prefix"
+            set --append matched_profiles "$profile"
+            if test $expiration_epoch -gt $old_max_expiration_epoch
+                set old_max_expiration_epoch $expiration_epoch
+            end
+        end
+    end
+
+    if test (count $matched_profiles) -eq 0
+        echo "No existing Pinshift app profile was found." >&2
+        echo "Open Pinshift.xcodeproj in Xcode, sign in under Settings → Apple Accounts, and select your team in Signing & Capabilities." >&2
+        echo "Connect and unlock the iPhone, accept Trust This Computer, enable Developer Mode if requested, then run Pinshift once from Xcode." >&2
+        exit 1
+    end
+
+    set --local remaining_seconds (math "$old_max_expiration_epoch - $now_epoch")
+    if not set --query _flag_force; and not test -e "$pending_install"; and test $remaining_seconds -gt $renewal_threshold_seconds
+        echo "The cached Pinshift signing profile expires at "(pinshift_local_expiration $old_max_expiration_epoch)"."
+        echo "More than 24 hours remain; skipping renewal. This cache does not verify installation on the iPhone."
+        echo "Open Pinshift on the iPhone to confirm it is usable."
+        exit 0
+    end
+
+    set --local backup_parent "$work_root/resign-profile-backups"
+    mkdir -p "$backup_parent"
+    or exit $status
+    set backup_directory (mktemp -d "$backup_parent/session.XXXXXX")
+    or exit $status
+    chmod 700 "$backup_directory"
+    or exit $status
+    set --global _pinshift_resign_backup_directory "$backup_directory"
+
+    set --local move_index 0
+    for profile in $matched_profiles
+        set move_index (math $move_index + 1)
+        set --local backup_path "$backup_directory/$move_index-"(path basename "$profile")
+        mv "$profile" "$backup_path"
+        or exit $status
+        set --global --append _pinshift_resign_moved_sources "$profile"
+        set --global --append _pinshift_resign_moved_backups "$backup_path"
+    end
+
+    echo "Requesting a new Personal Team provisioning profile from Xcode…"
+    set --local build_log "$staging_root/xcodebuild.log"
+    xcodebuild \
+        -project "$project" \
+        -scheme "$scheme" \
+        -configuration Debug \
+        -destination 'generic/platform=iOS' \
+        -derivedDataPath "$derived_data" \
+        -allowProvisioningUpdates \
+        -allowProvisioningDeviceRegistration \
+        DEVELOPMENT_TEAM="$old_team_identifier" \
+        build >"$build_log" 2>&1
+    set --local build_status $status
+    if test $build_status -ne 0
+        cp "$build_log" "$backup_directory/xcodebuild.log"
+        chmod 600 "$backup_directory/xcodebuild.log"
+        if string match --quiet --regex 'No Accounts|Add a new account|Unable to log in|Authentication|session.*expired' -- (string collect <"$build_log")
+            echo "Xcode could not authenticate the Apple Account. Sign in again under Xcode → Settings → Apple Accounts." >&2
+        else
+            echo "Xcode could not create a renewed app build." >&2
+        end
+        echo "Check Xcode → Settings → Apple Accounts and Signing & Capabilities, then retry `pinshift`." >&2
+        echo "The old profile will be restored; details are kept in the local backup directory." >&2
+        exit $build_status
+    end
+
 end
 
 set --local candidate \
@@ -277,8 +333,27 @@ end
 echo "New signature verified through "(pinshift_local_expiration $new_expiration_epoch)"."
 set --local install_json "$staging_root/install.json"
 set --local install_log "$staging_root/install.log"
+# Publish recovery state before starting a device operation whose outcome may be lost.
+set --local pending_staged "$staging_root/pending-install.json"
+jq --null-input \
+    --arg staging (path basename "$staging_root") \
+    --arg backup (path basename "$backup_directory") \
+    --arg device "$PINSHIFT_DEVICE" \
+    --arg team "$old_team_identifier" \
+    --arg prefix "$old_application_prefix" \
+    --argjson previousExpiry "$old_max_expiration_epoch" \
+    --argjson expiry "$new_expiration_epoch" \
+    '{version: 1, staging: $staging, backup: $backup, device: $device, team: $team, prefix: $prefix, previousExpiry: $previousExpiry, expiry: $expiry}' >"$pending_staged"
+or exit $status
+chmod 600 "$pending_staged"
+or exit $status
+mv "$pending_staged" "$pending_install"
+or exit $status
 set --global _pinshift_resign_profiles_committed 1
 set --global _pinshift_resign_preserve_staging 1
+# An earlier failed invocation may have left a successful-looking JSON result behind.
+command rm -f -- "$install_json"
+or exit $status
 xcrun devicectl device install app \
     --quiet \
     --timeout 120 \
@@ -290,16 +365,20 @@ if test $install_status -ne 0
     cp "$install_log" "$backup_directory/install.log"
     chmod 600 "$backup_directory/install.log"
     echo "The device did not provide a confirmed installation result." >&2
+    echo "Connect and unlock the iPhone, accept Trust This Computer and Developer Mode prompts, then retry `pinshift`." >&2
     echo "The phone may or may not contain the renewed app, so the new profile and candidate were preserved." >&2
-    echo "Inspect the private transaction directory at $staging_root before retrying." >&2
+    echo "The next `pinshift` resumes this installation. Private details are kept at $staging_root." >&2
     exit $install_status
 end
 if not test -f "$install_json"; or not jq --exit-status '.info.outcome == "success"' "$install_json" >/dev/null 2>&1
     echo "The device command returned success, but its installation result could not be verified." >&2
-    echo "The new profile and candidate were preserved at $staging_root for manual inspection." >&2
+    echo "Reconnect and unlock the iPhone, then run `pinshift` to resume this installation." >&2
+    echo "The new profile and candidate were preserved at $staging_root." >&2
     exit 1
 end
 
+command rm -- "$pending_install"
+or exit $status
 set --global _pinshift_resign_preserve_staging 0
 echo "The renewed Pinshift app was installed without uninstalling the existing app."
 

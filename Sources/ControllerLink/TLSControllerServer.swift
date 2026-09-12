@@ -41,7 +41,7 @@ public final class TLSControllerServer: @unchecked Sendable {
         tls.securityProtocolOptions,
         .TLSv13
       )
-      let parameters = NWParameters(tls: tls, tcp: NWProtocolTCP.Options())
+      let parameters = Self.parameters(tls: tls)
 
       do {
         let listener = try NWListener(using: parameters)
@@ -104,6 +104,12 @@ public final class TLSControllerServer: @unchecked Sendable {
         connection.cancel()
       }
     }
+  }
+
+  static func parameters(tls: NWProtocolTLS.Options) -> NWParameters {
+    let parameters = NWParameters(tls: tls, tcp: NWProtocolTCP.Options())
+    parameters.includePeerToPeer = true
+    return parameters
   }
 }
 

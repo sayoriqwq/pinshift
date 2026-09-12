@@ -13,8 +13,15 @@ struct OwnerOnlyPairingCodeFile {
     self.inode = inode
   }
 
-  static func create(at url: URL, contents: Data) throws -> Self {
+  static func create(
+    at url: URL,
+    contents: Data,
+    replacingOwnedExisting: Bool = false
+  ) throws -> Self {
     let path = url.standardizedFileURL.path
+    if replacingOwnedExisting {
+      try removeOwnedExisting(atPath: path)
+    }
     let descriptor = open(path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0o600)
     guard descriptor >= 0 else {
       throw ValidationError("Could not create a new owner-only pairing code file.")
@@ -84,6 +91,24 @@ struct OwnerOnlyPairingCodeFile {
         }
         offset += result
       }
+    }
+  }
+
+  private static func removeOwnedExisting(atPath path: String) throws {
+    var metadata = stat()
+    if lstat(path, &metadata) != 0 {
+      guard errno == ENOENT else {
+        throw ValidationError("Could not inspect the owner-only pairing code file.")
+      }
+      return
+    }
+    guard
+      (metadata.st_mode & S_IFMT) == S_IFREG,
+      metadata.st_uid == geteuid(),
+      (metadata.st_mode & 0o077) == 0,
+      unlink(path) == 0
+    else {
+      throw ValidationError("Could not replace the owner-only pairing code file.")
     }
   }
 }

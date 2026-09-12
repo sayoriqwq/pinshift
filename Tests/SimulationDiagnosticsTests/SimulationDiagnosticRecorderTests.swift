@@ -1,5 +1,5 @@
 import Foundation
-import SimulationDiagnostics
+@testable import SimulationDiagnostics
 import XCTest
 
 final class SimulationDiagnosticRecorderTests: XCTestCase {
@@ -92,6 +92,55 @@ final class SimulationDiagnosticRecorderTests: XCTestCase {
       from: export
     )
     XCTAssertEqual(decodedExport.events.count, events.count)
+  }
+
+  func testRollingRetentionLeavesHeadroomInsteadOfRewritingForEveryNewEvent() async throws {
+    let directory = temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let recorder = SimulationDiagnosticRecorder(
+      side: .macController,
+      directory: directory,
+      maximumBytes: 2_048
+    )
+    let fields: SimulationDiagnosticFields = [
+      "standardError": .text(String(repeating: "near-cap-output-", count: 4))
+    ]
+
+    let fileURL = directory.appendingPathComponent("mac-controller.jsonl")
+    await recorder.record(kind: "controller.devicectl.finished", fields: fields)
+    var previousInode = try inode(of: fileURL)
+    var inodeAfterTrim: UInt64?
+    for _ in 0..<30 {
+      await recorder.record(kind: "controller.devicectl.finished", fields: fields)
+      let currentInode = try inode(of: fileURL)
+      if currentInode != previousInode {
+        inodeAfterTrim = currentInode
+        break
+      }
+      previousInode = currentInode
+    }
+
+    let inodeAfterFirstAppend = try XCTUnwrap(
+      inodeAfterTrim,
+      "The fixture should cross the cap and exercise rolling retention."
+    )
+    let fullFileReadsAfterTrim = await recorder.maintenanceFullFileReadCount
+    await recorder.record(kind: "controller.devicectl.finished", fields: fields)
+    let inodeAfterSecondAppend = try inode(of: fileURL)
+    let fullFileReadsAfterSecondAppend = await recorder.maintenanceFullFileReadCount
+
+    XCTAssertEqual(
+      inodeAfterSecondAppend,
+      inodeAfterFirstAppend,
+      "A trim should leave enough headroom that the next event is appended without another rewrite."
+    )
+    XCTAssertEqual(
+      fullFileReadsAfterSecondAppend,
+      fullFileReadsAfterTrim,
+      "A stable append below the cap should not scan the complete diagnostic file."
+    )
+    let status = await recorder.status()
+    XCTAssertLessThanOrEqual(status.approximateSizeBytes, 2_048)
   }
 
   func testConcurrentWritesRemainParseableAndLocallyOrdered() async throws {
@@ -202,6 +251,29 @@ final class SimulationDiagnosticRecorderTests: XCTestCase {
     XCTAssertEqual(events.map(\.sequence), [1, 2])
   }
 
+  func testExistingRecorderAdoptsGenerationCreatedByAnotherRecorderClear() async throws {
+    let directory = temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let first = SimulationDiagnosticRecorder(side: .macController, directory: directory)
+    await first.record(kind: "controller.lifecycle.ready")
+    let existing = SimulationDiagnosticRecorder(side: .macController, directory: directory)
+
+    let didClear = await first.clear()
+    XCTAssertTrue(didClear)
+    let generationAfterClear = await first.status().generationID
+    await existing.record(kind: "controller.status.requested")
+    await existing.record(kind: "controller.status.completed")
+
+    let existingStatus = await existing.status()
+    let events = await existing.events()
+    XCTAssertEqual(existingStatus.generationID, generationAfterClear)
+    XCTAssertEqual(events.map(\.kind), [
+      "controller.status.requested",
+      "controller.status.completed",
+    ])
+    XCTAssertEqual(events.map(\.sequence), [1, 2])
+  }
+
   func testClearStartsANewGenerationWithoutChangingSimulationSemantics() async throws {
     let directory = temporaryDirectory()
     defer { try? FileManager.default.removeItem(at: directory) }
@@ -226,6 +298,11 @@ final class SimulationDiagnosticRecorderTests: XCTestCase {
       withIntermediateDirectories: true
     )
     return directory
+  }
+
+  private func inode(of fileURL: URL) throws -> UInt64 {
+    let attributes = try FileManager.default.attributesOfItem(atPath: fileURL.path)
+    return try XCTUnwrap(attributes[.systemFileNumber] as? NSNumber).uint64Value
   }
 }
 

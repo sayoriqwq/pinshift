@@ -4,18 +4,18 @@ set --local script_dir (path resolve (path dirname (status filename)))
 source $script_dir/_pinshift-common.fish
 or exit 1
 
-# Keep the wrapper alive when the foreground controller receives Control-C so
-# the abnormal-exit reset below can run.
-function pinshift_keep_wrapper_for_cleanup --on-signal INT
-end
-
-argparse 'h/help' 's/seconds=' 'l/lease-seconds=' -- $argv
+argparse 'h/help' -- $argv
 or exit 2
 
+if test (count $argv) -gt 0
+    echo "pinshift start does not accept additional arguments." >&2
+    exit 2
+end
+
 if set --query _flag_help
-    echo "Usage: pinshift-start [--seconds 60...86400] [--lease-seconds 30...3600]"
-    echo "Starts the trusted Controller Link and keeps it open. Stop with Ctrl+C."
-    echo "The Pinshift app starts each Applied Simulation with 15 minutes by default."
+    echo "Usage: pinshift-start"
+    echo "Checks app signing, renews when needed, then starts the installed controller in this terminal."
+    echo "Keep this terminal open while testing; Ctrl-C clears before the session exits."
     exit 0
 end
 
@@ -24,34 +24,24 @@ or exit $status
 set --local controller (pinshift_controller_executable)
 or exit $status
 
-set --local seconds 3600
-if set --query PINSHIFT_SECONDS
-    set seconds $PINSHIFT_SECONDS
-end
-if set --query _flag_seconds
-    set seconds $_flag_seconds
+if not test -x $controller
+    echo "The controller is not installed. Run `pinshift setup` once." >&2
+    exit 1
 end
 
-set --local lease_seconds
-if set --query PINSHIFT_LEASE_SECONDS
-    set lease_seconds $PINSHIFT_LEASE_SECONDS
-end
-if set --query _flag_lease_seconds
-    set lease_seconds $_flag_lease_seconds
-end
-
-set --local serve_arguments link serve --seconds $seconds
-if set --query lease_seconds[1]
-    set --append serve_arguments --lease-seconds $lease_seconds
-end
-
-$controller $serve_arguments
-set --local serve_status $status
-
-# Normal expiry already performs cleanup inside the controller. A signal or other
-# abnormal exit may bypass that lifecycle, so make the reset explicit and idempotent.
-if test $serve_status -ne 0
-    $controller reset
+echo "Checking the Pinshift app signature and renewing when needed…"
+$script_dir/pinshift-resign-app
+set --local preparation_status $status
+switch $preparation_status
+    case 130 143
+        exit $preparation_status
+    case 0
+    case '*'
+        echo "App preparation was not confirmed. Continuing the foreground session; an existing usable app can still connect." >&2
+        echo "If Pinshift will not open, complete the steps above, then run `pinshift` again. This is not confirmation that the app is ready." >&2
 end
 
-exit $serve_status
+echo "Keep this terminal open while using Pinshift. Ctrl-C ends the session after a real Clear."
+exec $controller link serve \
+    --device "$PINSHIFT_DEVICE" \
+    --developer-directory "$PINSHIFT_DEVELOPER_DIR"

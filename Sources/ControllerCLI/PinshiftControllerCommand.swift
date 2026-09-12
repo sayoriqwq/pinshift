@@ -22,44 +22,14 @@ public struct ActiveDeviceOptions: ParsableArguments {
 public struct PinshiftControllerCommand: AsyncParsableCommand {
   public static let configuration = CommandConfiguration(
     commandName: "pinshift-controller",
-    abstract: "Control one Static Simulation on an Xcode-connected device.",
+    abstract: "Control temporary locations on an Xcode-connected device.",
     subcommands: [
-      Status.self, Apply.self, Stop.self, Reset.self, Doctor.self, Tutorial.self, Link.self,
-      CleanupGuardian.self,
+      Status.self, Clear.self, Reset.self, Doctor.self, Tutorial.self, Link.self,
     ],
     defaultSubcommand: Status.self
   )
 
   public init() {}
-
-  public struct CleanupGuardian: AsyncParsableCommand {
-    public static let configuration = CommandConfiguration(
-      commandName: "cleanup-guardian",
-      abstract: "Keep durable Simulation Lease cleanup alive independently of Controller Link."
-    )
-
-    @OptionGroup public var activeDevice: ActiveDeviceOptions
-
-    @Option(name: .long, help: "Journal polling interval in seconds (0.25 through 30).")
-    public var pollSeconds: Double = 1
-
-    public init() {}
-
-    public func validate() throws {
-      guard (0.25...30).contains(pollSeconds) else {
-        throw ValidationError("--poll-seconds must be from 0.25 through 30.")
-      }
-    }
-
-    public func run() async throws {
-      let guardian = ControllerCLIRuntime.makeCleanupGuardian(
-        device: activeDevice.device,
-        developerDirectory: activeDevice.developerDirectory,
-        pollInterval: pollSeconds
-      )
-      try await guardian.run()
-    }
-  }
 
   public struct Doctor: AsyncParsableCommand {
     public static let configuration = CommandConfiguration(
@@ -118,49 +88,9 @@ public struct PinshiftControllerCommand: AsyncParsableCommand {
     }
   }
 
-  public struct Apply: AsyncParsableCommand {
+  public struct Clear: AsyncParsableCommand {
     public static let configuration = CommandConfiguration(
-      abstract: "Apply or replace one static WGS 84 coordinate."
-    )
-
-    @Argument(help: "Latitude from -90 through 90.")
-    public var latitude: String
-
-    @Argument(help: "Longitude from -180 through 180.")
-    public var longitude: String
-
-    @Option(name: .long, help: "Optional request UUID for correlation.")
-    public var requestID: String?
-
-    @OptionGroup public var activeDevice: ActiveDeviceOptions
-
-    public init() {}
-
-    public func run() async throws {
-      let parsedRequestID: UUID
-      if let requestID {
-        guard let value = UUID(uuidString: requestID) else {
-          throw ValidationError("--request-id must be a UUID.")
-        }
-        parsedRequestID = value
-      } else {
-        parsedRequestID = UUID()
-      }
-      try await emit(
-        await makeRunner(activeDevice).run(
-          .apply(
-            latitude: latitude,
-            longitude: longitude,
-            requestID: parsedRequestID
-          )
-        )
-      )
-    }
-  }
-
-  public struct Stop: AsyncParsableCommand {
-    public static let configuration = CommandConfiguration(
-      abstract: "Stop the active Static Simulation."
+      abstract: "Clear the current temporary location now."
     )
 
     @Option(name: .long, help: "Optional request UUID for correlation.")
@@ -181,14 +111,14 @@ public struct PinshiftControllerCommand: AsyncParsableCommand {
         parsedRequestID = UUID()
       }
       try await emit(
-        await makeRunner(activeDevice).run(.stop(requestID: parsedRequestID))
+        await makeRunner(activeDevice).run(.clear(requestID: parsedRequestID))
       )
     }
   }
 
   public struct Reset: AsyncParsableCommand {
     public static let configuration = CommandConfiguration(
-      abstract: "Idempotently clear any active Static Simulation."
+      abstract: "Idempotently clear any active temporary location."
     )
 
     @Option(name: .long, help: "Optional request UUID for correlation.")
@@ -304,14 +234,11 @@ public struct PinshiftControllerCommand: AsyncParsableCommand {
       @Option(name: .long, help: "Keychain label for the controller identity.")
       public var identityLabel = "Pinshift Controller"
 
-      @Option(name: .long, help: "Maximum server duration in seconds (60 through 86400).")
-      public var seconds: Double = 3_600
-
       @Option(
         name: .long,
-        help: "Maximum lifetime of each Applied Simulation in seconds (30 through 3600)."
+        help: "Optional foreground session duration. Zero waits for Ctrl-C or termination."
       )
-      public var leaseSeconds: Double = ControllerCLIRuntime.defaultSimulationLeaseDuration
+      public var seconds: Double = 0
 
       @Option(
         name: .long,
@@ -330,11 +257,8 @@ public struct PinshiftControllerCommand: AsyncParsableCommand {
       public init() {}
 
       public func validate() throws {
-        guard (60...86_400).contains(seconds) else {
-          throw ValidationError("--seconds must be from 60 through 86400.")
-        }
-        guard (30...3_600).contains(leaseSeconds) else {
-          throw ValidationError("--lease-seconds must be from 30 through 3600.")
+        guard seconds == 0 || (60...86_400).contains(seconds) else {
+          throw ValidationError("--seconds must be zero or from 60 through 86400.")
         }
         guard (60...3_600).contains(pairingCodeValiditySeconds) else {
           throw ValidationError(
@@ -344,6 +268,8 @@ public struct PinshiftControllerCommand: AsyncParsableCommand {
       }
 
       public func run() async throws {
+        let ownership = try ControllerSessionLock.acquire()
+        defer { ownership.release() }
         let tlsIdentity: SecIdentity
         do {
           tlsIdentity = try KeychainTLSIdentity.load(label: identityLabel)
@@ -379,19 +305,12 @@ public struct PinshiftControllerCommand: AsyncParsableCommand {
             )
           ]
         )
-        let serverOwnerID = UUID()
-        let serverHeartbeat = ControllerCLIRuntime.makeServerHeartbeatEmitter(
-          ownerID: serverOwnerID
-        )
         let simulationController = ControllerCLIRuntime.makeController(
           device: activeDevice.device,
           developerDirectory: activeDevice.developerDirectory,
-          leaseDuration: leaseSeconds,
-          serverOwnerID: serverOwnerID,
           diagnostics: diagnostics
         )
-        _ = await simulationController.reconcileLifecycle()
-        try await serverHeartbeat.recordNow()
+        await ControllerCLIRuntime.prepareSession(controller: simulationController)
         let session = ControllerServerSession(
           identity: identity,
           pairingAuthority: authority,
@@ -421,7 +340,8 @@ public struct PinshiftControllerCommand: AsyncParsableCommand {
         let privateCodeFile = try pairingCodeFile.map {
           try OwnerOnlyPairingCodeFile.create(
             at: URL(fileURLWithPath: $0),
-            contents: Data(code.utf8)
+            contents: Data(code.utf8),
+            replacingOwnedExisting: true
           )
         }
         defer {
@@ -432,14 +352,13 @@ public struct PinshiftControllerCommand: AsyncParsableCommand {
         } else {
           print("Controller Link is ready. Pairing code: \(code) (expires in 5 minutes).")
         }
-        print("Keep this command open while using the iPhone app.")
-        try await ControllerCLIRuntime.runServeLifecycle(
-          seconds: seconds,
+        print("Temporary Simulated Locations clear automatically after 3 minutes.")
+        print("Keep this terminal open. Ctrl-C performs a real Clear before exit.")
+        try await ControllerCLIRuntime.runForegroundSession(
           controller: simulationController,
-          serverHeartbeat: serverHeartbeat,
-          diagnostics: diagnostics,
-          report: { result in
-            print("Controller exit cleanup: \(result.output)")
+          runFor: seconds == 0 ? nil : seconds,
+          stopAcceptingCommands: {
+            server.stop()
           }
         )
       }

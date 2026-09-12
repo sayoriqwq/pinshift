@@ -43,16 +43,8 @@
 "Saved Locations could not be loaded." = "Saved Locations could not be loaded.";
 "Save a valid Selected Location first." = "Save a valid Selected Location first.";
 "Saved Locations could not be saved. Your existing collection is unchanged." = "Saved Locations could not be saved. Your existing collection is unchanged.";
-"Simulation Lease expires" = "Simulation Lease expires";
-"Cleanup pending — retrying automatically…" = "Cleanup pending — retrying automatically…";
-"Cleanup is still pending" = "Cleanup is still pending";
-"The trusted controller is unavailable. Cleanup remains pending and will retry automatically." = "The trusted controller is unavailable. Cleanup remains pending and will retry automatically.";
-"Pending cleanup belongs to a different Active Test Device" = "Pending cleanup belongs to a different Active Test Device";
-"Stop targets an older simulation generation" = "Stop targets an older simulation generation";
-"Finish the pending simulation cleanup before applying another location." = "Finish the pending simulation cleanup before applying another location.";
-"The pending simulation cleanup could not be restored." = "The pending simulation cleanup could not be restored.";
-"The simulation cleanup state could not be saved." = "The simulation cleanup state could not be saved.";
-"Apply outcome unknown — cleanup required" = "Apply outcome unknown — cleanup required";
+"The Selected Location could not be restored." = "The Selected Location could not be restored.";
+"The Selected Location could not be saved." = "The Selected Location could not be saved.";
 "Unknown until Controller Link reconnects" = "Unknown until Controller Link reconnects";
 "Acknowledged locally — awaiting reconciliation" = "Acknowledged locally — awaiting reconciliation";
 
@@ -73,39 +65,61 @@
 "Use Map Center" = "Use Map Center";
 "Map Center Selected" = "Map Center Selected";
 
-/* Time-bounded simulation */
-"Time-Bounded Simulation" = "Time-Bounded Simulation";
-"Choose how long this simulation may remain active. After Apply succeeds, automatic cleanup no longer depends on remembering Stop." = "Choose how long this simulation may remain active. After Apply succeeds, automatic cleanup no longer depends on remembering Stop.";
-"Duration" = "Duration";
-"%d min" = "%d min";
-"Start Time-Bounded Simulation" = "Start Time-Bounded Simulation";
+/* Temporary simulation */
+"Temporary Simulation" = "Temporary Simulation";
+"The selected location applies for 3 minutes. Choose and apply another location at any time to replace it." = "The selected location applies for 3 minutes. Choose and apply another location at any time to replace it.";
 "Simulated Location" = "Simulated Location";
-"Automatic cleanup at" = "Automatic cleanup at";
-"Automatic cleanup in %@" = "Automatic cleanup in %@";
-"Cleanup due — waiting for Mac confirmation" = "Cleanup due — waiting for Mac confirmation";
-"Automatic cleanup entrusted to Cleanup Guardian" = "Automatic cleanup entrusted to Cleanup Guardian";
-"Extending…" = "Extending…";
-"Extend 15 Minutes" = "Extend 15 Minutes";
-"Restoring…" = "Restoring…";
-"Return to Normal Location" = "Return to Normal Location";
+"Automatic clear at" = "Automatic clear at";
+"Automatic clear in %@" = "Automatic clear in %@";
+"Automatic clear is due. Use Clear Now if the location remains active." = "Automatic clear is due. Use Clear Now if the location remains active.";
+"Clearing…" = "Clearing…";
+"Clear Now" = "Clear Now";
 "Simulation active" = "Simulation active";
-"Restore requested" = "Restore requested";
-"Cleanup pending — waiting for Mac confirmation" = "Cleanup pending — waiting for Mac confirmation";
 "Verified by a fresh observation in this app" = "Verified by a fresh observation in this app";
 "Applied; latest observation is not yet verified" = "Applied; latest observation is not yet verified";
 "Applied; waiting for a fresh observation" = "Applied; waiting for a fresh observation";
-"Restore requested — retrying automatically…" = "Restore requested — retrying automatically…";
+"Clearing simulated location…" = "Clearing simulated location…";
 "Simulated Location cleared" = "Simulated Location cleared";
-"Automatic Cleanup" = "Automatic Cleanup";
-"Cleanup Guardian ready" = "Cleanup Guardian ready";
-"Controller update required" = "Controller update required";
-"Choose a 15-, 30-, or 60-minute duration" = "Choose a 15-, 30-, or 60-minute duration";
-"Cleanup Guardian protection is unavailable" = "Cleanup Guardian protection is unavailable";
-"Update the Mac controller to use protected sessions" = "Update the Mac controller to use protected sessions";
-"Cleanup Guardian protection is unavailable. Run pinshift-install on the Mac, then retry." = "Cleanup Guardian protection is unavailable. Run pinshift-install on the Mac, then retry.";
-"Automatic cleanup protection is unavailable. Resolve the Mac controller check and retry." = "Automatic cleanup protection is unavailable. Resolve the Mac controller check and retry.";
-"This Mac controller is too old for protected time-bounded sessions. Update it with pinshift-install." = "This Mac controller is too old for protected time-bounded sessions. Update it with pinshift-install.";
-"Waiting for the Mac to confirm automatic-cleanup protection." = "Waiting for the Mac to confirm automatic-cleanup protection.";
+"Clear could not be confirmed" = "Clear could not be confirmed";
+"Keep the Mac session open and tap Clear Now again when the device is reachable." = "Keep the Mac session open and tap Clear Now again when the device is reachable.";
+"Automatic Clear" = "Automatic Clear";
+"Every applied location clears automatically after 3 minutes." = "Every applied location clears automatically after 3 minutes.";
+"Apply outcome unknown; automatic clear remains scheduled" = "Apply outcome unknown; automatic clear remains scheduled";
+"Clear failed; tap Clear Now to retry" = "Clear failed; tap Clear Now to retry";
+"The trusted controller is unavailable. Reconnect and try again." = "The trusted controller is unavailable. Reconnect and try again.";
+"The controller is connected to a different Active Test Device" = "The controller is connected to a different Active Test Device";
+"Refresh Controller Status" = "Refresh Controller Status";
+
+/* Simple Mac-facing product language */
+"Mac" = "Mac";
+"Mac connection" = "Mac connection";
+"Test device / Xcode" = "Test device / Xcode";
+"Mac location service" = "Mac location service";
+"Current temporary location" = "Current temporary location";
+"Pinshift observation" = "Pinshift observation";
+"Pair Mac" = "Pair Mac";
+"Retry Mac Connection" = "Retry Mac Connection";
+"Refresh Mac Status" = "Refresh Mac Status";
+"Applying temporary location…" = "Applying temporary location…";
+"Applied — waiting for a fresh observation" = "Applied — waiting for a fresh observation";
+"Verified in Pinshift" = "Verified in Pinshift";
+"Searching for your Mac…" = "Searching for your Mac…";
+"Mac found — enter the code shown there" = "Mac found — enter the code shown there";
+"Mac connected" = "Mac connected";
+"Mac disconnected" = "Mac disconnected";
+"Mac identity changed — connection rejected" = "Mac identity changed — connection rejected";
+"Mac unavailable" = "Mac unavailable";
+"Mac reported a workflow failure" = "Mac reported a workflow failure";
+"Waiting for Mac connection" = "Waiting for Mac connection";
+"Unknown until the Mac reconnects" = "Unknown until the Mac reconnects";
+"Applied locally — waiting for Mac status" = "Applied locally — waiting for Mac status";
+"The Mac is unavailable. Reconnect and try again." = "The Mac is unavailable. Reconnect and try again.";
+"The Mac rejected the request (%@). Check Mac status and retry." = "The Mac rejected the request (%@). Check Mac status and retry.";
+"Mac location service is unavailable" = "Mac location service is unavailable";
+"Mac location service timed out" = "Mac location service timed out";
+"Mac authorization failed" = "Mac authorization failed";
+"Mac response mismatch" = "Mac response mismatch";
+"The Mac is connected to a different test device" = "The Mac is connected to a different test device";
 
 /* Pinshift home and settings */
 "Settings" = "Settings";
@@ -119,14 +133,48 @@
 "Ready" = "Ready";
 "Finding Mac" = "Finding Mac";
 "Pairing Required" = "Pairing Required";
-"Needs Attention" = "Needs Attention";
 "Mac Unavailable" = "Mac Unavailable";
-"Automatic cleanup is protected" = "Automatic cleanup is protected";
-"Automatic cleanup needs attention" = "Automatic cleanup needs attention";
-"Cleanup stays pending until the Mac acknowledges a successful devicectl clear." = "Cleanup stays pending until the Mac acknowledges a successful devicectl clear.";
-"Update the Mac controller before starting a protected simulation." = "Update the Mac controller before starting a protected simulation.";
-"Connect to the Mac to confirm Cleanup Guardian readiness." = "Connect to the Mac to confirm Cleanup Guardian readiness.";
 "Selected via %@" = "Selected via %@";
 "Coordinates" = "Coordinates";
 "Map Selection" = "Map Selection";
 "Search Result" = "Search Result";
+
+"More" = "More";
+
+"Current location" = "Current location";
+
+"Current status unconfirmed" = "Current status unconfirmed";
+
+"Reconnect Mac" = "Reconnect Mac";
+
+"Ready to apply" = "Ready to apply";
+
+"Applying %@…" = "Applying %@…";
+
+"Automatic clear due — waiting for confirmation" = "Automatic clear due — waiting for confirmation";
+
+"Try Clear Now Again" = "Try Clear Now Again";
+
+"Choose another place…" = "Choose another place…";
+
+"Back to current location" = "Back to current location";
+
+"Save place" = "Save place";
+
+"Apply for 3 minutes" = "Apply for 3 minutes";
+
+"Move here · 3 minutes" = "Move here · 3 minutes";
+
+"Keep the Mac session open. Automatic clear will retry when the device is reachable; you can also retry now." = "Keep the Mac session open. Automatic clear will retry when the device is reachable; you can also retry now.";
+
+"Awaiting clear confirmation" = "Awaiting clear confirmation";
+
+"The request could not be confirmed. Check the Mac connection in More and try again." = "The request could not be confirmed. Check the Mac connection in More and try again.";
+
+"Last confirmed location" = "Last confirmed location";
+
+"App renewal" = "App renewal";
+
+"Run pinshift on your Mac to check the app signature and renew it when needed. Follow the Mac instructions if Apple sign-in or iPhone confirmation is required." = "Run pinshift on your Mac to check the app signature and renew it when needed. Follow the Mac instructions if Apple sign-in or iPhone confirmation is required.";
+
+"Save this place" = "Save this place";

@@ -1,41 +1,28 @@
+import Foundation
 import SimulationController
 import XCTest
 
 @testable import ControllerCLI
 
 final class ControllerCLIRunnerTests: XCTestCase {
-  func testStatusUsesTheCurrentDevicectlWorkflowAndDoesNotInventPersistentState() async {
+  func testRootCommandDoesNotExposeOneShotApplyOutsideForegroundSession() {
+    let help = PinshiftControllerCommand.helpMessage()
+
+    XCTAssertFalse(help.contains("\n  apply"))
+  }
+
+  func testStatusReportsIdleReadyAuthority() async {
     let runner = ControllerCLIRunner(
       controller: SimulationController(backend: InMemoryInjectionBackend())
     )
 
     let result = await runner.run(.status)
-
-    XCTAssertEqual(result.exitCode, 0)
     XCTAssertEqual(
-      result.output,
-      "The Active Test Device and Xcode/devicectl Injection Backend are ready. Applied and Verified state is reported by the active Controller Link and Pinshift app."
-    )
-    XCTAssertFalse(result.output.localizedCaseInsensitiveContains("test session"))
-  }
-
-  func testApplyReportsBackendAcknowledgementWithoutClaimingVerification() async {
-    let controller = SimulationController(backend: InMemoryInjectionBackend())
-    let runner = ControllerCLIRunner(controller: controller)
-    let requestID = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
-
-    let result = await runner.run(
-      .apply(
-        latitude: "31.2304",
-        longitude: "121.4737",
-        requestID: requestID
+      result,
+      ControllerCLIResult(
+        exitCode: 0,
+        output: "No Simulated Location is active; the Injection Backend is ready."
       )
-    )
-
-    XCTAssertEqual(result.exitCode, 0)
-    XCTAssertEqual(
-      result.output,
-      "Applied Simulation acknowledged for request 00000000-0000-0000-0000-000000000002 at 31.230400, 121.473700. Pinshift app verification is still required."
     )
   }
 

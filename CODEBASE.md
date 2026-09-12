@@ -1,8 +1,7 @@
 # Pinshift 代码库导览
 
-这份文档回答三个问题：系统由哪些部分组成、一次 Apply/Stop 如何穿过这些部分，以及第一次阅读
-仓库时应该按什么顺序进入。领域术语以 [CONTEXT.md](CONTEXT.md) 为准，使用和审计流程见
-[GUIDE.md](GUIDE.md)。
+这份文档说明系统边界、一次 Apply/Clear 的路径和推荐阅读顺序。领域术语以
+[CONTEXT.md](CONTEXT.md) 为准，用户流程见 [GUIDE.md](GUIDE.md)。
 
 ## 一眼看懂系统
 
@@ -21,12 +20,10 @@ flowchart TB
     DIAG["SimulationDiagnostics"]
   end
 
-  subgraph macOS["Mac"]
-    CLI["ControllerCLI"]
-    CTRL["SimulationController"]
+  subgraph macOS["Explicit foreground test session"]
+    CLI["ControllerCLI + TLS server"]
+    CTRL["SimulationController actor"]
     BACKEND["DevicectlInjectionBackend"]
-    GUARDIAN["Cleanup Guardian"]
-    JOURNAL["Lifecycle journal"]
   end
 
   UI --> VM
@@ -37,66 +34,62 @@ flowchart TB
   LINK <-->|"Bonjour + paired TLS"| CLI
   CLI --> CTRL
   CTRL --> BACKEND
-  CTRL --> JOURNAL
-  GUARDIAN --> JOURNAL
-  GUARDIAN --> BACKEND
   BACKEND -->|"xcrun devicectl"| PHONE["Xcode device services"]
   VM --> DIAG
   CLI --> DIAG
   CTRL --> DIAG
 ```
 
-关键边界是：iOS App 负责选择、意图和观测；Mac 控制器负责权威执行；Injection Backend 负责调用
-Apple 的位置测试接口；Guardian 负责在前台 server 不存在时继续兑现清理义务。
+iOS 负责选择、短暂交互状态和观测；手动启动的 Mac 测试会话负责当次会话内的状态、命令串行化和自动解除；
+backend 只负责调用 Apple 的位置测试接口。没有 Guardian 或 LaunchAgent；新显式会话以真实 Clear 处理可能的遗留模拟。
 
 ## 目录与模块
 
 | 路径 | 职责 | 建议入口 |
 | --- | --- | --- |
-| `App/` | Pinshift 的 SwiftUI 界面、App 状态编排、地图搜索、位置观测、本地收藏和诊断导出 | `PinshiftApp.swift`、`ContentView.swift` |
-| `Sources/LocationDomain/` | 不依赖 UI/网络的纯领域模型：坐标、选择、收藏、观测匹配、限时模拟会话 | `LocationDomain.swift`、`ManualSimulationSession.swift` |
-| `Sources/ControllerLink/` | Bonjour 发现、TLS 传输、一次性配对、Keychain 信任、命令协议和 server session | `TrustedControllerLink.swift`、`ControllerCommand.swift` |
-| `Sources/SimulationController/` | 模拟生命周期状态机、持久 journal、lease、heartbeat、Guardian 和 `devicectl` backend | `SimulationController.swift`、`SimulationCleanupGuardian.swift` |
-| `Sources/SimulationDiagnostics/` | App/Mac 共用的结构化事件、滚动保留、脱敏和导出格式 | `SimulationDiagnostics.swift` |
-| `Sources/ControllerCLI/` | CLI 命令定义、依赖装配、doctor、教程、Controller Link 到模拟控制器的适配 | `PinshiftControllerCommand.swift`、`ControllerCLIRuntime.swift` |
-| `Sources/PinshiftController/` | `pinshift-controller` 可执行文件的最薄入口 | `main.swift` |
-| `bin/` | 面向日常操作的 Fish 包装器：安装、启动、重置、检查、续签和诊断导出 | `_pinshift-common.fish`、`pinshift-start`、`pinshift-install` |
-| `Support/` | launchd Cleanup Guardian 模板 | `dev.sayori.pinshift.cleanup-guardian.plist` |
-| `Tests/` | 按 Swift 模块分层的单元/集成测试，以及真机 UI/可选 smoke 测试 | `SimulationLifecycleIntegrationTests.swift`、`PinshiftUITests/` |
-| `Config/`、`project.yml` | iOS target、签名、Info.plist 和 XcodeGen 配置 | `project.yml`、`Pinshift-Info.plist` |
-| `docs/` | 架构决策、需求、研究、历史验证证据和开发教程 | `docs/adr/`、`docs/evidence/` |
+| `App/` | SwiftUI、App 状态编排、地图搜索、位置观测、收藏和诊断导出 | `ContentView.swift`、`BaselineViewModel.swift` |
+| `Sources/LocationDomain/` | 坐标、选择、收藏、观测匹配和 App 侧临时会话投影 | `LocationDomain.swift`、`ManualSimulationSession.swift` |
+| `Sources/ControllerLink/` | Bonjour、TLS、配对、Keychain 信任和 Status/Apply/Clear 协议 | `ControllerCommand.swift`、`TrustedControllerLink.swift` |
+| `Sources/SimulationController/` | 会话内 authority actor、固定截止时间、真实 Clear 和 `devicectl` backend | `SimulationController.swift` |
+| `Sources/SimulationDiagnostics/` | 双端结构化事件、滚动保留、脱敏和导出 | `SimulationDiagnostics.swift` |
+| `Sources/ControllerCLI/` | CLI、依赖装配、doctor、教程和 Link→controller 适配 | `PinshiftControllerCommand.swift`、`ControllerCLIRuntime.swift` |
+| `bin/` | Fish 包装器：安装可执行文件、前台启动、重置、检查、续签和诊断导出 | `pinshift-install`、`pinshift-start` |
+| `Tests/` | 分层单元/集成、脚本约束、UI 与 opt-in 真机 smoke | `TemporarySimulationAcceptanceTests.swift`、`PinshiftUITests/` |
 
-`Package.swift` 是共享模块与 Mac CLI 的 SwiftPM 构建图；`project.yml` 是 iOS App 和 UI 测试工程的
-源配置。`Pinshift.xcodeproj` 由 XcodeGen 生成并提交，应该跟随 `project.yml` 一起更新，而不是
-把手工修改 project file 当作唯一来源。
+`Package.swift` 是共享模块与 Mac CLI 的 SwiftPM 图；`project.yml` 是 iOS 工程源配置，
+`Pinshift.xcodeproj` 由 XcodeGen 生成并提交。
 
-## iOS App 怎么组织
+## iOS 侧
 
-- `PinshiftApp.swift` 创建 SwiftUI scene，并维护中英文切换。
-- `ContentView.swift` 是当前主要 composition root：把连接状态、选点、收藏、限时会话、观测和诊断区块组合起来。
-- `BaselineViewModel.swift` 管理 Selected Location、Saved Location、Manual Simulation Session 和观测匹配；它不直接执行网络命令。
-- `ControllerLinkViewModel.swift` 管理发现、配对、连接、readiness、Apply/Extend/Stop 发送和重连后的 lifecycle reconciliation。
-- `LocationPickerView.swift` 与 `LocationPickerViewModel.swift` 封装地图中心选点、搜索和微调；完成选择不会自动 Apply。
-- `LocationObserver.swift` 把 Core Location callback 转成 `LocationObservation`，供 Verified Simulation 判断使用。
-- `SimulationDiagnosticPipeline.swift` 在主线程按顺序预留事件，再异步写盘，保证一次 UI 操作产生的时间线顺序稳定。
+- `ContentView` 始终提供选点；Controller Link 连接后始终提供 Apply，不用历史 backend 状态作门槛。
+- `BaselineViewModel` 管理 Selected/Saved Location、Manual Simulation 投影和观测验证，不执行网络命令。
+- `ControllerLinkViewModel` 管理发现、配对、Status/Apply/Clear 和重连后的 snapshot 替换。
+- `ManualSimulationSession` 只保存 selection。Apply/Clear 在进程内相关联；旧响应不能覆盖新操作。
+- `LocationPickerView` 的选择 callback 没有“被生命周期拒绝”的分支。
 
-这里保留了“意图”和“结果”的分离：点击 Apply 产生请求，不等于后端已应用；后端已应用也不等于
-Pinshift 已收到匹配观测。UI 显式展示这几个阶段。
+Applied 与 Verified 故意分离：后端确认设置成功不等于 Pinshift 已收到新观测，也不保证其他 App 的传播。
 
-## Mac 控制器怎么组织
+## Mac 侧
 
-`PinshiftControllerCommand` 定义 `serve`、`doctor`、`apply`、`stop`、`reset`、
-`cleanup-guardian` 等命令。`ControllerCLIRuntime` 是 Mac 侧 composition root，负责把配置、诊断、
-`DevicectlInjectionBackend`、生命周期存储、heartbeat store 和 Guardian health store 装配起来。
+`pinshift-start` 先检查 App 签名并按需续签，再在当前终端运行 `pinshift-controller link serve`。同一前台进程创建一个
+`SimulationController` 并交给 TLS session；正常 Ctrl-C 或时限结束先执行真实 Clear，失败时前台等待并重试；再次明确中断可强制退出。
+`pinshift-install` 卸载旧 authority 后先用已签名 candidate 执行一次真实 reset，成功后才删除旧 lifecycle
+文件并发布新二进制。
 
-`SimulationController` 是核心 actor。它串行化 Apply、Extend 和 Stop，维护 generation/request identity，
-并确保 Apply 前已经落盘 Cleanup Obligation。`SimulationControllerCommandHandler` 把 Controller Link 协议
-对象映射到该 actor；`ControllerCLIRunner` 为直接 CLI 操作提供同一语义。
+`SimulationController` 是深模块边界：
 
-`DevicectlInjectionBackend` 只负责安全构造并执行公开 `xcrun devicectl device simulate location`
-命令。它不知道 UI、Bonjour 或收藏地点，因此可以独立测试命令边界、超时和失败映射。
+- 一个 FIFO gate 覆盖 readiness、backend Apply/Clear 和自动计时器；
+- 新 Apply 只检查当前执行条件，不检查历史 simulation phase；
+- 真正的新 Apply 在内存中记录 operation ID、坐标和 `acceptedAt + 180s`；
+- 同一 request ID 的重试返回原 deadline，真正的新 Apply 原子替换 current；
+- Clear 即使没有 current 也调用 backend，只有 backend 确认后才返回成功；
+- 到期解除失败保留在当次会话状态中并有界退避重试，用户也可从 iOS 再次点 Clear Now；
+- 没有 lifecycle journal 或常驻重试；下次显式启动先尝试真实遗留清理。
 
-## 一次 Apply 的路径
+`DevicectlInjectionBackend` 不知道 UI、网络或计时，只安全构造公开 `xcrun devicectl device simulate location`
+命令并映射结果。
+
+## Apply 路径
 
 ```mermaid
 sequenceDiagram
@@ -104,103 +97,67 @@ sequenceDiagram
   participant A as Pinshift app
   participant L as Controller Link
   participant C as SimulationController
-  participant J as Lifecycle journal
-  participant D as devicectl backend
+  participant D as devicectl
 
-  U->>A: Select location and duration
-  A->>L: Apply(request ID, generation ID, coordinate, lease)
-  L->>C: Authorized lifecycle command
-  C->>J: Persist apply-uncertain cleanup obligation
+  U->>A: Choose any location and tap Apply
+  A->>L: Apply(request ID, coordinate)
+  L->>C: Authorized command
+  C->>C: Replace in-memory current; arm 180-second timer
   C->>D: Set coordinate
-  D-->>C: Apply acknowledgement
-  C->>J: Persist applied + authoritative expiry
-  C-->>A: Applied lifecycle response
-  A->>A: Match a fresh Core Location observation separately
+  D-->>C: Applied or failed
+  C-->>A: Original deadline or explicit failure
+  A->>A: Verify fresh observation separately
 ```
 
-先写 `applyUncertain` 是故意的：如果后端实际设置成功、但响应在途中丢失，系统仍然保有一条必须
-clear 的记录，不会因为“客户端没收到成功”而遗忘可能生效的模拟位置。
+失败状态不是下一次 Apply 的前置条件。测试终端必须保持运行；进程意外崩溃时没有后台接管者。
 
-## 一次 Stop 或自动清理的路径
+## Clear 和自动解除路径
 
-手动 Stop、lease 到期、server 正常退出、server-owner heartbeat 连续丢失、Guardian 重启恢复和
-`pinshift-reset` 最终都会汇入同一个幂等 clear 路径：
+Clear Now 不依赖历史 operation：每次都调用 backend。自动 timer 与 Apply/Clear 通过同一个 gate，避免
+同一 Mac 进程内的 backend 命令并发执行。
 
-1. 目标 generation 被标记为 `cleanupPending`。
-2. controller 或 Guardian 调用 backend clear。
-3. 只有明确成功才写入 completion 并清空 active obligation。
-4. 暂时不可达时保留失败原因、retry attempt 和 next retry time。
-5. App 重连后通过 lifecycle reconciliation 获取权威状态。
+到期流程：标记 `clearPending` → 调用 backend → 成功清空 `current`；失败保留原因，并在当前前台会话中有界退避重试。Mac 或设备不可达是显式失败，不是 UI 锁。
 
-这也是为什么关闭 iOS App 不会直接清除位置：公开清理能力属于 Mac/Xcode 的开发者服务，不属于
-iOS App；App 负责保存并重投 Stop Intent，Guardian 负责独立执行。
-
-## 状态和权威分别属于谁
+## 权威与持久化
 
 | 信息 | 权威来源 | 持久位置 |
 | --- | --- | --- |
 | Selected/Saved Location | Pinshift app | iOS App sandbox |
-| Stop Intent / pending extension | Pinshift app | iOS App storage |
 | Controller trust | iOS Keychain | 当前设备 Keychain |
 | Paired App authorization | Mac controller | macOS Keychain |
-| Applied/Cleanup Pending/Stopped | SimulationController journal | `~/Library/Application Support/Pinshift/SimulationLifecycle/` |
-| Server liveness | foreground controller heartbeat | 同一 lifecycle 目录 |
-| Guardian readiness | Cleanup Guardian health record | 同一 lifecycle 目录 |
-| Backend execution result | `devicectl` exit result | journal completion + Mac diagnostics |
+| Current operation/deadline/failure | SimulationController | 仅当前前台进程内存 |
+| Backend result | `devicectl` exit | session state + Mac diagnostics |
 | Observed Location | Core Location callback | App state + iOS diagnostics |
 
-Pinshift 1.0 只保留 Pinshift 原生身份：App、CLI、Bonjour、launchd、Keychain、环境变量和诊断格式
-都不提供旧名称 alias 或迁移 fallback。今后若再次修改这些持久标识，应把它视为明确的数据与信任
-重置，而不是普通文案调整。
+App 重连后用当前 Mac 会话 snapshot 替换显示状态。iOS 不持久化待重投的 Clear、时长延长或清理确认。
 
 ## 推荐阅读顺序
 
-1. [CONTEXT.md](CONTEXT.md)：先建立 Selected、Applied、Verified、Lease 和 Cleanup Obligation 的区别。
-2. `Sources/LocationDomain/ManualSimulationSession.swift`：看 iOS 侧会话状态如何表达。
-3. `Sources/ControllerLink/ControllerCommand.swift`：看跨设备协议传什么，而不是猜 UI 与 Mac 如何耦合。
-4. `Sources/SimulationController/SimulationLifecycleStore.swift`：看必须跨进程保存的最小状态。
-5. `Sources/SimulationController/SimulationController.swift`：从 `apply`、`extendLease`、`stop` 和 reconciliation 入口读核心状态机。
-6. `Sources/SimulationController/SimulationCleanupGuardian.swift`：理解 server 消失后谁继续负责清理。
-7. `App/ControllerLinkViewModel.swift` 与 `App/BaselineViewModel.swift`：看 App 如何保存意图、投递请求并吸收权威结果。
-8. `App/ContentView.swift`：最后再看状态如何呈现成完整界面。
-9. `Tests/ControllerCLITests/SimulationLifecycleIntegrationTests.swift`：用可执行场景复核异常路径。
+1. [CONTEXT.md](CONTEXT.md)：建立 Temporary Simulation、Automatic Clear 和 Clear Now 的区别。
+2. `Sources/LocationDomain/ManualSimulationSession.swift`：看 App 投影如何忽略旧响应。
+3. `Sources/ControllerLink/ControllerCommand.swift`：看跨设备协议的最小表面。
+4. `Sources/SimulationController/SimulationController.swift`：读 Apply、真实 Clear、180 秒 timer 和 gate。
+5. `Sources/ControllerCLI/ControllerCLIRuntime.swift`：看前台会话退出前如何执行 Clear。
+6. `App/ControllerLinkViewModel.swift` 与 `App/BaselineViewModel.swift`：看 UI 如何投递并吸收 Mac 状态。
+7. `Tests/SimulationControllerTests/SimulationControllerTests.swift`：复核替换、清理失败重试和竞态。
+8. `Tests/ControllerCLITests/TemporarySimulationAcceptanceTests.swift`：复核 App→Link→Mac 的完整协议。
 
-## 测试地图
-
-- `LocationDomainTests`：坐标、距离、选择、收藏和本地会话状态机。
-- `ControllerLinkTests`：协议关联、发现、TLS、配对、授权和 session 顺序。
-- `SimulationControllerTests`：backend 命令与控制器单元行为。
-- `SimulationDiagnosticsTests`：落盘、滚动保留、并发顺序和脱敏。
-- `ControllerCLITests`：CLI、doctor、安装/续签脚本约束以及跨组件生命周期集成。
-- `PinshiftUITests`：全屏界面、地图选点、状态反馈、重连与可选真机验证。
-
-运行 SwiftPM 测试：
+## 验证
 
 ```fish
 swift test
 ```
 
-✅ 验证所有共享模块、Mac 控制器和脚本约束测试。
-
-修改 `project.yml` 后重新生成 iOS 工程：
-
-```fish
-xcodegen generate --spec project.yml
-```
-
-🏗️ 从声明式配置更新已提交的 Xcode project 和共享 scheme。
-
-构建不签名的通用 iOS 产物：
+✅ 验证共享模块、Mac 前台会话和脚本约束。
 
 ```fish
 DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer \
   xcodebuild -project Pinshift.xcodeproj \
   -scheme Pinshift \
-  -destination 'generic/platform=iOS' \
+  -sdk iphonesimulator \
   CODE_SIGNING_ALLOWED=NO build
 ```
 
-🧪 验证 Pinshift App、共享源码和当前 Xcode 工程可以完整编译。
+🧪 验证 iOS App、共享源码和本地化资源完整编译。
 
-真机测试会使用当前个人环境，并可能触及签名、设备连接和 Personal Team App 配额；默认
-`swift test` 不会运行显式 opt-in 的物理设备 smoke。
+真机测试会使用个人签名和物理设备，默认 `swift test` 不运行显式 opt-in smoke。

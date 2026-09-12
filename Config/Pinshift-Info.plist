@@ -27,7 +27,7 @@
 		<string>_pinshift._tcp</string>
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Pinshift connects to your trusted Mac controller to send explicit apply and stop requests.</string>
+	<string>Pinshift connects to your trusted Mac controller to apply temporary locations, read status, or clear now.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Pinshift observes your location while open so you can verify coordinates applied through the Xcode devicectl workflow.</string>
 	<key>UILaunchScreen</key>

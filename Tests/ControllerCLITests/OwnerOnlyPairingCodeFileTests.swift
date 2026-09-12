@@ -48,6 +48,28 @@ final class OwnerOnlyPairingCodeFileTests: XCTestCase {
     }
   }
 
+  func testBackgroundAuthorityCanReplaceItsStaleOwnerOnlyFile() throws {
+    try withTemporaryDirectory { directory in
+      let file = directory.appending(path: "pairing-code")
+      let stale = try OwnerOnlyPairingCodeFile.create(
+        at: file,
+        contents: Data("111111".utf8)
+      )
+
+      let current = try OwnerOnlyPairingCodeFile.create(
+        at: file,
+        contents: Data("222222".utf8),
+        replacingOwnedExisting: true
+      )
+
+      XCTAssertEqual(try Data(contentsOf: file), Data("222222".utf8))
+      stale.removeIfOwned()
+      XCTAssertEqual(try Data(contentsOf: file), Data("222222".utf8))
+      current.removeIfOwned()
+      XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
+    }
+  }
+
   func testCleanupPreservesAReplacementFile() throws {
     try withTemporaryDirectory { directory in
       let file = directory.appending(path: "pairing-code")
