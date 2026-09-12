@@ -497,7 +497,7 @@ final class PinshiftUITests: XCTestCase {
     XCTAssertTrue(renameField.waitForExistence(timeout: 5))
     replaceRenameText(in: renameField, with: "Shanghai QA", in: renameAlert)
     app.buttons["saved-location-confirm-rename"].firstMatch.tap()
-    let renamedLocation = app.buttons
+    let renamedLocation = app.collectionViews["settings-list"].buttons
       .matching(NSPredicate(format: "label CONTAINS %@", "Shanghai QA"))
       .firstMatch
     scrollUp(until: renamedLocation, in: app)
@@ -610,6 +610,7 @@ final class PinshiftUITests: XCTestCase {
     let inactive = app.staticTexts.matching(identifier: "simulation-status")
       .matching(NSPredicate(format: "label == %@", "Selected — waiting to apply"))
       .firstMatch
+    scrollUpInSmallSteps(until: inactive, in: app)
     XCTAssertTrue(inactive.waitForExistence(timeout: 5))
     openSettings(in: app)
     scrollToTop(in: app)
@@ -1314,7 +1315,9 @@ final class PinshiftUITests: XCTestCase {
   }
 
   private func savedLocationsFixtureApp() -> XCUIApplication {
-    let app = permissionFixtureApp(location: "allowed", localNetwork: "allowed")
+    let app = pinshiftApp()
+    app.launchEnvironment["PINSHIFT_E2E_LOCATION_PERMISSION"] = "allowed"
+    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
     app.launchEnvironment["PINSHIFT_E2E_SAVED_LOCATIONS_RESET_TOKEN"] = UUID().uuidString
     return app
   }
@@ -1338,7 +1341,7 @@ final class PinshiftUITests: XCTestCase {
     app.buttons["save-selection"].tap()
 
     let saveCurrent = app.buttons["save-current-location"]
-    scrollUp(until: saveCurrent, in: app)
+    scrollUpInSmallSteps(until: saveCurrent, in: app)
     XCTAssertTrue(saveCurrent.waitForExistence(timeout: 5))
     XCTAssertTrue(saveCurrent.isEnabled)
     saveCurrent.tap()
@@ -1349,10 +1352,10 @@ final class PinshiftUITests: XCTestCase {
     nameField.tap()
     nameField.typeText(name)
     app.buttons["saved-location-confirm-save"].firstMatch.tap()
-    let savedLocation = app.buttons
+    let savedLocation = app.collectionViews["settings-list"].buttons
       .matching(NSPredicate(format: "label CONTAINS %@", name))
       .firstMatch
-    scrollUp(until: savedLocation, in: app)
+    scrollUpInSmallSteps(until: savedLocation, in: app)
     XCTAssertTrue(savedLocation.waitForExistence(timeout: 5))
   }
 
@@ -1417,11 +1420,11 @@ final class PinshiftUITests: XCTestCase {
     openSettings(in: app)
     scrollToTop(in: app)
     let savedLocationsAction = app.buttons["save-current-location"]
-    scrollUp(until: savedLocationsAction, in: app)
-    let savedLocation = app.buttons
+    scrollUpInSmallSteps(until: savedLocationsAction, in: app)
+    let savedLocation = app.collectionViews["settings-list"].buttons
       .matching(NSPredicate(format: "identifier BEGINSWITH %@", prefix))
       .element(boundBy: index)
-    scrollUp(until: savedLocation, in: app)
+    scrollUpInSmallSteps(until: savedLocation, in: app)
     return savedLocation
   }
 
@@ -1450,7 +1453,7 @@ final class PinshiftUITests: XCTestCase {
     openSettings(in: app)
     scrollToTop(in: app)
     let selectedLatitude = app.staticTexts["selected-latitude"]
-    scrollUp(until: selectedLatitude, in: app)
+    scrollUpInSmallSteps(until: selectedLatitude, in: app)
     XCTAssertTrue(selectedLatitude.waitForExistence(timeout: 5))
     XCTAssertTrue(
       selectedLatitude.label.hasSuffix(String(format: "%.6f", coordinate.latitude))
@@ -1461,13 +1464,14 @@ final class PinshiftUITests: XCTestCase {
       selectedLongitude.label.hasSuffix(String(format: "%.6f", coordinate.longitude))
     )
     let selectionSource = app.staticTexts["selection-source"]
-    scrollUp(until: selectionSource, in: app)
+    scrollUpInSmallSteps(until: selectionSource, in: app)
     XCTAssertTrue(selectionSource.waitForExistence(timeout: 5))
     XCTAssertTrue(selectionSource.label.hasSuffix(source))
   }
 
   private func pinshiftApp() -> XCUIApplication {
     let app = XCUIApplication()
+    app.launchArguments = []
     app.launchEnvironment = ["PINSHIFT_E2E_APP_LANGUAGE": "en"]
     return app
   }
@@ -1548,7 +1552,8 @@ final class PinshiftUITests: XCTestCase {
 
   private func scrollUpInSmallSteps(until element: XCUIElement, in app: XCUIApplication) {
     let collectionView = primaryScrollContainer(in: app)
-    for _ in 0..<6 where !isVisible(element, in: collectionView) {
+    for _ in 0..<24 {
+      if isVisible(element, in: collectionView) { break }
       let start = collectionView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.75))
       let finish = collectionView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.55))
       start.press(forDuration: 0.05, thenDragTo: finish)
