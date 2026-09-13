@@ -42,29 +42,17 @@ Clear Now 始终显示，即使当前没有活动记录；每次点击都真实�
 
 ## 快速开始
 
-首次进入仓库并安装：
+**第一次使用请从 [首次使用与配置](docs/getting-started.md) 开始。** 教程按依赖顺序覆盖工具环境、[Apple 账号与签名](docs/apple-signing.md)、首次真机安装、Mac 控制器和配对；无需维护者的全局命令或 Home Manager 配置。
+
+当前教程使用 Apple Silicon Mac、Nix 提供的工具环境和完整 Xcode 27。固定 App 标识仍是其他 Apple 账号可能遇到的签名限制，详见签名教程。完成首次配置后，在已进入工具环境的仓库终端运行：
 
 ```fish
-direnv allow
-pinshift setup
-pinshift doctor
+./bin/pinshift
 ```
 
-🛠️ 安装稳定签名控制器、移除旧常驻项，并检查当前环境。
+🔗 按需检查并续签 App，再启动前台会话；保持终端打开，Ctrl-C 等待真实解除成功后退出。
 
-每次开始测试时运行，并保持终端打开：
-
-```fish
-pinshift
-```
-
-🔗 按需检查并续签 App，再启动前台 Controller Link；Ctrl-C 先解除，确认成功后退出。
-
-需要立即解除模拟时运行 `pinshift clear`；成功回执不等于其他 App 已刷新物理位置。`pinshift help` 会列出完整的日常入口。此工作站通过
-Home Manager 安装全局入口后，在仓库外也可以使用同一条命令；项目依赖和签名产物仍留在仓库内。
-
-完整操作、恢复路径和审计方法见 [GUIDE.md](GUIDE.md)。本轮真机连接、精度、生命周期和逐 App 传播
-尚待本人验收，步骤见 [#24 验收清单](docs/evidence/spec-24-owner-acceptance.md)。
+日常操作、更新与故障恢复见 [GUIDE.md](GUIDE.md)。历史验收材料见 [验证证据](docs/evidence/)；其中未执行的场景不是已通过的保证，坐标修复的已接受范围见 [修复记录](docs/evidence/coordinate-semantics-fix.md)。
 
 ## 项目边界
 
@@ -75,9 +63,11 @@ Pinshift 当前针对一台开发者自有 Mac、一个已配对的 iPhone 和�
 
 | 文档 | 面向谁 | 内容 |
 | --- | --- | --- |
+| [首次使用与配置](docs/getting-started.md) | 新用户 | 从克隆到首次运行的完整步骤 |
+| [Apple 账号与签名](docs/apple-signing.md) | 首次安装或签名排障 | Team、真机安装、控制器签名与续签 |
 | [使用与审计指南](GUIDE.md) | 日常使用者 | 安装、配对、选点、替换、解除与状态审计 |
 | [代码库导览](CODEBASE.md) | 维护者 | 模块职责、关键数据流和推荐阅读顺序 |
-| [开发环境教程](docs/tutorial.md) | 开发者 | Xcode、direnv、签名与 Controller Link 配置 |
+| [开发环境补充](docs/tutorial.md) | 开发者 | 工程生成、配置位置与工具链说明 |
 | [领域词汇](CONTEXT.md) | 设计与开发 | 项目的统一概念和边界 |
 | [架构决策](docs/adr/) | 维护者 | 关键技术取舍及其原因 |
 | [验证证据](docs/evidence/) | 审计者 | 真机、构建和历史行为记录 |

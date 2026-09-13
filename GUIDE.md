@@ -1,7 +1,8 @@
 # Pinshift 使用与审计指南
 
-这份指南面向当前这台 Mac 和已配对的 iPhone。首次配置完成后，日常使用不需要重新编译控制器或
-重复输入 Keychain 密码；测试期间需要保持 `pinshift` 的终端窗口运行。
+这份指南面向已经完成 [首次使用与配置](docs/getting-started.md) 的用户。Apple 账号、首次安装与续签排错见 [签名教程](docs/apple-signing.md)。
+
+以下命令在已进入工具环境的仓库根目录执行。使用 `./bin/pinshift` 明确调用当前仓库；若已配置 direnv，确认命令来源后也可省略 `./bin/`。测试期间需要保持终端窗口运行。
 
 ## 用户只需要记住的模型
 
@@ -14,14 +15,13 @@
 - App 重连后，以当前 Mac 测试会话返回的状态替换本地显示。
 - Mac 或 iPhone 不可达时，公开 `devicectl` 无法立即解除。失败会如实显示，前台会话保留责任并自动重试；恢复连接后也可再次点立即解除。
 
-## 首次安装或控制器更新
+## 控制器更新
 
-在仓库根目录运行：
+首次安装请先完成签名教程；以下用于更新已配置好的控制器：
 
 ```fish
-direnv allow
-pinshift setup
-pinshift doctor
+./bin/pinshift setup
+./bin/pinshift doctor
 ```
 
 🛠️ 安装稳定签名控制器、移除旧常驻项，并执行只读环境检查。
@@ -39,7 +39,7 @@ Clear 失败，安装会明确失败且不会发布新二进制。Saved Location
 每次开始测试时运行：
 
 ```fish
-pinshift
+./bin/pinshift
 ```
 
 🔗 检查 App 签名、按需续签后启动前台 Controller Link；Ctrl-C 等待真实解除成功后退出。
@@ -94,7 +94,7 @@ Stop、延长或后台清理请求。
 先运行只读检查：
 
 ```fish
-pinshift doctor
+./bin/pinshift doctor
 ```
 
 🩺 检查 Xcode、iPhone、签名、控制器身份和设备服务，不修改系统设置。
@@ -112,7 +112,7 @@ pinshift doctor
 需要紧急幂等解除时运行：
 
 ```fish
-pinshift clear
+./bin/pinshift clear
 ```
 
 🧹 直接执行一次真实 clear，不启动或恢复任何常驻服务。
@@ -122,7 +122,7 @@ pinshift clear
 日常只运行 `pinshift`：它检查 App 签名，剩余不超过 24 小时时按需续签。需要单独维护时运行：
 
 ```fish
-pinshift app
+./bin/pinshift app
 ```
 
 🔏 验证新 profile 并原位更新 Pinshift，不卸载 App。
@@ -130,7 +130,7 @@ pinshift app
 需要立即刷新时使用：
 
 ```fish
-pinshift app --force
+./bin/pinshift app --force
 ```
 
 ♻️ 立即请求新 profile、验证并原位安装。
@@ -138,7 +138,7 @@ pinshift app --force
 手机锁屏只导致启动验证延后；解锁后可运行：
 
 ```fish
-pinshift app --launch-only
+./bin/pinshift app --launch-only
 ```
 
 📱 不重新签名，只补做启动验证。
@@ -152,7 +152,7 @@ pinshift app --launch-only
 Mac 睡眠期间不保证计时器执行；存活会话恢复运行后处理已到期责任。进程被杀、断电或终端直接
 关闭后没有后台保证。不要把手机退出 Pinshift 当作结束模拟：Mac 仍按原期限处理解除。
 
-本轮完整的连接和功能验收步骤见 [#24 本人验收清单](docs/evidence/spec-24-owner-acceptance.md)。
+历史功能验收步骤见 [验收清单](docs/evidence/spec-24-owner-acceptance.md)。它是开发阶段的检查记录，不是新用户安装前置要求；后续接受范围见 [坐标修复记录](docs/evidence/coordinate-semantics-fix.md)。
 
 ## 审计
 
@@ -175,7 +175,7 @@ pgrep -af '.build/controller/bin/pinshift-controller link serve'
 导出 Mac 侧诊断：
 
 ```fish
-pinshift logs --copy-to .build/audit/(date +%Y%m%d-%H%M%S)
+./bin/pinshift logs --copy-to .build/audit/(date +%Y%m%d-%H%M%S)
 ```
 
 📦 复制脱敏诊断事件和元数据，不触发 Apply、Clear 或恢复操作。

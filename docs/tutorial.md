@@ -1,106 +1,34 @@
-# Pinshift development tutorial
+# 开发环境补充
 
-This tutorial covers the current personal environment. The sole production Injection Backend is Xcode 27's public `devicectl device simulate location` workflow.
+新用户先读 [首次使用与配置](getting-started.md)；Apple 账号、Team、首次手机安装和续签集中在 [签名教程](apple-signing.md)。日常操作见 [GUIDE](../GUIDE.md)。本页只补充维护工程时需要的信息。
 
-## Repository environment
+## 环境与入口
 
-The Nix Flake and direnv environment provide Fish, jq, and XcodeGen while using the approved Xcode Beta Swift toolchain:
+`flake.nix` / `flake.lock` 声明并锁定 Fish、jq、XcodeGen 的环境，目前仅提供 Apple Silicon macOS 输出。Swift 编译器来自完整 Xcode，Swift Package Manager 根据 `Package.swift` / `Package.resolved` 解析依赖。Nix 不安装 Xcode，也不创建 Apple 账号或设备签名。
 
-```fish
-direnv allow
-```
+`.envrc` 为可选的 direnv 集成，加载 `.env.local` 并将仓库 `bin` 加入 PATH。手动 `nix develop --command fish` 不执行 `.envrc`，需按首次教程设置必要的环境变量，并使用 `./bin/pinshift`。
 
-🌱 允许仓库加载声明式 Nix 开发环境。
+## 工程与本地签名
 
-Install once, then run the read-only checks:
+仓库已提交 `Pinshift.xcodeproj`，普通使用无需生成工程。修改 `project.yml` 后，在 Nix 工具环境、仓库根目录执行：
 
 ```fish
-pinshift setup
-pinshift doctor
+xcodegen generate
 ```
 
-🛠️ 构建并签名稳定控制器、移除旧常驻项，然后检查环境。
+🏗️ 重新生成 Xcode 工程；检查差异，避免提交自己的 Team 或设备配置。
 
-`pinshift setup` publishes the signed controller but does not register a LaunchAgent. It unloads and removes the former controller and Cleanup Guardian authorities. The installer preserves the existing Keychain TLS identity and refuses an unexpected designated-requirement change before modifying trust.
+本地开发团队配置放在 Git 忽略的 `Config/Signing.local.xcconfig`，由 `Config/Signing.xcconfig` 引入；首次教程说明了具体写法。直接在 Xcode 中编辑的项目设置可能在重新生成时丢失。
 
-Controller state now exists only in the explicitly started test session. There is no lifecycle journal or durable background cleanup retry. Each explicit start attempts a real residual clear, even without a tracked operation. During migration, the signed candidate performs one real backend reset before the obsolete lifecycle file is removed; a failed reset aborts publication. Saved Locations and Trusted Controller data survive an upgrade.
+## 本地文件的职责
 
-## Prepare Xcode and the iPhone
+| 位置 | 用途 |
+| --- | --- |
+| `.env.local` | direnv 使用的可选路径、设备或证书覆盖项 |
+| `Config/Signing.local.xcconfig` | 自己的开发团队配置 |
+| `.build/controller` | 已签名控制器安装，不只是编译缓存 |
+| `.build/resign-profile-backups` | 续签过程保留的恢复材料 |
+| Mac Application Support 下的 Pinshift 数据 | 配对关联状态、会话及诊断数据，独立于 Git |
+| iPhone App 数据 | 收藏、设置与本地诊断；升级应原位安装 |
 
-1. Install the approved full Xcode and open it once to finish first-launch setup.
-2. Connect and unlock the iPhone. Confirm **Trust** on both devices if prompted.
-3. Enable **Developer Mode** in **Settings → Privacy & Security** and finish the restart confirmation.
-4. Open the app project in Xcode and enable automatic signing for a development team.
-5. Build, install, and launch **Pinshift** on the iPhone.
-
-Keep the Active Test Device selector private in `PINSHIFT_DEVICE` or pass `--device`. Set the approved Xcode `Contents/Developer` path through `PINSHIFT_DEVELOPER_DIR` or `--developer-directory`; the project never changes global `xcode-select` state.
-
-## App signing renewal
-
-Daily `pinshift` checks the App signature and requests renewal when 24 hours or less remain. The secondary maintenance entry is:
-
-```fish
-pinshift app
-```
-
-🔏 验证新 profile 并原位更新现有 App。
-
-Use `pinshift app --force` to request a newer profile immediately. The workflow validates the candidate signature, bundle identifier, team, application prefix, and strictly later expiry before installation. It never uninstalls the App. A pre-install failure restores the old cached profile; a disconnect after installation starts is reported as an uncertain remote outcome.
-
-If a locked phone only deferred launch verification, unlock it and run:
-
-```fish
-pinshift app --launch-only
-```
-
-📱 不重新签名，只补做启动验证。
-
-## Diagnose without mutation
-
-```fish
-pinshift doctor
-```
-
-🩺 运行固定的只读 Xcode、设备、签名、身份和权限检查。
-
-Doctor never changes system or device settings and does not print raw private selectors. Location and Local Network permission decisions remain authoritative inside the iOS app.
-
-## Pair and use
-
-Whenever a testing session begins, run:
-
-```fish
-pinshift
-```
-
-🔗 检查签名、按需续签后启动前台 Controller Link；Ctrl-C 等待真实解除成功后退出。
-
-Already trusted iPhones reconnect automatically while this foreground process is running. In Pinshift:
-
-1. Allow **Location** and **Local Network**, then pair if needed.
-2. Choose a Selected Location. Selection never applies automatically and remains available in every simulation state.
-3. Tap **Apply for 3 minutes**. There is no duration parameter: the Mac returns exactly three minutes from the first acceptance of this operation.
-4. Choose and Apply another location at any time. The new operation replaces current state and receives a fresh deadline.
-5. **Clear Now** remains visible even when no active record is shown. Every tap reaches the backend, including when the controller has no tracked operation. Failed or lost Clear never disables selection or Apply and can be retried.
-
-The running Mac session snapshot is authoritative after reconnect. The app persists only user selection; it does not persist a resendable clear or extension command.
-
-Search, Saved Locations and map dragging update the same Selected Location on the main map. Applying it changes the Applied Simulation only after acknowledgement. More contains manual coordinates, connection, settings, observations and diagnostics.
-
-## Automatic clear behavior
-
-- A genuinely new Apply receives a fixed deadline of acceptance time plus 180 seconds.
-- Retrying the same request ID returns the original deadline without another backend Apply.
-- At the deadline, the Mac authority requests public `devicectl ... location clear`.
-- If the Mac or Active Test Device is unreachable, the failure is exposed and bounded retries retain cleanup responsibility in the running foreground session; Clear Now also remains available.
-- Apply, Clear, and the timer serialize through the same foreground controller actor.
-- Ctrl-C, termination, and a finite session duration request real Clear before normal exit; failure keeps the foreground process waiting and retrying. An explicit repeated interruption permits force exit with an unconfirmed-clear warning.
-- A successful backend clear does not guarantee an immediate fresh physical Core Location callback.
-
-The compact command overview is available with:
-
-```fish
-pinshift help
-```
-
-📖 列出稳定的日常入口；底层 `pinshift-controller` 子命令只用于开发和排障。
+移动仓库后重新安装控制器；在新入口验证完成前保留旧安装和必要配置。不要将整个 `.build` 或 App 数据一概当作无用缓存删除。历史实验与当前协议的区别见 [GUIDE](../GUIDE.md) 和 [ADR](adr/)。
