@@ -1,0 +1,3 @@
+// Copy to Signing.local.xcconfig and replace this placeholder with your Team ID.
+// The local file is ignored by Git and applies to Debug and Release.
+DEVELOPMENT_TEAM = YOUR_TEAM_ID

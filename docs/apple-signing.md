@@ -34,7 +34,24 @@ open Pinshift.xcodeproj
 - Team 选择自己的 Personal Team 或开发团队，不能使用维护者的 Team ID。
 - Scheme 选择 **Pinshift**，运行目标选择已连接的真实 iPhone，而非模拟器。
 
-工程通过 `Config/Signing.xcconfig` 引入可选的本地文件。你也可以将自己的 Team ID 写入 `Config/Signing.local.xcconfig`，内容格式如下（替换占位值）：
+![Xcode 签名指引：1 选择 Pinshift target，2 选择自己的 Team，3 在真机上 Run](assets/getting-started/xcode-signing-guide.png)
+
+图中 **①** 是 app target，**②** 是 Team，**③** 是下一步的 Run。此图通过 imagegen 对本次 Xcode 截图匿名处理并添加编号，仅作操作指引，不作为原始验收截图；界面细节以你的 Xcode 为准。
+
+### 将 Team 留在本地配置
+
+工程通过 `Config/Signing.xcconfig` 引入可选的本地文件，Debug 与 Release 都使用它。建议把自己的 Team ID 保存到该文件，便于更新代码和重新生成工程：
+
+```fish
+if not test -e Config/Signing.local.xcconfig
+    cp Config/Signing.local.xcconfig.example Config/Signing.local.xcconfig
+end
+open -e Config/Signing.local.xcconfig
+```
+
+🔏 仅在文件不存在时复制示例，然后打开编辑；将占位值替换为自己的 Team ID，不会覆盖已有配置。
+
+Team ID 可在 Xcode 的 Build Settings 中搜索 `Development Team` 并查看已选团队的值。文件内容格式如下：
 
 ```xcconfig
 DEVELOPMENT_TEAM = YOUR_TEAM_ID
@@ -42,7 +59,9 @@ DEVELOPMENT_TEAM = YOUR_TEAM_ID
 
 🔏 这是配置文件内容，不是终端命令；文件被 Git 忽略，用于保存你自己的开发团队配置。
 
-若通过 Xcode 界面选择 Team，Xcode 可能直接修改已跟踪的工程文件；这是本地配置变更，不应把自己的团队设置当作公共项目默认值提交。后续运行 XcodeGen 前应保留本地配置，避免生成工程时丢失 Team 设置。
+若通过 Xcode 界面选择 Team，Xcode 可能直接修改已跟踪的工程文件，并覆盖 xcconfig 的值。保存本地文件后，在 Build Settings 的 Levels 视图中检查 `Development Team`：若 Target 层还有显式值，仅移除该设置的覆盖，让它继承配置文件。确认 Debug、Release 的最终值仍是自己的 Team，且 Signing & Capabilities 无签名错误。
+
+提交代码前检查工程差异，不提交个人 Team；不要为了清理签名而恢复整个工程文件，以免丢失其他修改。迁移目录时单独保留本地文件，Git 克隆不会带上它。
 
 ### 当前限制：固定 Bundle Identifier
 
