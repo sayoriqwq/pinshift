@@ -10,6 +10,11 @@
     in
     {
       devShells.${system}.default = pkgs.mkShellNoCC {
+        shellHook = ''
+          if [ -x "$PWD/bin/pinshift" ]; then
+            export PATH="$PWD/bin:$PATH"
+          fi
+        '';
         packages = with pkgs; [
           fish
           jq

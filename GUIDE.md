@@ -2,7 +2,7 @@
 
 这份指南面向已经完成 [首次使用与配置](docs/getting-started.md) 的用户。Apple 账号、首次安装与续签排错见 [签名教程](docs/apple-signing.md)。
 
-以下命令在已进入工具环境的仓库根目录执行。使用 `./bin/pinshift` 明确调用当前仓库；若已配置 direnv，确认命令来源后也可省略 `./bin/`。测试期间需要保持终端窗口运行。
+以下命令在已进入工具环境的仓库根目录执行。项目环境会提供 `pinshift`；也可按首次教程注册到本机，在任意目录使用。测试期间需要保持终端窗口运行。
 
 ## 用户只需要记住的模型
 
@@ -20,8 +20,8 @@
 首次安装请先完成签名教程；以下用于更新已配置好的控制器：
 
 ```fish
-./bin/pinshift setup
-./bin/pinshift doctor
+pinshift setup
+pinshift doctor
 ```
 
 🛠️ 安装稳定签名控制器、移除旧常驻项，并执行只读环境检查。
@@ -39,7 +39,7 @@ Clear 失败，安装会明确失败且不会发布新二进制。Saved Location
 每次开始测试时运行：
 
 ```fish
-./bin/pinshift
+pinshift
 ```
 
 🔗 检查 App 签名、按需续签后启动前台 Controller Link；Ctrl-C 等待真实解除成功后退出。
@@ -94,7 +94,7 @@ Stop、延长或后台清理请求。
 先运行只读检查：
 
 ```fish
-./bin/pinshift doctor
+pinshift doctor
 ```
 
 🩺 检查 Xcode、iPhone、签名、控制器身份和设备服务，不修改系统设置。
@@ -112,7 +112,7 @@ Stop、延长或后台清理请求。
 需要紧急幂等解除时运行：
 
 ```fish
-./bin/pinshift clear
+pinshift clear
 ```
 
 🧹 直接执行一次真实 clear，不启动或恢复任何常驻服务。
@@ -122,7 +122,7 @@ Stop、延长或后台清理请求。
 日常只运行 `pinshift`：它检查 App 签名，剩余不超过 24 小时时按需续签。需要单独维护时运行：
 
 ```fish
-./bin/pinshift app
+pinshift app
 ```
 
 🔏 验证新 profile 并原位更新 Pinshift，不卸载 App。
@@ -130,7 +130,7 @@ Stop、延长或后台清理请求。
 需要立即刷新时使用：
 
 ```fish
-./bin/pinshift app --force
+pinshift app --force
 ```
 
 ♻️ 立即请求新 profile、验证并原位安装。
@@ -138,7 +138,7 @@ Stop、延长或后台清理请求。
 手机锁屏只导致启动验证延后；解锁后可运行：
 
 ```fish
-./bin/pinshift app --launch-only
+pinshift app --launch-only
 ```
 
 📱 不重新签名，只补做启动验证。
@@ -175,7 +175,7 @@ pgrep -af '.build/controller/bin/pinshift-controller link serve'
 导出 Mac 侧诊断：
 
 ```fish
-./bin/pinshift logs --copy-to .build/audit/(date +%Y%m%d-%H%M%S)
+pinshift logs --copy-to .build/audit/(date +%Y%m%d-%H%M%S)
 ```
 
 📦 复制脱敏诊断事件和元数据，不触发 Apply、Clear 或恢复操作。

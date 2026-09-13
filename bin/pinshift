@@ -13,6 +13,8 @@ function pinshift_usage
     echo "  pinshift doctor          Run read-only readiness checks"
     echo "  pinshift app [OPTIONS]   Renew, install, or launch the iOS app"
     echo "  pinshift logs [OPTIONS]  Locate or copy Mac diagnostics"
+    echo "  pinshift register        Register this checkout in ~/.local/bin"
+    echo "  pinshift unregister      Remove that command; retain checkout and data"
     echo "  pinshift help            Show this help"
     echo
     echo "The controller runs only in the foreground. Press Ctrl-C to Clear and exit."
@@ -32,6 +34,8 @@ switch $command
             exit 2
         end
         pinshift_usage
+    case register unregister
+        exec $script_dir/pinshift-command $command $arguments
     case start
         exec $script_dir/pinshift-start $arguments
     case setup install

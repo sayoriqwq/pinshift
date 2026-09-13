@@ -47,10 +47,12 @@ Clear Now 始终显示，即使当前没有活动记录；每次点击都真实�
 当前教程使用 Apple Silicon Mac、Nix 提供的工具环境和完整 Xcode 27。固定 App 标识仍是其他 Apple 账号可能遇到的签名限制，详见签名教程。完成首次配置后，在已进入工具环境的仓库终端运行：
 
 ```fish
-./bin/pinshift
+pinshift
 ```
 
 🔗 按需检查并续签 App，再启动前台会话；保持终端打开，Ctrl-C 等待真实解除成功后退出。
+
+需要在任意目录启动时，可按 [本机注册教程](docs/getting-started.md#可选注册到本机从任意目录启动) 使用 `pinshift register`；也可以只在项目环境中使用。
 
 日常操作、更新与故障恢复见 [GUIDE.md](GUIDE.md)。历史验收材料见 [验证证据](docs/evidence/)；其中未执行的场景不是已通过的保证，坐标修复的已接受范围见 [修复记录](docs/evidence/coordinate-semantics-fix.md)。
 

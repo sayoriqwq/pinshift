@@ -76,7 +76,7 @@ security find-identity -v -p codesigning
 
 ```fish
 set -gx PINSHIFT_CODE_SIGN_IDENTITY 'YOUR_CERTIFICATE_FINGERPRINT'
-./bin/pinshift setup
+pinshift setup
 ```
 
 🛠️ 将占位值换成上一步中自己有效证书的指纹，再重试安装；setup 会执行真实 Clear。
@@ -87,10 +87,10 @@ set -gx PINSHIFT_CODE_SIGN_IDENTITY 'YOUR_CERTIFICATE_FINGERPRINT'
 
 ## 日常续签
 
-完成首次配置后，日常 `./bin/pinshift` 会检查已有 profile，剩余不超过 24 小时时按需续签。缓存仍有效时可能跳过重建；这不证明手机一定还安装着 App。
+完成首次配置后，日常 `pinshift` 会检查已有 profile，剩余不超过 24 小时时按需续签。缓存仍有效时可能跳过重建；这不证明手机一定还安装着 App。
 
 ```fish
-./bin/pinshift app --force
+pinshift app --force
 ```
 
 ♻️ 需要主动更新 App 代码或补装时，请求新签名并原位安装；不卸载现有 App。
@@ -98,7 +98,7 @@ set -gx PINSHIFT_CODE_SIGN_IDENTITY 'YOUR_CERTIFICATE_FINGERPRINT'
 锁屏导致启动验证延后时，先解锁，再执行：
 
 ```fish
-./bin/pinshift app --launch-only
+pinshift app --launch-only
 ```
 
 📲 只补做启动，不重新签名。

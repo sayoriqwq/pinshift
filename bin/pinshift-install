@@ -246,8 +246,18 @@ or begin
     exit $failure_status
 end
 
-# Keychain authorization is the final fallible identity commit. It authorizes
-# the foreground executable without registering a persistent process.
+# Reuse the existing idempotent provisioner: a fresh checkout may have no TLS
+# identity yet. Existing identities are preserved; never replace one on error.
+$executable link identity create
+or begin
+    set --local identity_status $status
+    rollback_install
+    or echo "Installation rollback failed; inspect $install_root before retrying." >&2
+    echo "The controller identity could not be prepared. Retry setup after resolving the Keychain error." >&2
+    exit $identity_status
+end
+
+# Authorize the foreground executable without registering a persistent process.
 $executable link identity authorize-current-executable
 set --local authorization_status $status
 if test $authorization_status -ne 0

@@ -1,0 +1,67 @@
+#!/usr/bin/env fish
+
+# Register a checkout-backed command; this never starts or installs the controller.
+argparse 'bin-dir=' -- $argv
+or exit 2
+if test (count $argv) -ne 1; or not contains -- $argv[1] register unregister
+    echo 'Usage: pinshift register|unregister [--bin-dir DIRECTORY]' >&2
+    exit 2
+end
+set --local checkout (path resolve (path dirname (status filename))/..)
+set --local destination $HOME/.local/bin
+if set --query _flag_bin_dir
+    set destination (path resolve $_flag_bin_dir)
+end
+set --local entry $destination/pinshift
+set --local marker '# Pinshift checkout command v1'
+if test -L "$entry"
+    echo "Refusing to replace or remove a symbolic link: $entry" >&2
+    exit 1
+end
+if test -e "$entry"
+    set --local existing_marker (sed -n '2p' "$entry" 2>/dev/null)
+    if not test -f "$entry"; or test "$existing_marker" != "$marker"
+        echo "An unrelated entry already exists: $entry" >&2
+        exit 1
+    end
+end
+if test $argv[1] = unregister
+    if test -f "$entry"
+        command rm -- "$entry"
+        or exit 1
+    end
+    echo "Removed Pinshift command registration: $entry (checkout and data retained)."
+    exit 0
+end
+set --local nix_executable (command --search nix)
+if test -z "$nix_executable"
+    echo 'Nix is required to register the checkout command.' >&2
+    exit 1
+end
+mkdir -p "$destination"
+or exit 1
+function shell_quote
+    printf "'%s'" (string replace --all -- "'" "'\\''" "$argv[1]")
+end
+set --local staged (mktemp "$destination/.pinshift.XXXXXX")
+or exit 1
+begin
+    echo '#!/bin/sh'
+    echo "$marker"
+    printf 'checkout=%s\n' (shell_quote "$checkout")
+    echo 'if [ ! -x "$checkout/bin/pinshift" ]; then'
+    echo '    echo "Pinshift checkout unavailable: $checkout. Register again from its new location." >&2'
+    echo '    exit 127'
+    echo fi
+    printf 'exec %s --extra-experimental-features "nix-command flakes" develop "$checkout" --command fish "$checkout/bin/pinshift" "$@"\n' (shell_quote "$nix_executable")
+end > "$staged"
+chmod 755 "$staged"
+and mv -- "$staged" "$entry"
+or begin
+    command rm -f -- "$staged"
+    exit 1
+end
+echo "Registered Pinshift: $entry"
+echo 'For Fish, run: fish_add_path --prepend ~/.local/bin'
+echo 'Then check: type -a pinshift'
+echo 'This command uses the checkout and Nix; it does not install a background service.'

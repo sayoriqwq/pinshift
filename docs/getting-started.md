@@ -2,7 +2,7 @@
 
 从刚克隆的仓库开始，依次完成：工具环境 → Apple 签名与首次手机安装 → Mac 控制器 → 配对 → 第一次应用。完成一次后，日常只需启动控制器；见 [使用指南](../GUIDE.md)。
 
-本教程使用仓库自带的 Nix 环境和 `./bin/pinshift` 入口，不依赖维护者的 Home Manager、全局命令或旧工作目录。仓库当前仍有个人环境限制，尤其是固定 App 标识；遇到下述已知限制时，不代表你的配置操作有误。
+本教程使用仓库自带的 Nix 环境和 `pinshift` 入口，不依赖维护者的 Home Manager、全局命令或旧工作目录。仓库当前仍有个人环境限制，尤其是固定 App 标识；遇到下述已知限制时，不代表你的配置操作有误。
 
 ## 1. 确认使用条件
 
@@ -35,7 +35,7 @@ nix --extra-experimental-features 'nix-command flakes' develop --command fish
 ```fish
 pwd
 type -a fish jq xcodegen
-./bin/pinshift help
+pinshift help
 ```
 
 🔎 确认目录、工具来源与仓库入口；此处只显示帮助，不安装或操作手机。
@@ -54,6 +54,8 @@ env DEVELOPER_DIR="$PINSHIFT_DEVELOPER_DIR" xcodebuild -version
 
 🔍 已显式设置该变量时，用这条命令核对选中的 Xcode；使用默认 Beta 路径时，把上一步的路径设为 `/Applications/Xcode-beta.app/Contents/Developer` 后再检查。
 
+进入项目根目录执行上述 `nix develop` 后，环境会将当前仓库的 `bin` 加入 PATH，直接运行 `pinshift` 即可。
+
 普通 `nix develop` 不会读取 `.envrc` 或 `.env.local`。自定义变量需在每次新会话设置；想自动加载可在首次流程完成后使用本文末尾的 direnv 方式。
 
 ## 3. 完成 Apple 签名与首次手机安装
@@ -67,7 +69,7 @@ env DEVELOPER_DIR="$PINSHIFT_DEVELOPER_DIR" xcodebuild -version
 保持 iPhone 数据线连接、解锁和信任状态。在前面的 Fish 环境执行：
 
 ```fish
-./bin/pinshift setup
+pinshift setup
 ```
 
 🛠️ 构建并签名仓库内的 Mac 控制器；安装过程中会执行真实 Clear 以清理遗留模拟，不是只读检查。
@@ -75,17 +77,19 @@ env DEVELOPER_DIR="$PINSHIFT_DEVELOPER_DIR" xcodebuild -version
 只有 setup 成功后才执行：
 
 ```fish
-./bin/pinshift doctor
+pinshift doctor
 ```
 
 🩺 检查已安装控制器、Xcode、设备与身份；doctor 依赖已安装的控制器，不能作为干净克隆后的第一步。
+
+安装器会创建缺失的 Pinshift TLS 通信身份，并保留已有身份。这是 App 与控制器配对所用的身份，与 Apple 开发签名证书不同。
 
 安装产物位于本仓库 `.build/controller`。不要在日常使用期间把整个 `.build` 当缓存删除。若签名证书数量报错，见 [Mac 控制器签名](apple-signing.md#mac-控制器签名)。
 
 ## 5. 启动、配对并第一次使用
 
 ```fish
-./bin/pinshift
+pinshift
 ```
 
 🔗 检查 App 签名并按需续签，随后启动 Mac 前台会话；保留这个终端窗口。
@@ -98,11 +102,37 @@ env DEVELOPER_DIR="$PINSHIFT_DEVELOPER_DIR" xcodebuild -version
 
 ## 6. 以后怎么启动、更新与迁移
 
-新终端中进入仓库，重新执行第 2 步的 Nix 环境命令和必要的 Xcode 路径设置，再运行 `./bin/pinshift`。签名通常由日常入口按需维护；异常时看 [签名排错](apple-signing.md#常见问题)。
+新终端中进入仓库，重新执行第 2 步的 Nix 环境命令和必要的 Xcode 路径设置，再运行 `pinshift`。签名通常由日常入口按需维护；异常时看 [签名排错](apple-signing.md#常见问题)。
 
-更新代码后，若提示控制器源码变化，重新执行 `./bin/pinshift setup`。需要把更新后的 iPhone 代码立即安装到设备时，执行 `./bin/pinshift app --force`；普通启动可能因现有签名尚有效而跳过 App 重建。命令细节见 [使用指南](../GUIDE.md)。
+更新代码后，若提示控制器源码变化，重新执行 `pinshift setup`。需要把更新后的 iPhone 代码立即安装到设备时，执行 `pinshift app --force`；普通启动可能因现有签名尚有效而跳过 App 重建。命令细节见 [使用指南](../GUIDE.md)。
 
 迁移仓库时保留自己的 `Config/Signing.local.xcconfig` 和按需使用的 `.env.local`，在新目录重新安装控制器；确认新入口可用后再删除旧目录。Git 克隆不会搬移钥匙串、证书、签名 profile 或手机数据。跨 Mac 迁移需要在新 Mac 重新完成签名和配对，不能只复制源码。
+
+## 可选：注册到本机，从任意目录启动
+
+先完成上面的工具环境准备。在项目环境中执行：
+
+```fish
+pinshift register
+fish_add_path --prepend ~/.local/bin
+type -a pinshift
+```
+
+🔗 创建 `~/.local/bin/pinshift`，并把它加入 Fish 的用户 PATH；确认命令优先指向这个入口或当前项目入口。
+
+退出项目工具环境后，在任意目录运行 `pinshift`。注册入口会通过 Nix 加载所关联仓库的依赖，不要求机器全局安装 Fish、jq 或 XcodeGen。它依赖本机可用的 Nix 和保留在磁盘上的仓库；它不是独立二进制安装，也不注册后台服务。首次运行或依赖更新时可能需要下载工具。
+
+使用其他 shell 时，按该 shell 的配置方式将 `~/.local/bin` 放到 PATH 前面。若已有同名命令，先核对来源；注册器拒绝覆盖不属于它的文件或符号链接。可用 `--bin-dir DIRECTORY` 指定目录。
+
+升级源码后继续使用同一入口，按提示更新控制器；迁移仓库后，在新目录进入环境并再次运行 `pinshift register`，更新入口指向。自定义 Xcode/设备变量仍需由调用终端提供；注册器不会读取 `.env.local`，该文件只由 direnv 加载。
+
+```fish
+pinshift unregister
+```
+
+🧹 删除注册的命令入口，保留源码、控制器安装、签名、配对和手机数据；若注册在自定义目录，传入相同的 `--bin-dir`。PATH 中的目录项可继续供其他工具使用。
+
+卸载后若仍有同名命令，使用 `type -a pinshift` 检查是否来自其他软件管理器；它不会替你卸载 Home Manager 等工具管理的入口。
 
 ## 可选：用 direnv 自动进入环境
 
