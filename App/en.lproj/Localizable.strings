@@ -229,7 +229,7 @@
 
 "Installation may close the app. Reopen Pinshift afterward to check the result." = "Installation may close the app. Reopen Pinshift afterward to check the result.";
 
-"The Mac confirmed installation with an extended signature. It did not open the app." = "The Mac confirmed installation with an extended signature. It did not open the app.";
+"The Mac confirmed installation with an extended signature." = "The Mac confirmed installation with an extended signature.";
 
 "Open Pinshift on your Mac and complete its initial signing setup, then retry." = "Open Pinshift on your Mac and complete its initial signing setup, then retry.";
 

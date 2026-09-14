@@ -39,22 +39,6 @@ struct SimulationDiagnosticsView<Details: View>: View {
       } footer: {
         Text(localized("Retained iPhone events only. Mac logs are not included. Pull to refresh."))
       }
-      Section(localized("Recent events")) {
-        Toggle(localized("Include routine observations"), isOn: $showsAllEvents)
-        if displayedEvents.isEmpty {
-          Text(localized("No recorded events")).foregroundStyle(.secondary)
-        }
-        ForEach(Array(displayedEvents.reversed().prefix(visibleCount)), id: \.diagnosticIdentity) { event in
-          NavigationLink {
-            DiagnosticEventView(event: event, model: model)
-          } label: {
-            DiagnosticEventLabel(event: event)
-          }
-        }
-        if displayedEvents.count > visibleCount {
-          Button(localized("Show older events")) { visibleCount += 100 }
-        }
-      }
       Section {
         Button { model.export() } label: {
           Label(localized(model.isExporting ? "Exporting…" : "Export iPhone record"), systemImage: "square.and.arrow.up")
@@ -78,6 +62,22 @@ struct SimulationDiagnosticsView<Details: View>: View {
               .frame(width: 1, height: 1).opacity(0.01)
           }
         #endif
+      }
+      Section(localized("Recent events")) {
+        Toggle(localized("Include routine observations"), isOn: $showsAllEvents)
+        if displayedEvents.isEmpty {
+          Text(localized("No recorded events")).foregroundStyle(.secondary)
+        }
+        ForEach(Array(displayedEvents.reversed().prefix(visibleCount)), id: \.diagnosticIdentity) { event in
+          NavigationLink {
+            DiagnosticEventView(event: event, model: model)
+          } label: {
+            DiagnosticEventLabel(event: event)
+          }
+        }
+        if displayedEvents.count > visibleCount {
+          Button(localized("Show older events")) { visibleCount += 100 }
+        }
       }
     }
     .navigationTitle(localized("Test Diagnostics"))

@@ -84,7 +84,7 @@ struct AppRenewalSection: View {
     case .idle: return "Your paired Mac will sign and install the app."
     case .checking, .signing, .verifying: return "You can leave this page. The Mac continues the accepted operation."
     case .installing: return "Installation may close the app. Reopen Pinshift afterward to check the result."
-    case .installed: return "The Mac confirmed installation with an extended signature. It did not open the app."
+    case .installed: return "The Mac confirmed installation with an extended signature."
     case .failed:
       switch status.failure {
       case .preparationRequired: return "Open Pinshift on your Mac and complete its initial signing setup, then retry."

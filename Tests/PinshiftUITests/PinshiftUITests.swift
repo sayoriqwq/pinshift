@@ -1679,12 +1679,14 @@ final class PinshiftUITests: XCTestCase {
   }
 
   private func openSettings(in app: XCUIApplication) {
-    if app.buttons["close-more"].exists {
-      if app.descendants(matching: .any)["diagnostics-list"].exists {
-        app.navigationBars.buttons.firstMatch.tap()
-      }
+    if app.descendants(matching: .any)["diagnostics-list"].exists {
+      let back = app.navigationBars.buttons.allElementsBoundByIndex.first { $0.isHittable }
+      XCTAssertNotNil(back)
+      back?.tap()
+      XCTAssertTrue(app.buttons["close-more"].waitForExistence(timeout: 5))
       return
     }
+    if app.buttons["close-more"].exists { return }
 
     let settings = app.buttons["open-settings"]
     XCTAssertTrue(settings.waitForExistence(timeout: 5))
@@ -1704,6 +1706,7 @@ final class PinshiftUITests: XCTestCase {
   }
 
   private func returnHome(in app: XCUIApplication) {
+    if app.descendants(matching: .any)["diagnostics-list"].exists { openSettings(in: app) }
     if app.buttons["close-more"].exists { app.buttons["close-more"].tap() }
     XCTAssertTrue(app.buttons["close-more"].waitForNonExistence(timeout: 5))
     XCTAssertTrue(app.textFields["place-search-input"].waitForExistence(timeout: 5))
@@ -1749,12 +1752,14 @@ final class PinshiftUITests: XCTestCase {
 
   private func scrollToTop(in app: XCUIApplication) {
     let scrollContainer = primaryScrollContainer(in: app)
-    let top =
-      app.buttons["close-more"].exists
-      ? (app.descendants(matching: .any)["diagnostics-list"].exists
-        ? app.staticTexts["controller-evidence-status"]
-        : app.segmentedControls["language-selector"])
-      : app.buttons["apply-selected-location"]
+    let top: XCUIElement
+    if app.descendants(matching: .any)["diagnostics-list"].exists {
+      top = app.staticTexts["controller-evidence-status"]
+    } else if app.buttons["close-more"].exists {
+      top = app.staticTexts["renewal-status"]
+    } else {
+      top = app.buttons["apply-selected-location"]
+    }
     for _ in 0..<8 where !isVisible(top, in: scrollContainer) {
       scrollContainer.swipeDown()
     }

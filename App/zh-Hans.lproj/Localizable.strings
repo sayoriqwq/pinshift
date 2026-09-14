@@ -375,7 +375,7 @@
 
 "Installation may close the app. Reopen Pinshift afterward to check the result." = "安装可能关闭 App。完成后请重新打开 Pinshift 查看结果。";
 
-"The Mac confirmed installation with an extended signature. It did not open the app." = "Mac 已确认安装，且新签名有效期已延长。Mac 未执行打开 App。";
+"The Mac confirmed installation with an extended signature." = "Mac 已确认安装，且新签名有效期已延长。";
 
 "Open Pinshift on your Mac and complete its initial signing setup, then retry." = "请在 Mac 上运行 Pinshift，完成首次签名配置后重试。";
 
