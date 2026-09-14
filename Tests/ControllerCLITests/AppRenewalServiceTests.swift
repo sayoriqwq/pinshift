@@ -1,4 +1,4 @@
-import ControllerCLI
+@testable import ControllerCLI
 import ControllerLink
 import Foundation
 import Testing
@@ -137,4 +137,38 @@ private actor RenewalGate {
   #expect(snapshot.failure == .installationUnconfirmed)
   #expect(snapshot.detail?.contains("do-not-transmit") == false)
   #expect(snapshot.installedExpiresAt == nil)
+}
+
+
+@Test func normalShutdownClearsBeforeDrainingRenewalAndRejectsLateRequests() async throws {
+  let work = RenewalGate()
+  let drainStarted = RenewalGate()
+  let returned = RenewalGate()
+  let service = AppRenewalService { report in
+    await work.wait()
+    await report(.installed, Date().addingTimeInterval(86400))
+  }
+  let controller = SimulationController(backend: InMemoryInjectionBackend(),
+    automaticallySchedulesMaintenance: false)
+  let handler = SimulationControllerCommandHandler(controller: controller, renewal: service)
+  _ = await handler.handle(.apply(requestID: UUID(), latitude: 1, longitude: 2))
+  _ = await service.start(requestID: UUID())
+  let shutdown = Task {
+    try await ControllerCLIRuntime.runSession(controller: controller,
+      stopAcceptingCommands: { await service.stopAcceptingRequests() },
+      finishAcceptedWork: {
+        await service.finishAcceptedWork(onWaiting: { await drainStarted.release() })
+      },
+      waitUntilStopped: {})
+    await returned.enter()
+  }
+  await drainStarted.wait()
+  #expect(await controller.snapshot().simulation == .idle)
+  #expect(await returned.count == 0)
+  #expect(await service.snapshot().phase.isRunning)
+  #expect(await service.start(requestID: UUID()).phase == .failed)
+  await work.release()
+  try await shutdown.value
+  #expect(await returned.count == 1)
+  #expect(await service.snapshot().phase == .installed)
 }

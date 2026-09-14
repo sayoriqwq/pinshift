@@ -10,6 +10,8 @@ public actor AppRenewalService {
   private var current = AppRenewalStatus()
   private var accepted = Set<UUID>()
   private var running = false
+  private var acceptsRequests = true
+  private var job: Task<Void, Never>?
 
   public init(diagnostics: SimulationDiagnosticRecorder? = nil, execute: @escaping Execute) {
     self.diagnostics = diagnostics
@@ -19,12 +21,28 @@ public actor AppRenewalService {
   public func snapshot() -> AppRenewalStatus { current }
 
   public func start(requestID: UUID) -> AppRenewalStatus {
+    guard acceptsRequests else {
+      return AppRenewalStatus(operationID: requestID, phase: .failed,
+        installedExpiresAt: current.installedExpiresAt, failure: .processFailed,
+        detail: "The controller session is shutting down.")
+    }
     guard accepted.insert(requestID).inserted, !running else { return current }
     running = true
     current = AppRenewalStatus(operationID: requestID, phase: .checking,
       installedExpiresAt: current.installedExpiresAt)
-    Task { await run(requestID: requestID) }
+    job = Task { await run(requestID: requestID) }
     return current
+  }
+
+  public func stopAcceptingRequests() { acceptsRequests = false }
+
+  /// Called only after simulation cleanup, with foreground signal handlers still installed.
+  public func finishAcceptedWork(onWaiting: @Sendable () async -> Void = {
+    print("Waiting for the accepted App renewal to finish. Press Ctrl-C again to force exit.")
+  }) async {
+    guard running, let job else { return }
+    await onWaiting()
+    await job.value
   }
 
   private func run(requestID: UUID) async {
