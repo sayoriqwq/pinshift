@@ -186,3 +186,67 @@
 "Choose a new point for %@" = "Choose a new point for %@";
 "Update bookmark" = "Update bookmark";
 "Open-source notices" = "Open-source notices";
+
+"Last confirmed installation expiry" = "Last confirmed installation expiry";
+
+"Signature expiry unknown" = "Signature expiry unknown";
+
+"Sending renewal request…" = "Sending renewal request…";
+
+"Renew now" = "Renew now";
+
+"The renewal request was not confirmed. Check the Mac connection, then refresh its status before retrying." = "The renewal request was not confirmed. Check the Mac connection, then refresh its status before retrying.";
+
+"Renewal details" = "Renewal details";
+
+"Source: Mac controller" = "Source: Mac controller";
+
+"Connect to your Mac to renew" = "Connect to your Mac to renew";
+
+"Mac update required" = "Mac update required";
+
+"Ready to renew" = "Ready to renew";
+
+"Checking renewal requirements…" = "Checking renewal requirements…";
+
+"Signing the app…" = "Signing the app…";
+
+"Verifying the new signature…" = "Verifying the new signature…";
+
+"Installing on iPhone…" = "Installing on iPhone…";
+
+"Installation confirmed" = "Installation confirmed";
+
+"Renewal needs attention" = "Renewal needs attention";
+
+"Keep the paired Mac controller running. Any previous renewal result below is a saved snapshot; reconnect to check the latest state." = "Keep the paired Mac controller running. Any previous renewal result below is a saved snapshot; reconnect to check the latest state.";
+
+"Restart your Mac session with the updated Pinshift controller to enable in-app renewal." = "Restart your Mac session with the updated Pinshift controller to enable in-app renewal.";
+
+"Your paired Mac will sign and install the app." = "Your paired Mac will sign and install the app.";
+
+"You can leave this page. The Mac continues the accepted operation." = "You can leave this page. The Mac continues the accepted operation.";
+
+"Installation may close the app. Reopen Pinshift afterward to check the result." = "Installation may close the app. Reopen Pinshift afterward to check the result.";
+
+"The Mac confirmed installation with an extended signature. It did not open the app." = "The Mac confirmed installation with an extended signature. It did not open the app.";
+
+"Open Pinshift on your Mac and complete its initial signing setup, then retry." = "Open Pinshift on your Mac and complete its initial signing setup, then retry.";
+
+"Signing failed. Review the Mac signing output and resolve any account or certificate requirements, then retry." = "Signing failed. Review the Mac signing output and resolve any account or certificate requirements, then retry.";
+
+"The new signature could not be verified as extended. Check the Mac signing setup before retrying." = "The new signature could not be verified as extended. Check the Mac signing setup before retrying.";
+
+"Installation was not confirmed. Check the device connection and any prompts on your Mac or iPhone, then retry." = "Installation was not confirmed. Check the device connection and any prompts on your Mac or iPhone, then retry.";
+
+"The Mac could not complete renewal. Review the renewal details and the Mac output, then retry." = "The Mac could not complete renewal. Review the renewal details and the Mac output, then retry.";
+
+"Mac snapshot received" = "Mac snapshot received";
+
+"Snapshot unavailable" = "Snapshot unavailable";
+
+"Renewal requested" = "Renewal requested";
+
+"Renewal response received" = "Renewal response received";
+
+"Renewal phase updated" = "Renewal phase updated";

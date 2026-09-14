@@ -332,3 +332,67 @@
 "Choose a new point for %@" = "为“%@”重新选点";
 "Update bookmark" = "更新收藏位置";
 "Open-source notices" = "开源声明";
+
+"Last confirmed installation expiry" = "最近一次确认安装的签名到期时间";
+
+"Signature expiry unknown" = "签名到期时间未知";
+
+"Sending renewal request…" = "正在发送续签请求…";
+
+"Renew now" = "立即续签";
+
+"The renewal request was not confirmed. Check the Mac connection, then refresh its status before retrying." = "续签请求未获确认。请检查 Mac 连接，刷新状态后再重试。";
+
+"Renewal details" = "续签详情";
+
+"Source: Mac controller" = "来源：Mac 控制器";
+
+"Connect to your Mac to renew" = "连接 Mac 后续签";
+
+"Mac update required" = "需要更新 Mac 控制器";
+
+"Ready to renew" = "可以续签";
+
+"Checking renewal requirements…" = "正在检查续签条件…";
+
+"Signing the app…" = "正在签名…";
+
+"Verifying the new signature…" = "正在验证新签名…";
+
+"Installing on iPhone…" = "正在安装到 iPhone…";
+
+"Installation confirmed" = "已确认安装";
+
+"Renewal needs attention" = "续签需要处理";
+
+"Keep the paired Mac controller running. Any previous renewal result below is a saved snapshot; reconnect to check the latest state." = "请保持已配对的 Mac 控制器运行。下方此前的续签结果是保留的快照；重新连接后检查最新状态。";
+
+"Restart your Mac session with the updated Pinshift controller to enable in-app renewal." = "请使用更新后的 Pinshift 控制器重新开启 Mac 会话，以启用 App 内续签。";
+
+"Your paired Mac will sign and install the app." = "已配对的 Mac 将完成签名与安装。";
+
+"You can leave this page. The Mac continues the accepted operation." = "可以离开此页面，Mac 会继续已接收的操作。";
+
+"Installation may close the app. Reopen Pinshift afterward to check the result." = "安装可能关闭 App。完成后请重新打开 Pinshift 查看结果。";
+
+"The Mac confirmed installation with an extended signature. It did not open the app." = "Mac 已确认安装，且新签名有效期已延长。Mac 未执行打开 App。";
+
+"Open Pinshift on your Mac and complete its initial signing setup, then retry." = "请在 Mac 上运行 Pinshift，完成首次签名配置后重试。";
+
+"Signing failed. Review the Mac signing output and resolve any account or certificate requirements, then retry." = "签名失败。请查看 Mac 签名输出，处理账号或证书相关要求后重试。";
+
+"The new signature could not be verified as extended. Check the Mac signing setup before retrying." = "未能验证新签名的有效期已延长。请检查 Mac 签名配置后重试。";
+
+"Installation was not confirmed. Check the device connection and any prompts on your Mac or iPhone, then retry." = "安装未获确认。请检查设备连接及 Mac 或 iPhone 上的提示后重试。";
+
+"The Mac could not complete renewal. Review the renewal details and the Mac output, then retry." = "Mac 未能完成续签。请查看续签详情和 Mac 输出后重试。";
+
+"Mac snapshot received" = "收到 Mac 快照";
+
+"Snapshot unavailable" = "快照不可用";
+
+"Renewal requested" = "已请求续签";
+
+"Renewal response received" = "已收到续签响应";
+
+"Renewal phase updated" = "续签阶段已更新";
