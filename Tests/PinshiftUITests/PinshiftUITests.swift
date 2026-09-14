@@ -441,6 +441,41 @@ final class PinshiftUITests: XCTestCase {
     XCTAssertTrue(clear.isEnabled)
   }
 
+  func testRenewalRequestSurvivesSheetCloseAndLanguageSwitch() {
+    let app = pinshiftApp()
+    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
+    app.launchEnvironment["PINSHIFT_E2E_RENEWAL_FIXTURE"] = "idle"
+    app.launch()
+    openSettings(in: app)
+    let renew = app.buttons["renew-app"]
+    XCTAssertTrue(renew.waitForExistence(timeout: 5))
+    XCTAssertTrue(renew.isEnabled)
+    renew.tap()
+    XCTAssertTrue(waitForLabel(app.staticTexts["renewal-status"], equalTo: "Signing the app…"))
+    XCTAssertFalse(renew.isEnabled)
+    app.buttons["close-more"].tap()
+    openSettings(in: app)
+    XCTAssertFalse(renew.isEnabled)
+    let selector = app.segmentedControls["language-selector"]
+    scrollUp(until: selector, in: app)
+    selector.buttons["简体中文"].tap()
+    scrollToTop(in: app)
+    XCTAssertTrue(waitForLabel(app.staticTexts["renewal-status"], equalTo: "正在签名…"))
+  }
+
+  func testRenewalFailureUsesRecoveryAndDisclosesRawEvidence() {
+    let app = pinshiftApp()
+    app.launchEnvironment["PINSHIFT_E2E_CONTROLLER_LINK_FIXTURE"] = "1"
+    app.launchEnvironment["PINSHIFT_E2E_RENEWAL_FIXTURE"] = "failed"
+    app.launch()
+    openSettings(in: app)
+    XCTAssertTrue(waitForLabel(app.staticTexts["renewal-status"], equalTo: "Renewal needs attention"))
+    XCTAssertTrue(app.buttons["renew-app"].isEnabled)
+    XCTAssertFalse(app.staticTexts["fixture raw installation evidence"].exists)
+    app.buttons["Renewal details"].tap()
+    XCTAssertTrue(app.staticTexts["fixture raw installation evidence"].waitForExistence(timeout: 5))
+  }
+
   func testLanguageSelectorSwitchesImmediatelyAndPersistsTheChoice() {
     let app = permissionFixtureApp(location: "allowed", localNetwork: "allowed")
     app.launchEnvironment["PINSHIFT_E2E_APP_LANGUAGE"] = "en"
@@ -1336,11 +1371,12 @@ final class PinshiftUITests: XCTestCase {
   private func clearDiagnostics(in app: XCUIApplication) {
     openSettings(in: app)
     scrollToTop(in: app)
+    openDiagnostics(in: app)
     let clear = app.buttons["diagnostics-clear"]
     scrollUp(until: clear, in: app)
     XCTAssertTrue(clear.waitForExistence(timeout: 5))
     clear.tap()
-    openDiagnostics(in: app)
+    app.buttons.matching(NSPredicate(format: "label == %@", "Clear Diagnostics")).firstMatch.tap()
     let eventCount = app.staticTexts["diagnostics-event-count"]
     XCTAssertTrue(waitForLabel(eventCount, endingWith: ", 0", timeout: 5))
   }

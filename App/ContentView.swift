@@ -341,14 +341,7 @@ struct ContentView: View {
 
   private var settingsView: some View {
     List {
-      Section(localized("App renewal")) {
-        Text(
-          localized(
-            "Run pinshift on your Mac to check the app signature and renew it when needed. Follow the Mac instructions if Apple sign-in or iPhone confirmation is required."
-          )
-        )
-        .font(.footnote)
-      }
+      AppRenewalSection(controller: controllerLink)
       controllerLinkSection
       appearanceSection
       Section {
@@ -372,6 +365,17 @@ struct ContentView: View {
 
   private var diagnosticsView: some View {
     SimulationDiagnosticsView(model: diagnostics) {
+      Section {
+        LabeledContent(localized("Source"), value: localized("Source: Mac controller"))
+        if let receivedAt = controllerLink.statusReceivedAt {
+          LabeledContent(localized("Mac snapshot received")) {
+            Text(receivedAt, format: .dateTime.month().day().hour().minute().second())
+          }
+        }
+        if !controllerLink.isConnected {
+          Text(localized("Snapshot unavailable")).foregroundStyle(.secondary)
+        }
+      }
       controllerEvidenceSection
       Section(localized("Temporary Simulation")) {
         activeVerificationSummary
