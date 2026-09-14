@@ -396,3 +396,70 @@
 "Renewal response received" = "已收到续签响应";
 
 "Renewal phase updated" = "续签阶段已更新";
+"Saved" = "已收藏";
+
+"Remove bookmark" = "取消收藏";
+
+"Source" = "来源";
+
+"This iPhone" = "本机 iPhone";
+
+"Record refreshed" = "记录更新时间";
+
+"Local diagnostic record" = "本机诊断记录";
+
+"Retained iPhone events only. Mac logs are not included. Pull to refresh." = "仅包含 iPhone 留存的事件，不包含 Mac 日志。下拉刷新。";
+
+"Recent events" = "最近事件";
+
+"No recorded events" = "暂无记录";
+
+"Show older events" = "显示较早事件";
+
+"Export iPhone record" = "导出 iPhone 记录";
+
+"Clear the retained iPhone record?" = "清空 iPhone 留存记录？";
+
+"This cannot be undone. Simulation state is not changed." = "此操作无法撤销，不会改变模拟状态。";
+
+"Related request events" = "同一请求的事件";
+
+"Raw event" = "原始事件";
+
+"Event details" = "事件详情";
+
+"The event could not be displayed." = "无法显示此事件。";
+
+"Include routine observations" = "包含常规观测";
+
+"Selected location changed" = "待应用位置已更改";
+
+"Apply requested" = "已请求应用位置";
+
+"Apply response received" = "收到应用回执";
+
+"Simulation acknowledged" = "模拟已确认";
+
+"Apply failed" = "应用失败";
+
+"Observation verification result" = "观测验证结果";
+
+"Observation verification timed out" = "观测验证超时";
+
+"Clear requested" = "已请求解除";
+
+"Clear response received" = "收到解除回执";
+
+"Clear acknowledged" = "解除已确认";
+
+"Clear not confirmed" = "解除尚未确认";
+
+"Location observation failed" = "位置观测失败";
+
+"Simulated location" = "模拟位置";
+
+"Observed location" = "本机观测位置";
+
+"Select observed location" = "选择本机观测位置";
+
+"Rename" = "重命名";

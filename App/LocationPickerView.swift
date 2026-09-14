@@ -5,6 +5,7 @@ import SwiftUI
 struct LocationPickerView: View {
   let selected: SelectedLocation?
   let applied: SelectedLocation?
+  let observed: LocationObservation?
   let boundary: MapCoordinateBoundary
   @Binding var searchFocused: Bool
   let onSelect: (SelectedLocation, LocationSelectionSource, String?) -> Void
@@ -15,12 +16,14 @@ struct LocationPickerView: View {
   @Environment(\.locale) private var locale
 
   init(
-    selected: SelectedLocation?, applied: SelectedLocation?, boundary: MapCoordinateBoundary,
+    selected: SelectedLocation?, applied: SelectedLocation?, observed: LocationObservation? = nil,
+    boundary: MapCoordinateBoundary,
     searchFocused: Binding<Bool>,
     onSelect: @escaping (SelectedLocation, LocationSelectionSource, String?) -> Void
   ) {
     self.selected = selected
     self.applied = applied
+    self.observed = observed
     self.boundary = boundary
     self._searchFocused = searchFocused
     self.onSelect = onSelect
@@ -31,8 +34,20 @@ struct LocationPickerView: View {
   var body: some View {
     Map(position: $cameraPosition) {
       if let applied {
-        Marker(localized("Current location"), coordinate: coordinate(applied))
+        Marker(localized("Simulated location"), coordinate: coordinate(applied))
           .tint(PinshiftDesign.positive)
+      }
+      if let observed {
+        Annotation(localized("Observed location"), coordinate: coordinate(observed.coordinate)) {
+          Circle()
+            .fill(PinshiftDesign.primary)
+            .frame(width: 14, height: 14)
+            .overlay(Circle().strokeBorder(PinshiftDesign.surface, lineWidth: 3))
+            .padding(7)
+            .background(PinshiftDesign.primary.opacity(0.15), in: Circle())
+            .accessibilityLabel(localized("Observed location"))
+            .accessibilityValue(observed.timestamp.formatted(date: .omitted, time: .standard))
+        }
       }
     }
     .onMapCameraChange(frequency: .onEnd) { context in
@@ -72,6 +87,32 @@ struct LocationPickerView: View {
     }
     .accessibilityIdentifier("home-map")
     .overlay(alignment: .top) { searchPanel.padding(16) }
+    .overlay(alignment: .bottomTrailing) {
+      Button {
+        guard let observed else { return }
+        lastMapSelection = nil
+        cameraPosition = .region(
+          MKCoordinateRegion(
+            center: coordinate(observed.coordinate), latitudinalMeters: 1_500,
+            longitudinalMeters: 1_500))
+        onSelect(observed.coordinate, .map, nil)
+      } label: {
+        Image(systemName: "location.fill")
+          .frame(width: 44, height: 44)
+          .background(.regularMaterial, in: Circle())
+      }
+      .buttonStyle(.plain)
+      .disabled(observed == nil)
+      .accessibilityLabel(localized("Select observed location"))
+      .accessibilityHint(
+        localized(
+          observed == nil
+            ? "Waiting for a Core Location observation…"
+            : "Replaces Selected Location without applying a simulation.")
+      )
+      .accessibilityIdentifier("select-observed-location")
+      .padding(16)
+    }
     .onChange(of: searchFocused) { _, focused in fieldFocused = focused }
     .onChange(of: fieldFocused) { _, focused in searchFocused = focused }
   }

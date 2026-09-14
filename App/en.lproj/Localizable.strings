@@ -250,3 +250,70 @@
 "Renewal response received" = "Renewal response received";
 
 "Renewal phase updated" = "Renewal phase updated";
+"Saved" = "Saved";
+
+"Remove bookmark" = "Remove bookmark";
+
+"Source" = "Source";
+
+"This iPhone" = "This iPhone";
+
+"Record refreshed" = "Record refreshed";
+
+"Local diagnostic record" = "Local diagnostic record";
+
+"Retained iPhone events only. Mac logs are not included. Pull to refresh." = "Retained iPhone events only. Mac logs are not included. Pull to refresh.";
+
+"Recent events" = "Recent events";
+
+"No recorded events" = "No recorded events";
+
+"Show older events" = "Show older events";
+
+"Export iPhone record" = "Export iPhone record";
+
+"Clear the retained iPhone record?" = "Clear the retained iPhone record?";
+
+"This cannot be undone. Simulation state is not changed." = "This cannot be undone. Simulation state is not changed.";
+
+"Related request events" = "Related request events";
+
+"Raw event" = "Raw event";
+
+"Event details" = "Event details";
+
+"The event could not be displayed." = "The event could not be displayed.";
+
+"Include routine observations" = "Include routine observations";
+
+"Selected location changed" = "Selected location changed";
+
+"Apply requested" = "Apply requested";
+
+"Apply response received" = "Apply response received";
+
+"Simulation acknowledged" = "Simulation acknowledged";
+
+"Apply failed" = "Apply failed";
+
+"Observation verification result" = "Observation verification result";
+
+"Observation verification timed out" = "Observation verification timed out";
+
+"Clear requested" = "Clear requested";
+
+"Clear response received" = "Clear response received";
+
+"Clear acknowledged" = "Clear acknowledged";
+
+"Clear not confirmed" = "Clear not confirmed";
+
+"Location observation failed" = "Location observation failed";
+
+"Simulated location" = "Simulated location";
+
+"Observed location" = "Observed location";
+
+"Select observed location" = "Select observed location";
+
+"Rename" = "Rename";
