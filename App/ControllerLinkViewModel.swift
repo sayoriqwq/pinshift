@@ -22,6 +22,7 @@ final class ControllerLinkViewModel: ObservableObject {
   private let discovery: any ControllerDiscovering
   private let link: TrustedControllerLink
   private let diagnostics: SimulationDiagnosticPipeline?
+  private var renewalRequestID: UUID?
   private var discoveryTask: Task<Void, Never>?
   private var reconnectTask: Task<Void, Never>?
   private var discoveryRetryPolicy = ControllerDiscoveryRetryPolicy()
@@ -410,6 +411,7 @@ final class ControllerLinkViewModel: ObservableObject {
     isRequestingRenewal = true
     renewalRequestFailed = false
     let requestID = UUID()
+    renewalRequestID = requestID
     record(kind: "app.renewal.requested", requestID: requestID)
     // The request belongs to this model, not to a sheet's lifetime.
     Task { [weak self] in
@@ -426,7 +428,7 @@ final class ControllerLinkViewModel: ObservableObject {
       if case .renewal(_, let status) = response {
         receiveRenewal(status)
       } else {
-        renewalRequestFailed = true
+        renewalRequestFailed = renewalStatus?.operationID != requestID
       }
       record(kind: "app.renewal.response", requestID: requestID, fields: responseFields(response))
     }
@@ -441,6 +443,9 @@ final class ControllerLinkViewModel: ObservableObject {
   }
 
   private func receiveRenewal(_ status: AppRenewalStatus) {
+    if let renewalRequestID, status.operationID == renewalRequestID {
+      renewalRequestFailed = false
+    }
     guard renewalStatus != status else { return }
     renewalStatus = status
     record(kind: "app.renewal.phase", requestID: status.operationID, fields: renewalFields(status))
