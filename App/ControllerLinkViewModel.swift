@@ -433,7 +433,8 @@ final class ControllerLinkViewModel: ObservableObject {
   }
 
   private func receiveStatus(_ status: ControllerStatus?) {
-    controllerStatus = status
+    // A transport failure can leave a cached link snapshot; never present it as live.
+    controllerStatus = isConnected ? status : nil
     guard isConnected, let status else { return }
     statusReceivedAt = Date()
     if let renewal = status.renewal { receiveRenewal(renewal) }
