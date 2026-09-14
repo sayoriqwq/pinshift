@@ -15,16 +15,14 @@ struct ContentView: View {
   @State private var locationNames: [String: String] = [:]
   @State private var showingSavedLocationNamePrompt = false
   @State private var savedLocationName = ""
-  @State private var showingRenameSavedLocationPrompt = false
   @State private var renamingSavedLocationID: UUID?
-  @State private var renameSavedLocationName = ""
   @State private var showingDeleteSavedLocationConfirmation = false
   @State private var deletingSavedLocation: SavedLocation?
   @State private var updatingSavedLocation: SavedLocation?
   @State private var hasReplacementSelection = false
   @State private var showingSavedLocationUpdatePrompt = false
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-  @Environment(\.locale) private var locale
+  private var locale: Locale { language.locale }
   @Environment(\.openURL) private var openURL
 
   init(language: Binding<AppLanguage>) {
@@ -136,6 +134,7 @@ struct ContentView: View {
             }
         }, inMore: true
       )
+      .environment(\.locale, language.locale)
       .sheet(isPresented: $diagnostics.isSharePresented) {
         if let url = diagnostics.exportedURL { SimulationDiagnosticsShareSheet(url: url) }
       }
@@ -161,44 +160,30 @@ struct ContentView: View {
           ))
       }
       .alert(
-        Text(localized("Save Current Location")),
+        Text(
+          localized(
+            renamingSavedLocationID == nil ? "Save Current Location" : "Rename Saved Location")),
         isPresented: presentationBinding($showingSavedLocationNamePrompt, inMore: inMore)
       ) {
-        TextField(
-          localized("Saved Location Name"),
-          text: $savedLocationName
-        )
-        .accessibilityIdentifier("saved-location-name-input")
-        Button(localized("Save")) {
-          model.saveCurrentLocation(named: savedLocationName)
-        }
-        .disabled(savedLocationName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-        .accessibilityIdentifier("saved-location-confirm-save")
-        Button(localized("Cancel"), role: .cancel) {}
-          .accessibilityIdentifier("saved-location-cancel-save")
-      } message: {
-        Text(localized("Name the current Selected Location so you can choose it later."))
-      }
-      .alert(
-        Text(localized("Rename Saved Location")),
-        isPresented: presentationBinding($showingRenameSavedLocationPrompt, inMore: inMore)
-      ) {
-        TextField(
-          localized("Saved Location Name"),
-          text: $renameSavedLocationName
-        )
-        .accessibilityIdentifier("saved-location-rename-input")
+        TextField(localized("Saved Location Name"), text: $savedLocationName)
+          .accessibilityIdentifier(
+            renamingSavedLocationID == nil
+              ? "saved-location-name-input" : "saved-location-rename-input")
         Button(localized("Save")) {
           if let id = renamingSavedLocationID {
-            model.renameSavedLocation(id: id, to: renameSavedLocationName)
+            model.renameSavedLocation(id: id, to: savedLocationName)
+          } else {
+            model.saveCurrentLocation(named: savedLocationName)
           }
         }
-        .disabled(renameSavedLocationName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-        .accessibilityIdentifier("saved-location-confirm-rename")
+        .disabled(savedLocationName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        .accessibilityIdentifier(
+          renamingSavedLocationID == nil
+            ? "saved-location-confirm-save" : "saved-location-confirm-rename")
         Button(localized("Cancel"), role: .cancel) {}
-          .accessibilityIdentifier("saved-location-cancel-rename")
-      } message: {
-        Text(localized("Renaming changes only the Saved Location name."))
+          .accessibilityIdentifier(
+            renamingSavedLocationID == nil
+              ? "saved-location-cancel-save" : "saved-location-cancel-rename")
       }
       .confirmationDialog(
         Text(localized("Delete Saved Location?")),
@@ -260,6 +245,7 @@ struct ContentView: View {
       LocationPickerView(
         selected: model.selection.selected,
         applied: model.manualSession.activeAppliedRequest?.location,
+        observed: observer.latestObservation,
         boundary: .verifiedShanghai,
         searchFocused: $showingLocationPicker
       ) { location, source, name in
@@ -332,6 +318,7 @@ struct ContentView: View {
       )
     }
     .buttonStyle(.plain)
+    .contextMenu { savedLocationActions(savedLocation) }
     .frame(minHeight: 44)
     .accessibilityLabel(
       Text(
@@ -354,24 +341,6 @@ struct ContentView: View {
 
   private var settingsView: some View {
     List {
-      appearanceSection
-        .listRowSeparator(.hidden)
-      controllerLinkSection
-        .listRowSeparator(.hidden)
-      selectionSection
-        .listRowSeparator(.hidden)
-      savedLocationsSection
-        .listRowSeparator(.hidden)
-      Section(localized("Temporary Simulation")) {
-        activeVerificationSummary
-        manualSimulationStatus
-      }
-      observationSection
-        .listRowSeparator(.hidden)
-      diagnosticsSection
-        .listRowSeparator(.hidden)
-      baselineSection
-        .listRowSeparator(.hidden)
       Section(localized("App renewal")) {
         Text(
           localized(
@@ -380,17 +349,40 @@ struct ContentView: View {
         )
         .font(.footnote)
       }
-      limitationsSection
-        .listRowSeparator(.hidden)
+      controllerLinkSection
+      appearanceSection
+      Section {
+        NavigationLink {
+          diagnosticsView
+        } label: {
+          Label(localized("Test Diagnostics"), systemImage: "waveform.path.ecg")
+        }
+        .accessibilityIdentifier("open-diagnostics")
+      }
+      selectionSection
+      savedLocationsSection
     }
     .listStyle(.insetGrouped)
-    .listSectionSpacing(PinshiftDesign.spaceL)
-    .font(.subheadline)
     .scrollContentBackground(.hidden)
     .background(PinshiftDesign.background)
     .navigationTitle(localized("More"))
     .navigationBarTitleDisplayMode(.inline)
     .accessibilityIdentifier("settings-list")
+  }
+
+  private var diagnosticsView: some View {
+    SimulationDiagnosticsView(model: diagnostics) {
+      controllerEvidenceSection
+      Section(localized("Temporary Simulation")) {
+        activeVerificationSummary
+        manualSimulationStatus
+      }
+      observationSection
+      baselineSection
+      limitationsSection
+    }
+    .navigationTitle(localized("Test Diagnostics"))
+    .accessibilityIdentifier("diagnostics-list")
   }
 
   private var appearanceSection: some View {
@@ -428,6 +420,7 @@ struct ContentView: View {
     if let savedName = model.savedLocationName(for: selected) {
       return savedName
     }
+    if selected == observer.latestObservation?.coordinate { return localized("Observed location") }
     if let name = locationNames[String(describing: selected)] { return name }
     switch model.selection.source {
     case .manual:
@@ -453,31 +446,6 @@ struct ContentView: View {
       LabeledContent("Mac connection") {
         Text(controllerLinkStatus)
           .accessibilityIdentifier("controller-link-status")
-      }
-
-      LabeledContent("Test device / Xcode") {
-        Text(xcodeDeviceWorkflowDescription)
-          .accessibilityIdentifier("xcode-device-workflow-status")
-      }
-
-      LabeledContent("Mac location service") {
-        Text(backendReadinessDescription)
-          .accessibilityIdentifier("controller-backend-status")
-      }
-
-      LabeledContent("Automatic Clear") {
-        Text(localized("Every applied location clears automatically after 3 minutes."))
-          .accessibilityIdentifier("automatic-clear-policy")
-      }
-
-      LabeledContent("Current temporary location") {
-        Text(appliedSimulationDescription)
-          .accessibilityIdentifier("applied-simulation-status")
-      }
-
-      LabeledContent("Pinshift observation") {
-        Text(verifiedSimulationDescription)
-          .accessibilityIdentifier("verified-simulation-status")
       }
 
       if case .awaitingPairing = controllerLink.state {
@@ -517,11 +485,9 @@ struct ContentView: View {
       }
 
       if effectiveLocalNetworkPermission == .notYetConfirmed {
-        Text(
-          "Local Network access is not yet confirmed. iOS decides when to show the prompt; discovery readiness confirms access without reading a private permission API."
-        )
-        .font(.footnote)
-        .foregroundStyle(.secondary)
+        Text(localized("Searching for your Mac…"))
+          .font(.footnote)
+          .foregroundStyle(.secondary)
       }
 
       if effectiveLocalNetworkPermission == .denied {
@@ -566,6 +532,39 @@ struct ContentView: View {
         .buttonStyle(PinshiftSoftButtonStyle())
         .accessibilityIdentifier("refresh-controller-status")
       }
+    }
+  }
+
+  private var controllerEvidenceSection: some View {
+    Section(localized("Mac")) {
+      LabeledContent(localized("Mac connection")) {
+        Text(controllerLinkStatus).accessibilityIdentifier("controller-evidence-status")
+      }
+      LabeledContent("Test device / Xcode") {
+        Text(xcodeDeviceWorkflowDescription)
+          .accessibilityIdentifier("xcode-device-workflow-status")
+      }
+
+      LabeledContent("Mac location service") {
+        Text(backendReadinessDescription)
+          .accessibilityIdentifier("controller-backend-status")
+      }
+
+      LabeledContent("Automatic Clear") {
+        Text(localized("Every applied location clears automatically after 3 minutes."))
+          .accessibilityIdentifier("automatic-clear-policy")
+      }
+
+      LabeledContent("Current temporary location") {
+        Text(appliedSimulationDescription)
+          .accessibilityIdentifier("applied-simulation-status")
+      }
+
+      LabeledContent("Pinshift observation") {
+        Text(verifiedSimulationDescription)
+          .accessibilityIdentifier("verified-simulation-status")
+      }
+
     }
   }
 
@@ -633,89 +632,11 @@ struct ContentView: View {
     }
   }
 
-  private var diagnosticsSection: some View {
-    Section(localized("Test Diagnostics")) {
-      Text(
-        localized(
-          "Local evidence only. Diagnostics never retries, clears, or changes simulation state."
-        )
-      )
-      .font(.footnote)
-      .foregroundStyle(.secondary)
-
-      LabeledContent(localized("Record status")) {
-        Text(
-          diagnostics.status == nil
-            ? localized("Checking…")
-            : localized("Enabled")
-        )
-        .accessibilityIdentifier("diagnostics-status")
-      }
-
-      LabeledContent(localized("Approximate size")) {
-        Text(diagnostics.approximateSizeDescription)
-          .accessibilityIdentifier("diagnostics-size")
-      }
-
-      LabeledContent(localized("Events")) {
-        Text("\(diagnostics.status?.eventCount ?? 0)")
-          .accessibilityIdentifier("diagnostics-event-count")
-      }
-
-      Button {
-        diagnostics.export()
-      } label: {
-        ActionButtonLabel(
-          title: Text(localized(diagnostics.isExporting ? "Exporting…" : "Export Diagnostics")),
-          systemImage: "square.and.arrow.up",
-          isBusy: diagnostics.isExporting
-        )
-      }
-      .buttonStyle(PinshiftSoftButtonStyle())
-      .disabled(diagnostics.isExporting)
-      .accessibilityIdentifier("diagnostics-export")
-
-      Button(role: .destructive) {
-        diagnostics.clear()
-      } label: {
-        ActionButtonLabel(
-          title: Text(localized("Clear Diagnostics")),
-          systemImage: "trash"
-        )
-      }
-      .buttonStyle(
-        PinshiftSoftButtonStyle(
-          foreground: PinshiftDesign.destructive,
-          background: PinshiftDesign.destructiveSoft
-        )
-      )
-      .disabled(diagnostics.isExporting)
-      .accessibilityIdentifier("diagnostics-clear")
-
-      if let actionError = diagnostics.actionError {
-        Text(localized(actionError))
-          .foregroundStyle(PinshiftDesign.destructive)
-          .accessibilityIdentifier("diagnostics-error")
-      }
-
-      #if DEBUG
-        if let artifact = diagnostics.exportedArtifactJSON {
-          Text(verbatim: artifact)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(Text(verbatim: artifact))
-            .accessibilityValue(Text(verbatim: artifact))
-            .accessibilityIdentifier("diagnostics-export-artifact")
-            .frame(width: 1, height: 1)
-            .opacity(0.01)
-        }
-      #endif
-    }
-  }
-
   private var savedLocationsSection: some View {
     Section {
       Button {
         model.clearSavedLocationError()
+        renamingSavedLocationID = nil
         savedLocationName = ""
         showingSavedLocationNamePrompt = true
       } label: {
@@ -813,9 +734,9 @@ struct ContentView: View {
 
       Button {
         model.clearSavedLocationError()
-        renameSavedLocationName = savedLocation.name
+        savedLocationName = savedLocation.name
         renamingSavedLocationID = savedLocation.id
-        showingRenameSavedLocationPrompt = true
+        showingSavedLocationNamePrompt = true
       } label: {
         Image(systemName: "pencil")
           .frame(width: 44, height: 44)
@@ -942,15 +863,17 @@ struct ContentView: View {
   }
 
   private var simulationSection: some View {
-    TimelineView(.periodic(from: .now, by: 1)) { context in
-      simulationContent(now: context.date)
+    VStack(alignment: .leading, spacing: 14) {
+      simulationHeader
+      TimelineView(.periodic(from: .now, by: 1)) { context in
+        simulationContent(now: context.date)
+      }
     }
   }
 
-  private func simulationContent(now: Date) -> some View {
-    let automaticClearDue = automaticClearDeadline.map { $0 <= now } ?? false
-    let activeIsUnconfirmed =
-      !isConnected || applyUnconfirmed || clearUnconfirmed || automaticClearDue
+  // Keep native menus outside the ticking subtree so an open menu keeps its identity.
+  private var simulationHeader: some View {
+    let activeIsUnconfirmed = !isConnected || applyUnconfirmed || clearUnconfirmed
     return VStack(alignment: .leading, spacing: 14) {
       if !isConnected {
         Label(localized("Current status unconfirmed"), systemImage: "wifi.exclamationmark")
@@ -975,25 +898,32 @@ struct ContentView: View {
       if let active = model.manualSession.activeAppliedRequest {
         VStack(alignment: .leading, spacing: 6) {
           Label(
-            localized(activeIsUnconfirmed ? "Last confirmed location" : "Current location"),
+            localized(activeIsUnconfirmed ? "Last confirmed location" : "Simulated location"),
             systemImage: "location.fill"
           )
           .font(.footnote.weight(.semibold))
           .foregroundStyle(
             activeIsUnconfirmed ? PinshiftDesign.textSecondary : PinshiftDesign.positive)
-          Text(activeLocationDescription(active.location))
-            .font(selectionDiffers ? .headline : .title2.weight(.semibold))
-            .accessibilityIdentifier("active-simulation-location")
+          secondaryActionLayout {
+            Text(activeLocationDescription(active.location))
+              .font(selectionDiffers ? .headline : .title2.weight(.semibold))
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .accessibilityIdentifier("active-simulation-location")
+            if !selectionDiffers { saveHomeButton.fixedSize(horizontal: true, vertical: false) }
+          }
           if !activeIsUnconfirmed, let expiry = active.automaticClearAt {
-            Text(
-              now < expiry
-                ? localizedFormat(
-                  "Automatic clear in %@", remainingTimeDescription(until: expiry, now: now))
-                : localized("Automatic clear due — waiting for confirmation")
-            )
-            .font(.subheadline.monospacedDigit())
-            .foregroundStyle(.secondary)
-            .accessibilityIdentifier("simulation-auto-clear-countdown")
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+              Text(
+                context.date < expiry
+                  ? localizedFormat(
+                    "Automatic clear in %@",
+                    remainingTimeDescription(until: expiry, now: context.date))
+                  : localized("Automatic clear due — waiting for confirmation")
+              )
+              .font(.subheadline.monospacedDigit())
+              .foregroundStyle(.secondary)
+              .accessibilityIdentifier("simulation-auto-clear-countdown")
+            }
           }
         }
         .accessibilityElement(children: .contain)
@@ -1008,11 +938,21 @@ struct ContentView: View {
                 ? "Ready to apply" : "Selected Location")
           ).font(.footnote.weight(.semibold)).foregroundStyle(
             .secondary)
-          Text(selectedLocationDisplayName).font(.title2.weight(.semibold))
-            .accessibilityIdentifier("selected-location-name")
+          secondaryActionLayout {
+            Text(selectedLocationDisplayName).font(.title2.weight(.semibold))
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .accessibilityIdentifier("selected-location-name")
+            saveHomeButton.fixedSize(horizontal: true, vertical: false)
+          }
         }
       }
 
+    }
+  }
+
+  private func simulationContent(now: Date) -> some View {
+    let automaticClearDue = automaticClearDeadline.map { $0 <= now } ?? false
+    return VStack(alignment: .leading, spacing: 14) {
       if case .applying(let request) = model.manualSession.status {
         ProgressView(localizedFormat("Applying %@…", activeLocationDescription(request.location)))
           .accessibilityIdentifier("simulation-status")
@@ -1044,7 +984,6 @@ struct ContentView: View {
       } else if model.manualSession.activeAppliedRequest == nil {
         applyButton(primary: isConnected)
         secondaryActionLayout {
-          saveHomeButton
           clearNowButton
         }
       } else {
@@ -1058,7 +997,6 @@ struct ContentView: View {
           }
           .buttonStyle(PinshiftSoftButtonStyle())
           .accessibilityIdentifier("choose-another-place")
-          saveHomeButton
         }
       }
       if let error = model.savedLocationError {
@@ -1085,22 +1023,54 @@ struct ContentView: View {
       : AnyLayout(HStackLayout(spacing: 8))
   }
 
-  private var saveHomeButton: some View {
+  private var selectedSavedLocation: SavedLocation? {
+    model.savedLocations.locations.first {
+      $0.coordinateSystem == .wgs84 && $0.coordinate == model.selection.selected
+    }
+  }
+
+  @ViewBuilder private var saveHomeButton: some View {
+    if let saved = selectedSavedLocation {
+      Menu {
+        savedLocationActions(saved)
+      } label: {
+        ActionButtonLabel(title: Text(localized("Saved")), systemImage: "bookmark.fill")
+      }
+      .buttonStyle(PinshiftSoftButtonStyle())
+      .accessibilityIdentifier("manage-home-location")
+    } else {
+      Button {
+        model.clearSavedLocationError()
+        renamingSavedLocationID = nil
+        savedLocationName = selectedLocationDisplayName
+        showingSavedLocationNamePrompt = true
+      } label: {
+        ActionButtonLabel(title: Text(localized("Save place")), systemImage: "bookmark")
+      }
+      .buttonStyle(PinshiftSoftButtonStyle())
+      .disabled(model.selection.selected == nil)
+      .accessibilityIdentifier("save-home-location")
+    }
+  }
+
+  @ViewBuilder private func savedLocationActions(_ saved: SavedLocation) -> some View {
     Button {
       model.clearSavedLocationError()
-      savedLocationName = selectedLocationDisplayName
+      savedLocationName = saved.name
+      renamingSavedLocationID = saved.id
       showingSavedLocationNamePrompt = true
     } label: {
-      ActionButtonLabel(
-        title: Text(
-          localized(
-            model.manualSession.activeAppliedRequest != nil && !selectionDiffers
-              ? "Save this place" : "Save place")), systemImage: "bookmark"
-      )
+      Label(localized("Rename"), systemImage: "pencil")
     }
-    .buttonStyle(PinshiftSoftButtonStyle())
-    .disabled(model.selection.selected == nil)
-    .accessibilityIdentifier("save-home-location")
+    .accessibilityIdentifier("saved-location-rename-\(saved.id.uuidString)")
+    Button(role: .destructive) {
+      model.clearSavedLocationError()
+      deletingSavedLocation = saved
+      showingDeleteSavedLocationConfirmation = true
+    } label: {
+      Label(localized("Remove bookmark"), systemImage: "bookmark.slash")
+    }
+    .accessibilityIdentifier("saved-location-delete-\(saved.id.uuidString)")
   }
 
   private func applyButton(primary: Bool) -> some View {
