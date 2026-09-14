@@ -42,6 +42,7 @@ switch $preparation_status
 end
 
 echo "Keep this terminal open while using Pinshift. Ctrl-C ends the session after a real Clear."
+set --global --export PINSHIFT_REPOSITORY_ROOT (path resolve "$script_dir/..")
 exec $controller link serve \
     --device "$PINSHIFT_DEVICE" \
     --developer-directory "$PINSHIFT_DEVELOPER_DIR"

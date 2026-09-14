@@ -251,7 +251,7 @@ private actor PairingControllerTransport: ControllerLinkTransport {
     case .pair(let requestID, let code):
       XCTAssertEqual(code, "123456")
       response = .paired(requestID: requestID, authorization: authorization)
-    case .apply(let requestID, _, _, _), .clear(let requestID, _):
+    case .apply(let requestID, _, _, _), .clear(let requestID, _), .renewApp(let requestID, _):
       response = .rejected(requestID: requestID, reason: .invalidRequest)
     }
     return ControllerTransportReply(presentedIdentity: identity, response: response)
@@ -323,7 +323,7 @@ private actor RecordingControllerTransport: ControllerLinkTransport {
       XCTAssertEqual(presented, authorization)
       clearCount += 1
       response = .cleared(requestID: requestID)
-    case .pair(let requestID, _):
+    case .pair(let requestID, _), .renewApp(let requestID, _):
       response = .rejected(requestID: requestID, reason: .invalidRequest)
     }
     return ControllerTransportReply(presentedIdentity: identity, response: response)
@@ -388,7 +388,7 @@ private actor BlockingRefreshControllerTransport: ControllerLinkTransport {
     case .apply(let requestID, let presented, _, _):
       XCTAssertEqual(presented, authorization)
       response = .applied(requestID: requestID, automaticClearAt: applyDeadline)
-    case .pair(let requestID, _), .clear(let requestID, _):
+    case .pair(let requestID, _), .clear(let requestID, _), .renewApp(let requestID, _):
       response = .rejected(requestID: requestID, reason: .invalidRequest)
     }
     return ControllerTransportReply(presentedIdentity: identity, response: response)

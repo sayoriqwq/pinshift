@@ -320,7 +320,14 @@ public struct PinshiftControllerCommand: AsyncParsableCommand {
           ),
           commandHandler: SimulationControllerCommandHandler(
             controller: simulationController,
-            diagnostics: diagnostics
+            diagnostics: diagnostics,
+            renewal: AppRenewalService(diagnostics: diagnostics, execute: AppRenewalExecutor(
+              repository: ProcessInfo.processInfo.environment["PINSHIFT_REPOSITORY_ROOT"].map {
+                URL(fileURLWithPath: $0)
+              },
+              configuration: ControllerCLIRuntime.resolveConfiguration(
+                device: activeDevice.device, developerDirectory: activeDevice.developerDirectory)
+            ).execute)
           ),
           diagnostics: diagnostics
         )

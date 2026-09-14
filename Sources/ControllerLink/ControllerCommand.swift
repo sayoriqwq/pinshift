@@ -4,12 +4,14 @@ public enum ControllerCommand: Equatable, Sendable {
   case status(requestID: UUID)
   case apply(requestID: UUID, latitude: Double, longitude: Double)
   case clear(requestID: UUID)
+  case renewApp(requestID: UUID)
 
   public var requestID: UUID {
     switch self {
     case .status(let requestID),
       .apply(let requestID, _, _),
-      .clear(let requestID):
+      .clear(let requestID),
+      .renewApp(let requestID):
       requestID
     }
   }
@@ -47,13 +49,16 @@ public enum ControllerSimulationState: Codable, Equatable, Sendable {
 public struct ControllerStatus: Codable, Equatable, Sendable {
   public let readiness: ControllerBackendReadiness
   public let simulation: ControllerSimulationState
+  public let renewal: AppRenewalStatus?
 
   public init(
     readiness: ControllerBackendReadiness,
-    simulation: ControllerSimulationState
+    simulation: ControllerSimulationState,
+    renewal: AppRenewalStatus? = nil
   ) {
     self.readiness = readiness
     self.simulation = simulation
+    self.renewal = renewal
   }
 }
 
@@ -74,6 +79,7 @@ public enum ControllerCommandResult: Equatable, Sendable {
   case status(requestID: UUID, status: ControllerStatus)
   case applied(requestID: UUID, automaticClearAt: Date)
   case cleared(requestID: UUID)
+  case renewal(requestID: UUID, status: AppRenewalStatus)
   case failed(requestID: UUID, reason: ControllerCommandFailure)
 
   public var requestID: UUID {
@@ -81,6 +87,7 @@ public enum ControllerCommandResult: Equatable, Sendable {
     case .status(let requestID, _),
       .applied(let requestID, _),
       .cleared(let requestID),
+      .renewal(let requestID, _),
       .failed(let requestID, _):
       requestID
     }
