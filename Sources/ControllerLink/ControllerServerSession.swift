@@ -89,6 +89,13 @@ public actor ControllerServerSession {
         .apply(requestID: requestID, latitude: latitude, longitude: longitude)
       )
 
+    case .renewApp(let requestID, let presentedAuthorization):
+      guard await isAuthorized(presentedAuthorization) else {
+        response = .rejected(requestID: requestID, reason: .authorizationFailed)
+        break
+      }
+      response = await processCommand(.renewApp(requestID: requestID))
+
     case .clear(
       let requestID,
       let presentedAuthorization
@@ -128,6 +135,11 @@ public actor ControllerServerSession {
         return .failed(requestID: command.requestID, reason: .responseIdentityMismatch)
       }
       return .applied(requestID: requestID, automaticClearAt: automaticClearAt)
+    case .renewal(let requestID, let status):
+      guard case .renewApp = command else {
+        return .failed(requestID: command.requestID, reason: .responseIdentityMismatch)
+      }
+      return .renewal(requestID: requestID, status: status)
     case .cleared(let requestID):
       guard case .clear = command else {
         return .failed(requestID: command.requestID, reason: .responseIdentityMismatch)
@@ -170,6 +182,8 @@ public actor ControllerServerSession {
         "latitude": .number(latitude),
         "longitude": .number(longitude),
       ]
+    case .renewApp:
+      return ["command": .text("renewApp")]
     case .clear:
       return ["command": .text("clear")]
     }
@@ -186,6 +200,8 @@ public actor ControllerServerSession {
         "outcome": .text("applied"),
         "automaticClearAt": .date(automaticClearAt),
       ]
+    case .renewal(_, let status):
+      return ["outcome": .text(status.phase.rawValue)]
     case .cleared:
       return ["outcome": .text("cleared")]
     case .failed(_, let reason):

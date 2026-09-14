@@ -1,3 +1,19 @@
+# Private, controller-owned progress destination; never provided by a phone request.
+function pinshift_renewal_progress --argument-names phase expiry
+    if not set --query PINSHIFT_RENEWAL_PROGRESS
+        return 0
+    end
+    set --local value null
+    if test -n "$expiry"
+        set value "$expiry"
+    end
+    jq --null-input --arg phase "$phase" --argjson expiry "$value" \
+        '{phase: $phase, expiry: $expiry}' >"$PINSHIFT_RENEWAL_PROGRESS.next"
+    or return 1
+    chmod 600 "$PINSHIFT_RENEWAL_PROGRESS.next"
+    and mv "$PINSHIFT_RENEWAL_PROGRESS.next" "$PINSHIFT_RENEWAL_PROGRESS"
+end
+
 function pinshift_decode_mobileprovision --argument-names source destination
     if not test -f "$source"; or test -L "$source"
         return 1

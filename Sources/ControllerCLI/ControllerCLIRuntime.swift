@@ -109,6 +109,7 @@ public enum ControllerCLIRuntime {
   static func runSession(
     controller: SimulationController,
     stopAcceptingCommands: @escaping @Sendable () async -> Void = {},
+    finishAcceptedWork: @escaping @Sendable () async -> Void = {},
     retrySleep: @escaping @Sendable (TimeInterval) async throws -> Void = { seconds in
       // Normal task cancellation must not abandon the exit-time cleanup responsibility.
       try await Task { try await Task.sleep(for: .seconds(seconds)) }.value
@@ -132,6 +133,7 @@ public enum ControllerCLIRuntime {
     while true {
       switch await controller.clear() {
       case .cleared:
+        await finishAcceptedWork()
         if let waitError { throw waitError }
         return
       case .failed(_, let reason):
@@ -146,6 +148,7 @@ public enum ControllerCLIRuntime {
     controller: SimulationController,
     runFor duration: TimeInterval?,
     stopAcceptingCommands: @escaping @Sendable () async -> Void = {},
+    finishAcceptedWork: @escaping @Sendable () async -> Void = {},
     signalHandlersReady: @Sendable () -> Void = {}
   ) async throws {
     let signalWaiter = ControllerTerminationSignalWaiter()
@@ -153,7 +156,11 @@ public enum ControllerCLIRuntime {
     signalHandlersReady()
     try await runSession(
       controller: controller,
-      stopAcceptingCommands: stopAcceptingCommands
+      stopAcceptingCommands: stopAcceptingCommands,
+      finishAcceptedWork: {
+        signalWaiter.markCleanupConfirmed()
+        await finishAcceptedWork()
+      }
     ) {
       if let duration {
         await withTaskGroup(of: Void.self) { group in
@@ -188,6 +195,7 @@ public enum ControllerCLIRuntime {
 private final class ControllerTerminationSignalWaiter: @unchecked Sendable {
   private let lock = NSLock()
   private var forceExitArmed = false
+  private var cleanupConfirmed = false
   private let events: AsyncStream<Void>
   private let continuation: AsyncStream<Void>.Continuation
   private var sources: [DispatchSourceSignal] = []
@@ -207,7 +215,11 @@ private final class ControllerTerminationSignalWaiter: @unchecked Sendable {
           return wasArmed
         }
         if force {
-          let message = "Forced exit: cleanup is unconfirmed. Keep the iPhone reachable and restart pinshift to clear residual simulation.\n"
+          let message = self.lock.withLock {
+            self.cleanupConfirmed
+              ? "Forced exit: accepted App renewal may be incomplete. Check the installation before retrying.\n"
+              : "Forced exit: cleanup is unconfirmed. Keep the iPhone reachable and restart pinshift to clear residual simulation.\n"
+          }
           FileHandle.standardError.write(Data(message.utf8))
           Darwin.exit(1)
         }
@@ -217,6 +229,8 @@ private final class ControllerTerminationSignalWaiter: @unchecked Sendable {
       source.resume()
     }
   }
+
+  func markCleanupConfirmed() { lock.withLock { cleanupConfirmed = true } }
 
   func armForceExit() { lock.withLock { forceExitArmed = true } }
 

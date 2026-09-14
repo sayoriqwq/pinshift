@@ -24,6 +24,9 @@ if set --query _flag_launch_only; and begin
     exit 2
 end
 
+pinshift_renewal_progress checking
+or exit 1
+
 pinshift_prepare_environment
 or exit $status
 
@@ -244,6 +247,8 @@ if test $resuming_install -eq 0
         set --global --append _pinshift_resign_moved_backups "$backup_path"
     end
 
+    pinshift_renewal_progress signing
+    or exit 1
     echo "Requesting a new Personal Team provisioning profile from Xcode…"
     set --local build_log "$staging_root/xcodebuild.log"
     xcodebuild \
@@ -271,6 +276,9 @@ if test $resuming_install -eq 0
     end
 
 end
+
+pinshift_renewal_progress verifying
+or exit 1
 
 set --local candidate \
     "$derived_data/Build/Products/Debug-iphoneos/Pinshift.app"
@@ -354,6 +362,8 @@ set --global _pinshift_resign_preserve_staging 1
 # An earlier failed invocation may have left a successful-looking JSON result behind.
 command rm -f -- "$install_json"
 or exit $status
+pinshift_renewal_progress installing
+or exit 1
 xcrun devicectl device install app \
     --quiet \
     --timeout 120 \
@@ -376,6 +386,9 @@ if not test -f "$install_json"; or not jq --exit-status '.info.outcome == "succe
     echo "The new profile and candidate were preserved at $staging_root." >&2
     exit 1
 end
+
+pinshift_renewal_progress installed "$new_expiration_epoch"
+or exit 1
 
 command rm -- "$pending_install"
 or exit $status

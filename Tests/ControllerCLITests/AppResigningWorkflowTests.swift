@@ -41,6 +41,35 @@ final class AppResigningWorkflowTests: XCTestCase {
     }
   }
 
+  func testRemoteRenewalEmitsConfirmedInstallExpiryAndDoesNotLaunch() throws {
+    _ = try writeProfile(named: "app.mobileprovision",
+      applicationIdentifier: "\(teamIdentifier).\(bundleIdentifier)",
+      expiration: "2099-08-10T08:49:25Z")
+    try writeCandidate(expiration: "2099-08-17T08:49:25Z")
+    let progress = fixtureRoot.appending(path: "progress.json")
+    let result = try runResign(arguments: ["--force", "--no-launch"],
+      environment: ["PINSHIFT_RENEWAL_PROGRESS": progress.path])
+    XCTAssertEqual(result.status, 0, result.output)
+    let json = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: progress)) as? [String: Any])
+    XCTAssertEqual(json["phase"] as? String, "installed")
+    XCTAssertNotNil(json["expiry"] as? Double)
+    XCTAssertFalse(try events().contains("xcrun launch"))
+  }
+
+  func testRemoteUnconfirmedInstallNeverEmitsInstalledExpiry() throws {
+    _ = try writeProfile(named: "app.mobileprovision",
+      applicationIdentifier: "\(teamIdentifier).\(bundleIdentifier)",
+      expiration: "2099-08-10T08:49:25Z")
+    try writeCandidate(expiration: "2099-08-17T08:49:25Z")
+    let progress = fixtureRoot.appending(path: "progress.json")
+    let result = try runResign(arguments: ["--force", "--no-launch"], environment: [
+      "PINSHIFT_RENEWAL_PROGRESS": progress.path, "FAKE_INSTALL_UNCONFIRMED": "1"])
+    XCTAssertNotEqual(result.status, 0)
+    let json = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: progress)) as? [String: Any])
+    XCTAssertEqual(json["phase"] as? String, "installing")
+    XCTAssertTrue(json["expiry"] is NSNull)
+  }
+
   func testFreshProfileIsANoOpByDefault() throws {
     let appProfile = try writeProfile(
       named: "app.mobileprovision",
@@ -429,6 +458,19 @@ final class AppResigningWorkflowTests: XCTestCase {
     XCTAssertEqual(try events(), [])
   }
 
+  func testDailyStartPassesItsCheckoutIndependentOfCallerDirectory() throws {
+    _ = try writeProfile(named: "app.mobileprovision",
+      applicationIdentifier: "\(teamIdentifier).\(bundleIdentifier)",
+      expiration: "2099-08-10T08:49:25Z")
+    let record = fixtureRoot.appending(path: "repository.txt")
+    let result = try runDaily(environment: ["FAKE_REPO_RECORD": record.path])
+    XCTAssertEqual(result.status, 0, result.output)
+    let recordedPath = try String(contentsOf: record, encoding: .utf8)
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    XCTAssertEqual(URL(fileURLWithPath: recordedPath).resolvingSymlinksInPath().path,
+      fixtureRoot.resolvingSymlinksInPath().path)
+  }
+
   private func runDaily(
     arguments: [String] = [], environment: [String: String] = [:]
   ) throws -> (status: Int32, output: String) {
@@ -455,6 +497,9 @@ final class AppResigningWorkflowTests: XCTestCase {
       contents: """
         #!/bin/sh
         printf 'controller %s %s\n' "$1" "$2" >> "$FAKE_EVENT_LOG"
+        if [ -n "$FAKE_REPO_RECORD" ]; then
+          printf '%s\n' "$PINSHIFT_REPOSITORY_ROOT" > "$FAKE_REPO_RECORD"
+        fi
         """)
     return try runResign(
       arguments: arguments,

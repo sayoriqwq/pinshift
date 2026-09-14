@@ -132,6 +132,32 @@ final class ControllerServerSessionTests: XCTestCase {
     )
   }
 
+  func testRenewalRequiresExistingAuthorizationAndDoesNotAcceptDeviceOrCommandArguments() async throws {
+    let identity = try ControllerIdentity(fingerprint: Data(repeating: 0x51, count: 32))
+    let authorization = try ControllerAuthorization(bytes: Data(repeating: 0x52, count: 32))
+    let invalid = try ControllerAuthorization(bytes: Data(repeating: 0x53, count: 32))
+    let handler = RecordingControllerCommandHandler()
+    let session = ControllerServerSession(identity: identity,
+      pairingAuthority: try PairingCodeAuthority(code: "123456", identity: identity,
+        expiresAt: Date().addingTimeInterval(60)),
+      authorizationStore: InMemoryControllerAuthorizationStore(authorization: authorization),
+      commandHandler: handler)
+    let id = UUID()
+    let rejected = await session.process(.renewApp(requestID: id, authorization: invalid))
+    XCTAssertEqual(rejected, .rejected(requestID: id, reason: .authorizationFailed))
+    let commandsBefore = await handler.commands
+    XCTAssertTrue(commandsBefore.isEmpty)
+    let response = await session.process(.renewApp(requestID: id, authorization: authorization))
+    guard case .renewal(let returnedID, _) = response else { return XCTFail("Expected renewal") }
+    XCTAssertEqual(returnedID, id)
+    let commands = await handler.commands
+    XCTAssertEqual(commands, [.renewApp(requestID: id)])
+    let request = ControllerLinkRequest.renewApp(requestID: id, authorization: authorization)
+    let encoded = String(decoding: try JSONEncoder().encode(request), as: UTF8.self)
+    XCTAssertFalse(encoded.contains("device"))
+    XCTAssertFalse(encoded.contains("path"))
+  }
+
   func testPairingAndAuthorizationValuesNeverEnterDiagnostics() async throws {
     let directory = FileManager.default.temporaryDirectory
       .appendingPathComponent("pinshift-link-events-\(UUID().uuidString)")
@@ -176,6 +202,8 @@ private actor RecordingControllerCommandHandler: ControllerCommandHandling {
         requestID: requestID,
         automaticClearAt: Date(timeIntervalSince1970: 1_000)
       )
+    case .renewApp(let requestID):
+      return .renewal(requestID: requestID, status: AppRenewalStatus(phase: .checking))
     case .clear(let requestID):
       return .cleared(requestID: requestID)
     }
