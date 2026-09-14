@@ -1,3 +1,17 @@
+# Only controller invocations forward bounded tool evidence; the service sanitizes it.
+# Callers supply fixed local log paths, never values from a phone request.
+function pinshift_renewal_failure_details
+    if set --query PINSHIFT_RENEWAL_PROGRESS
+        for log in $argv
+            if test -f "$log"; and not test -L "$log"
+                echo "Tool failure evidence (last 2048 bytes):" >&2
+                command tail -c 2048 -- "$log" >&2
+                echo >&2
+            end
+        end
+    end
+end
+
 # Private, controller-owned progress destination; never provided by a phone request.
 function pinshift_renewal_progress --argument-names phase expiry
     if not set --query PINSHIFT_RENEWAL_PROGRESS
