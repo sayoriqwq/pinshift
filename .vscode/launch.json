@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:pinshift}",
+            "name": "Debug pinshift-controller",
+            "target": "pinshift-controller",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug pinshift-controller"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:pinshift}",
+            "name": "Release pinshift-controller",
+            "target": "pinshift-controller",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release pinshift-controller"
+        }
+    ]
+}
