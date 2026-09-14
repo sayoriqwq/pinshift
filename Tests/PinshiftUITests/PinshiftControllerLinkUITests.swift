@@ -156,6 +156,9 @@ final class PinshiftControllerLinkUITests: XCTestCase {
     apply.tap()
 
     openSettings(in: app)
+    let diagnostics = app.buttons["open-diagnostics"]
+    scroll(upTo: diagnostics, in: app)
+    diagnostics.tap()
     let verified = app.staticTexts.matching(identifier: "simulation-status")
       .matching(
         NSPredicate(format: "label == %@", "Verified by a fresh observation in this app")
