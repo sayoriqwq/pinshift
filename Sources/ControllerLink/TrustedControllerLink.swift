@@ -282,7 +282,8 @@ public actor TrustedControllerLink {
           latitude: latitude,
           longitude: longitude,
           automaticClearAt: automaticClearAt
-        )
+        ),
+        renewal: controllerStatus?.renewal
       )
     }
     return response
@@ -310,7 +311,7 @@ public actor TrustedControllerLink {
       }
     )
     if case .cleared = response, mutationRevision == revision {
-      controllerStatus = ControllerStatus(readiness: .ready, simulation: .idle)
+      controllerStatus = ControllerStatus(readiness: .ready, simulation: .idle, renewal: controllerStatus?.renewal)
     }
     return response
   }

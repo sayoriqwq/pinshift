@@ -338,7 +338,7 @@ final class BaselineViewModel: ObservableObject {
         requestID: responseID,
         fields: ["reason": .text(reason.rawValue)]
       )
-    case .status, .paired, .cleared:
+    case .status, .paired, .cleared, .renewal:
       _ = manualSession.fail(
         requestID: request.requestID,
         reason: .responseIdentityMismatch
@@ -403,7 +403,7 @@ final class BaselineViewModel: ObservableObject {
         requestID: responseID,
         fields: ["reason": .text(reason.rawValue)]
       )
-    case .status, .paired, .applied:
+    case .status, .paired, .applied, .renewal:
       _ = manualSession.failClear(
         requestID: request.requestID,
         reason: .responseIdentityMismatch
@@ -480,6 +480,8 @@ final class BaselineViewModel: ObservableObject {
     switch response {
     case .status(_, let status):
       return ["outcome": .text(String(describing: status.simulation))]
+    case .renewal(_, let status):
+      return ["outcome": .text(status.phase.rawValue)]
     case .paired:
       return ["outcome": .text("paired")]
     case .applied(_, let automaticClearAt):

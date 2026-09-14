@@ -176,6 +176,9 @@ private extension SimulationDiagnosticEvent {
 
   var diagnosticTitle: String {
     switch kind {
+    case "app.renewal.requested": "Renewal requested"
+    case "app.renewal.response": "Renewal response received"
+    case "app.renewal.phase": "Renewal phase updated"
     case "app.selection.replaced": "Selected location changed"
     case "app.apply.started", "app.controller-link.apply-started": "Apply requested"
     case "app.apply.response", "app.controller-link.apply-response": "Apply response received"
