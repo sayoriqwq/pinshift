@@ -34,6 +34,11 @@ final class SimulationDiagnosticPipeline {
     return try await recorder.exportData()
   }
 
+  func events() async -> [SimulationDiagnosticEvent] {
+    await tail?.value
+    return await recorder.events()
+  }
+
   func clear() async -> Bool {
     await tail?.value
     return await recorder.clear()
