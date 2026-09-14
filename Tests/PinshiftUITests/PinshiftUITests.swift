@@ -195,7 +195,7 @@ final class PinshiftUITests: XCTestCase {
     scrollUp(until: clear, in: app)
     XCTAssertTrue(clear.exists)
     clear.tap()
-    app.buttons.matching(NSPredicate(format: "label == %@", "Clear Diagnostics")).firstMatch.tap()
+    app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", "Clear Diagnostics", "diagnostics-clear")).firstMatch.tap()
     XCTAssertTrue(
       waitForLabel(
         eventCount,
@@ -450,8 +450,10 @@ final class PinshiftUITests: XCTestCase {
     let renew = app.buttons["renew-app"]
     XCTAssertTrue(renew.waitForExistence(timeout: 5))
     XCTAssertTrue(renew.isEnabled)
+    captureScreen("More renewal ready", in: app)
     renew.tap()
     XCTAssertTrue(waitForLabel(app.staticTexts["renewal-status"], equalTo: "Signing the app…"))
+    captureScreen("More renewal signing", in: app)
     XCTAssertFalse(renew.isEnabled)
     app.buttons["close-more"].tap()
     openSettings(in: app)
@@ -461,6 +463,7 @@ final class PinshiftUITests: XCTestCase {
     selector.buttons["简体中文"].tap()
     scrollToTop(in: app)
     XCTAssertTrue(waitForLabel(app.staticTexts["renewal-status"], equalTo: "正在签名…"))
+    captureScreen("More renewal Chinese", in: app)
   }
 
   func testRenewalFailureUsesRecoveryAndDisclosesRawEvidence() {
@@ -1376,7 +1379,7 @@ final class PinshiftUITests: XCTestCase {
     scrollUp(until: clear, in: app)
     XCTAssertTrue(clear.waitForExistence(timeout: 5))
     clear.tap()
-    app.buttons.matching(NSPredicate(format: "label == %@", "Clear Diagnostics")).firstMatch.tap()
+    app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", "Clear Diagnostics", "diagnostics-clear")).firstMatch.tap()
     let eventCount = app.staticTexts["diagnostics-event-count"]
     XCTAssertTrue(waitForLabel(eventCount, endingWith: ", 0", timeout: 5))
   }
