@@ -30,6 +30,7 @@
 		7F3E0A61E16505138F2B9D43 /* TLSControllerServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8849994E5324F1A9101F4BA8 /* TLSControllerServer.swift */; };
 		906F405A80453E17B60025E1 /* LocationPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63BA287725671E9F8A3B7E21 /* LocationPickerView.swift */; };
 		9AA911807B95B46110BC6EB2 /* SavedLocationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 621696227B4DB33F21A65072 /* SavedLocationStore.swift */; };
+		9D1061B4183335B985786DA9 /* AppRenewalReconciliationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AC4892A2C30E3EA4E0B4B61 /* AppRenewalReconciliationTests.swift */; };
 		9F06A0A62F5F273553282A3C /* BaselineViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 384FBF121EC8EF6D8DA1CF20 /* BaselineViewModel.swift */; };
 		A448DB6E3571878373B99953 /* LocationObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = E67F3879FD8D45AA7CB0A39E /* LocationObserver.swift */; };
 		A6906E996D39CCB87D8A062D /* ControllerLinkViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 505FEFAF432894313B0FF079 /* ControllerLinkViewModel.swift */; };
@@ -91,6 +92,7 @@
 		84F131553411B25C82BE6E51 /* PinshiftControllerLinkUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinshiftControllerLinkUITests.swift; sourceTree = "<group>"; };
 		8849994E5324F1A9101F4BA8 /* TLSControllerServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TLSControllerServer.swift; sourceTree = "<group>"; };
 		89025DEC3CF68412744EC94C /* BonjourControllerDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BonjourControllerDiscovery.swift; sourceTree = "<group>"; };
+		8AC4892A2C30E3EA4E0B4B61 /* AppRenewalReconciliationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRenewalReconciliationTests.swift; sourceTree = "<group>"; };
 		8EEC83CF97ADE717B1727187 /* ThirdPartyNotices.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = ThirdPartyNotices.txt; sourceTree = "<group>"; };
 		98B80186C2885AC72A31379A /* ControllerTrust.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerTrust.swift; sourceTree = "<group>"; };
 		ADD891953BC6815AB6EAB8DF /* MapCoordinateBoundary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapCoordinateBoundary.swift; sourceTree = "<group>"; };
@@ -147,6 +149,7 @@
 		623880CE07556F931D0D3D68 /* PinshiftTests */ = {
 			isa = PBXGroup;
 			children = (
+				8AC4892A2C30E3EA4E0B4B61 /* AppRenewalReconciliationTests.swift */,
 				D37AD7DA1CEA5E0DC18D5A45 /* CoordinateBoundaryTests.swift */,
 				FCD882448B122ABE148B63B7 /* SimulationDiagnosticsViewModelTests.swift */,
 			);
@@ -419,6 +422,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9D1061B4183335B985786DA9 /* AppRenewalReconciliationTests.swift in Sources */,
 				200EFF6276EFCF41F556249F /* CoordinateBoundaryTests.swift in Sources */,
 				558CECFF032F84CE808BF4C4 /* SimulationDiagnosticsViewModelTests.swift in Sources */,
 			);
@@ -557,7 +561,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/Pinshift-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -579,7 +583,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/Pinshift-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
