@@ -272,6 +272,7 @@ if test $resuming_install -eq 0
         end
         echo "Check Xcode → Settings → Apple Accounts and Signing & Capabilities, then retry `pinshift`." >&2
         echo "The old profile will be restored; details are kept in the local backup directory." >&2
+        pinshift_renewal_failure_details "$build_log"
         exit $build_status
     end
 
@@ -378,12 +379,14 @@ if test $install_status -ne 0
     echo "Connect and unlock the iPhone, accept Trust This Computer and Developer Mode prompts, then retry `pinshift`." >&2
     echo "The phone may or may not contain the renewed app, so the new profile and candidate were preserved." >&2
     echo "The next `pinshift` resumes this installation. Private details are kept at $staging_root." >&2
+    pinshift_renewal_failure_details "$install_log" "$install_json"
     exit $install_status
 end
 if not test -f "$install_json"; or not jq --exit-status '.info.outcome == "success"' "$install_json" >/dev/null 2>&1
     echo "The device command returned success, but its installation result could not be verified." >&2
     echo "Reconnect and unlock the iPhone, then run `pinshift` to resume this installation." >&2
     echo "The new profile and candidate were preserved at $staging_root." >&2
+    pinshift_renewal_failure_details "$install_log" "$install_json"
     exit 1
 end
 

@@ -85,8 +85,17 @@ public actor AppRenewalService {
   }
 }
 
-private enum RenewalExecutionError: Error {
+private enum RenewalExecutionError: Error, CustomStringConvertible {
   case unavailable, unconfirmed, process(Int32, String)
+
+  var description: String {
+    switch self {
+    case .unavailable: "The local renewal command or configured device is unavailable."
+    case .unconfirmed: "The renewal did not confirm installation."
+    // Preserve line breaks so sanitizing one credential does not discard later evidence.
+    case .process(let status, let output): "Renewal process exited with status \(status):\n\(output)"
+    }
+  }
 }
 
 /// Fixed local command; none of its paths, arguments, or device identity comes from the phone.
@@ -129,20 +138,17 @@ public struct AppRenewalExecutor: Sendable {
     try process.run()
     var previous: Data?
     repeat {
+      // Snapshot before reading so an exit always gets one final progress read.
+      let isRunning = process.isRunning
       if let data = try? Data(contentsOf: progress), data != previous,
         let event = try? JSONDecoder().decode(Progress.self, from: data) {
         previous = data
         await report(event.phase, event.expiry.map(Date.init(timeIntervalSince1970:)))
       }
-      if !process.isRunning { break }
+      if !isRunning { break }
       // The request already returned; this cooperative wait leaves cleanup and status responsive.
       try await Task.sleep(for: .milliseconds(150))
     } while true
-    // Read once more after process exit to avoid missing its final atomic write.
-    if let data = try? Data(contentsOf: progress), data != previous,
-      let event = try? JSONDecoder().decode(Progress.self, from: data) {
-      await report(event.phase, event.expiry.map(Date.init(timeIntervalSince1970:)))
-    }
     guard process.terminationStatus == 0 else {
       let handle = try FileHandle(forReadingFrom: log)
       defer { try? handle.close() }
