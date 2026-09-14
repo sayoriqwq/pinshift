@@ -7,6 +7,8 @@ final class SimulationDiagnosticsViewModel: ObservableObject {
   let diagnostics: SimulationDiagnosticPipeline
 
   @Published private(set) var status: SimulationDiagnosticRecordStatus?
+  @Published private(set) var events: [SimulationDiagnosticEvent] = []
+  @Published private(set) var refreshedAt: Date?
   @Published private(set) var exportedURL: URL?
   @Published private(set) var isExporting = false
   @Published var isSharePresented = false
@@ -35,7 +37,20 @@ final class SimulationDiagnosticsViewModel: ObservableObject {
   }
 
   func refreshNow() async {
+    events = await diagnostics.events()
     status = await diagnostics.status()
+    refreshedAt = Date()
+  }
+
+  func events(for requestID: UUID) -> [SimulationDiagnosticEvent] {
+    events.filter { $0.requestID == requestID }
+  }
+
+  var operationEvents: [SimulationDiagnosticEvent] {
+    events.filter {
+      !["app.controller-link.status-reconciled", "app.controller-link.status-refreshed",
+        "app.observed-location.received", "app.observation.verification-updated"].contains($0.kind)
+    }
   }
 
   func export() {
