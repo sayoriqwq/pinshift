@@ -311,6 +311,16 @@ public struct PinshiftControllerCommand: AsyncParsableCommand {
           diagnostics: diagnostics
         )
         await ControllerCLIRuntime.prepareSession(controller: simulationController)
+        let renewal = AppRenewalService(
+          diagnostics: diagnostics,
+          execute: AppRenewalExecutor(
+            repository: ProcessInfo.processInfo.environment["PINSHIFT_REPOSITORY_ROOT"].map {
+              URL(fileURLWithPath: $0)
+            },
+            configuration: ControllerCLIRuntime.resolveConfiguration(
+              device: activeDevice.device, developerDirectory: activeDevice.developerDirectory)
+          ).execute
+        )
         let session = ControllerServerSession(
           identity: identity,
           pairingAuthority: authority,
@@ -320,7 +330,8 @@ public struct PinshiftControllerCommand: AsyncParsableCommand {
           ),
           commandHandler: SimulationControllerCommandHandler(
             controller: simulationController,
-            diagnostics: diagnostics
+            diagnostics: diagnostics,
+            renewal: renewal
           ),
           diagnostics: diagnostics
         )
@@ -359,7 +370,9 @@ public struct PinshiftControllerCommand: AsyncParsableCommand {
           runFor: seconds == 0 ? nil : seconds,
           stopAcceptingCommands: {
             server.stop()
-          }
+            await renewal.stopAcceptingRequests()
+          },
+          finishAcceptedWork: { await renewal.finishAcceptedWork() }
         )
       }
     }

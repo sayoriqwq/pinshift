@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0F8CF84D84D20B8588AA4E77 /* AppRenewalStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC3724D79E0ED8F79B72DF35 /* AppRenewalStatus.swift */; };
 		15953420A837293C53A8CAB9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 559DB6E0E2CD26084FB7E526 /* ContentView.swift */; };
 		1BE44D9D19EAE01B24350C31 /* LocationPickerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAB0E8F3CD5BA3E65B28DEAB /* LocationPickerViewModel.swift */; };
 		1EF3B39FB66C61C7ABD4F745 /* Pairing.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7B5C926E3E85E459AEA4B7E /* Pairing.swift */; };
@@ -16,6 +17,7 @@
 		48D03D6698C6066279C56D29 /* MapCoordinateBoundary.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD891953BC6815AB6EAB8DF /* MapCoordinateBoundary.swift */; };
 		4FDAA9B835DD2EB3EF430BDC /* PinshiftApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F221E02F577319085D683B02 /* PinshiftApp.swift */; };
 		50CA543709A8AA655927CC35 /* NetworkControllerLinkTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C36A1722A694C247499910E /* NetworkControllerLinkTransport.swift */; };
+		558CECFF032F84CE808BF4C4 /* SimulationDiagnosticsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD882448B122ABE148B63B7 /* SimulationDiagnosticsViewModelTests.swift */; };
 		5A4DF40BE4A512E84E7C9B98 /* ControllerAuthorization.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0A93517ECCC69F00028C27 /* ControllerAuthorization.swift */; };
 		5C68831AF02525506307B3C6 /* PinshiftControllerLinkUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84F131553411B25C82BE6E51 /* PinshiftControllerLinkUITests.swift */; };
 		5D52BA06C0B22533CD491C2E /* ControllerCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11863E4FD7EAA7D8DF07DCE8 /* ControllerCommand.swift */; };
@@ -23,10 +25,12 @@
 		700BD25D6DCB7E7ACBBD178A /* SimulationDiagnosticsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2761D347293149A6DB5A2229 /* SimulationDiagnosticsViewModel.swift */; };
 		72C1C57A40F4DF4CCE3362CB /* ControllerIdentitySecurity.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBDA4F56E5AEE0A196394911 /* ControllerIdentitySecurity.swift */; };
 		736ED2592A38ED44B24260D8 /* ThirdPartyNotices.txt in Resources */ = {isa = PBXBuildFile; fileRef = 8EEC83CF97ADE717B1727187 /* ThirdPartyNotices.txt */; };
+		763C8B6B5F6EF4CE88AABA3E /* SimulationDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AFCB8E954AD5BAE0A365C4F /* SimulationDiagnosticsView.swift */; };
 		7E74EC276731C3AE2FC91855 /* ActionButtonLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C6AF1791B17E4CB78F06DD3 /* ActionButtonLabel.swift */; };
 		7F3E0A61E16505138F2B9D43 /* TLSControllerServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8849994E5324F1A9101F4BA8 /* TLSControllerServer.swift */; };
 		906F405A80453E17B60025E1 /* LocationPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63BA287725671E9F8A3B7E21 /* LocationPickerView.swift */; };
 		9AA911807B95B46110BC6EB2 /* SavedLocationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 621696227B4DB33F21A65072 /* SavedLocationStore.swift */; };
+		9D1061B4183335B985786DA9 /* AppRenewalReconciliationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AC4892A2C30E3EA4E0B4B61 /* AppRenewalReconciliationTests.swift */; };
 		9F06A0A62F5F273553282A3C /* BaselineViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 384FBF121EC8EF6D8DA1CF20 /* BaselineViewModel.swift */; };
 		A448DB6E3571878373B99953 /* LocationObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = E67F3879FD8D45AA7CB0A39E /* LocationObserver.swift */; };
 		A6906E996D39CCB87D8A062D /* ControllerLinkViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 505FEFAF432894313B0FF079 /* ControllerLinkViewModel.swift */; };
@@ -40,6 +44,7 @@
 		E4B7707952C6F3FE155A2DED /* SavedLocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC6769CE9F8E503B07026CE1 /* SavedLocation.swift */; };
 		E6426BC63774B81D4E97AEE2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F7A56D0AD7C85F7B154FF4B2 /* Assets.xcassets */; };
 		EAEC96863A05506A88E67D23 /* TrustedControllerLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = B12AADD1AA55A09BE8D2B5B8 /* TrustedControllerLink.swift */; };
+		EBB0AFC6308009747EF55085 /* AppRenewalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D2B9E739CC626CAEB06A9AF /* AppRenewalView.swift */; };
 		ECC58FBFA23EA8CD7DEB58B5 /* ManualSimulationSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = E51D096596A719DB7E3FE6E9 /* ManualSimulationSession.swift */; };
 		F9DD8F43F9F0963C610E32AF /* SimulationDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72B3E7495FA68D914EC681FF /* SimulationDiagnostics.swift */; };
 		FD1C1C01CCED6EAD5B86DB00 /* LocationSelectionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FF167419CFAFE19700BEA9E /* LocationSelectionState.swift */; };
@@ -76,15 +81,18 @@
 		4A0B0F10BFB0FCD59E64C31F /* LocationDomain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationDomain.swift; sourceTree = "<group>"; };
 		505FEFAF432894313B0FF079 /* ControllerLinkViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerLinkViewModel.swift; sourceTree = "<group>"; };
 		559DB6E0E2CD26084FB7E526 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		5AFCB8E954AD5BAE0A365C4F /* SimulationDiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationDiagnosticsView.swift; sourceTree = "<group>"; };
 		5FF167419CFAFE19700BEA9E /* LocationSelectionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationSelectionState.swift; sourceTree = "<group>"; };
 		621696227B4DB33F21A65072 /* SavedLocationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedLocationStore.swift; sourceTree = "<group>"; };
 		63BA287725671E9F8A3B7E21 /* LocationPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationPickerView.swift; sourceTree = "<group>"; };
 		72B3E7495FA68D914EC681FF /* SimulationDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationDiagnostics.swift; sourceTree = "<group>"; };
 		730DDB8AD91B683D924743AF /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		7C6AF1791B17E4CB78F06DD3 /* ActionButtonLabel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionButtonLabel.swift; sourceTree = "<group>"; };
+		7D2B9E739CC626CAEB06A9AF /* AppRenewalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRenewalView.swift; sourceTree = "<group>"; };
 		84F131553411B25C82BE6E51 /* PinshiftControllerLinkUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinshiftControllerLinkUITests.swift; sourceTree = "<group>"; };
 		8849994E5324F1A9101F4BA8 /* TLSControllerServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TLSControllerServer.swift; sourceTree = "<group>"; };
 		89025DEC3CF68412744EC94C /* BonjourControllerDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BonjourControllerDiscovery.swift; sourceTree = "<group>"; };
+		8AC4892A2C30E3EA4E0B4B61 /* AppRenewalReconciliationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRenewalReconciliationTests.swift; sourceTree = "<group>"; };
 		8EEC83CF97ADE717B1727187 /* ThirdPartyNotices.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = ThirdPartyNotices.txt; sourceTree = "<group>"; };
 		98B80186C2885AC72A31379A /* ControllerTrust.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerTrust.swift; sourceTree = "<group>"; };
 		ADD891953BC6815AB6EAB8DF /* MapCoordinateBoundary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapCoordinateBoundary.swift; sourceTree = "<group>"; };
@@ -92,6 +100,7 @@
 		B12AADD1AA55A09BE8D2B5B8 /* TrustedControllerLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrustedControllerLink.swift; sourceTree = "<group>"; };
 		BD2A7C4D3C499825A8E361E6 /* InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = InfoPlist.strings; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		C5D97EE47241D82050A36675 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
+		CC3724D79E0ED8F79B72DF35 /* AppRenewalStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRenewalStatus.swift; sourceTree = "<group>"; };
 		D37AD7DA1CEA5E0DC18D5A45 /* CoordinateBoundaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoordinateBoundaryTests.swift; sourceTree = "<group>"; };
 		D7B5C926E3E85E459AEA4B7E /* Pairing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pairing.swift; sourceTree = "<group>"; };
 		D95CB9D282C35DFE3BECF170 /* PinshiftUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinshiftUITests.swift; sourceTree = "<group>"; };
@@ -105,6 +114,7 @@
 		F7A56D0AD7C85F7B154FF4B2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FC6769CE9F8E503B07026CE1 /* SavedLocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedLocation.swift; sourceTree = "<group>"; };
 		FC8337A285DAE963F2F32304 /* ShanghaiBaseline.gpx */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = ShanghaiBaseline.gpx; sourceTree = "<group>"; };
+		FCD882448B122ABE148B63B7 /* SimulationDiagnosticsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationDiagnosticsViewModelTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -139,7 +149,9 @@
 		623880CE07556F931D0D3D68 /* PinshiftTests */ = {
 			isa = PBXGroup;
 			children = (
+				8AC4892A2C30E3EA4E0B4B61 /* AppRenewalReconciliationTests.swift */,
 				D37AD7DA1CEA5E0DC18D5A45 /* CoordinateBoundaryTests.swift */,
+				FCD882448B122ABE148B63B7 /* SimulationDiagnosticsViewModelTests.swift */,
 			);
 			path = PinshiftTests;
 			sourceTree = "<group>";
@@ -177,6 +189,7 @@
 		A4A7F456EE2C3394D23C2823 /* ControllerLink */ = {
 			isa = PBXGroup;
 			children = (
+				CC3724D79E0ED8F79B72DF35 /* AppRenewalStatus.swift */,
 				89025DEC3CF68412744EC94C /* BonjourControllerDiscovery.swift */,
 				DA0A93517ECCC69F00028C27 /* ControllerAuthorization.swift */,
 				11863E4FD7EAA7D8DF07DCE8 /* ControllerCommand.swift */,
@@ -224,11 +237,13 @@
 			isa = PBXGroup;
 			children = (
 				7C6AF1791B17E4CB78F06DD3 /* ActionButtonLabel.swift */,
+				7D2B9E739CC626CAEB06A9AF /* AppRenewalView.swift */,
 				F7A56D0AD7C85F7B154FF4B2 /* Assets.xcassets */,
 				384FBF121EC8EF6D8DA1CF20 /* BaselineViewModel.swift */,
 				559DB6E0E2CD26084FB7E526 /* ContentView.swift */,
 				505FEFAF432894313B0FF079 /* ControllerLinkViewModel.swift */,
 				BD2A7C4D3C499825A8E361E6 /* InfoPlist.strings */,
+				82D0E69E60C7C72AEA5FB7A7 /* Localizable.strings */,
 				E67F3879FD8D45AA7CB0A39E /* LocationObserver.swift */,
 				63BA287725671E9F8A3B7E21 /* LocationPickerView.swift */,
 				EAB0E8F3CD5BA3E65B28DEAB /* LocationPickerViewModel.swift */,
@@ -236,9 +251,9 @@
 				AF9C95CECF2193B56008FE4F /* PinshiftDesignSystem.swift */,
 				621696227B4DB33F21A65072 /* SavedLocationStore.swift */,
 				DF7F8780E733910149967CFD /* SimulationDiagnosticPipeline.swift */,
+				5AFCB8E954AD5BAE0A365C4F /* SimulationDiagnosticsView.swift */,
 				2761D347293149A6DB5A2229 /* SimulationDiagnosticsViewModel.swift */,
 				8EEC83CF97ADE717B1727187 /* ThirdPartyNotices.txt */,
-				82D0E69E60C7C72AEA5FB7A7 /* Localizable.strings */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -319,6 +334,7 @@
 				};
 			};
 			buildConfigurationList = BDA9AE46892FB557F5606D45 /* Build configuration list for PBXProject "Pinshift" */;
+			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -329,7 +345,6 @@
 			mainGroup = 83804A800B27FC09E5477E90;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
-			productRefGroup = B2314D0251BC6CAEE2A734AC /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -369,6 +384,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				7E74EC276731C3AE2FC91855 /* ActionButtonLabel.swift in Sources */,
+				0F8CF84D84D20B8588AA4E77 /* AppRenewalStatus.swift in Sources */,
+				EBB0AFC6308009747EF55085 /* AppRenewalView.swift in Sources */,
 				9F06A0A62F5F273553282A3C /* BaselineViewModel.swift in Sources */,
 				D0C732CBAFD8F2B449681684 /* BonjourControllerDiscovery.swift in Sources */,
 				15953420A837293C53A8CAB9 /* ContentView.swift in Sources */,
@@ -394,6 +411,7 @@
 				9AA911807B95B46110BC6EB2 /* SavedLocationStore.swift in Sources */,
 				CE633CBC46569D7E87DBB9BC /* SimulationDiagnosticPipeline.swift in Sources */,
 				F9DD8F43F9F0963C610E32AF /* SimulationDiagnostics.swift in Sources */,
+				763C8B6B5F6EF4CE88AABA3E /* SimulationDiagnosticsView.swift in Sources */,
 				700BD25D6DCB7E7ACBBD178A /* SimulationDiagnosticsViewModel.swift in Sources */,
 				7F3E0A61E16505138F2B9D43 /* TLSControllerServer.swift in Sources */,
 				EAEC96863A05506A88E67D23 /* TrustedControllerLink.swift in Sources */,
@@ -404,7 +422,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9D1061B4183335B985786DA9 /* AppRenewalReconciliationTests.swift in Sources */,
 				200EFF6276EFCF41F556249F /* CoordinateBoundaryTests.swift in Sources */,
+				558CECFF032F84CE808BF4C4 /* SimulationDiagnosticsViewModelTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -541,14 +561,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 4;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/Pinshift-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.sayori.pinshift;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -563,14 +583,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 4;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/Pinshift-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.sayori.pinshift;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;

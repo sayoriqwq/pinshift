@@ -5,13 +5,16 @@ import SimulationController
 import SimulationDiagnostics
 
 public struct SimulationControllerCommandHandler: ControllerCommandHandling {
+  private let renewal: AppRenewalService?
   private let controller: SimulationController
   private let diagnostics: SimulationDiagnosticRecorder?
 
   public init(
     controller: SimulationController,
-    diagnostics: SimulationDiagnosticRecorder? = nil
+    diagnostics: SimulationDiagnosticRecorder? = nil,
+    renewal: AppRenewalService? = nil
   ) {
+    self.renewal = renewal
     self.controller = controller
     self.diagnostics = diagnostics
   }
@@ -27,7 +30,7 @@ public struct SimulationControllerCommandHandler: ControllerCommandHandling {
     case .status(let requestID):
       result = .status(
         requestID: requestID,
-        status: map(await controller.snapshot())
+        status: map(await controller.snapshot(), renewal: await renewal?.snapshot())
       )
 
     case .apply(let requestID, let latitude, let longitude):
@@ -48,6 +51,13 @@ public struct SimulationControllerCommandHandler: ControllerCommandHandling {
         result = .failed(requestID: responseID, reason: map(reason))
       }
 
+    case .renewApp(let requestID):
+      if let renewal {
+        result = .renewal(requestID: requestID, status: await renewal.start(requestID: requestID))
+      } else {
+        result = .failed(requestID: requestID, reason: .backendUnavailable)
+      }
+
     case .clear(let requestID):
       switch await controller.clear(requestID: requestID) {
       case .cleared(let responseID):
@@ -64,7 +74,7 @@ public struct SimulationControllerCommandHandler: ControllerCommandHandling {
     return result
   }
 
-  private func map(_ snapshot: TemporarySimulationSnapshot) -> ControllerStatus {
+  private func map(_ snapshot: TemporarySimulationSnapshot, renewal: AppRenewalStatus?) -> ControllerStatus {
     let readiness: ControllerBackendReadiness
     switch snapshot.readiness {
     case .ready:
@@ -110,7 +120,7 @@ public struct SimulationControllerCommandHandler: ControllerCommandHandling {
         reason: reason.map(map)
       )
     }
-    return ControllerStatus(readiness: readiness, simulation: simulation)
+    return ControllerStatus(readiness: readiness, simulation: simulation, renewal: renewal)
   }
 
   private func map(_ failure: InjectionBackendFailure) -> ControllerCommandFailure {
@@ -142,6 +152,8 @@ public struct SimulationControllerCommandHandler: ControllerCommandHandling {
         "latitude": .number(latitude),
         "longitude": .number(longitude),
       ]
+    case .renewApp:
+      return ["command": .text("renewApp")]
     case .clear:
       return ["command": .text("clear")]
     }
@@ -156,6 +168,8 @@ public struct SimulationControllerCommandHandler: ControllerCommandHandling {
         "outcome": .text("applied"),
         "automaticClearAt": .date(automaticClearAt),
       ]
+    case .renewal(_, let status):
+      return ["outcome": .text(status.phase.rawValue)]
     case .cleared:
       return ["outcome": .text("cleared")]
     case .failed(_, let reason):

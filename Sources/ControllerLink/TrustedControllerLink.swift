@@ -32,6 +32,7 @@ public struct ControllerService: Codable, Hashable, Sendable {
 
 public enum ControllerLinkRequest: Codable, Equatable, Sendable {
   case status(requestID: UUID, authorization: ControllerAuthorization?)
+  case renewApp(requestID: UUID, authorization: ControllerAuthorization)
   case pair(requestID: UUID, code: String)
   case apply(
     requestID: UUID,
@@ -47,6 +48,7 @@ public enum ControllerLinkRequest: Codable, Equatable, Sendable {
   public var requestID: UUID {
     switch self {
     case .status(let requestID, _),
+      .renewApp(let requestID, _),
       .pair(let requestID, _),
       .apply(let requestID, _, _, _),
       .clear(let requestID, _):
@@ -71,6 +73,7 @@ public enum ControllerLinkResponse: Codable, Equatable, Sendable {
   case paired(requestID: UUID, authorization: ControllerAuthorization)
   case applied(requestID: UUID, automaticClearAt: Date)
   case cleared(requestID: UUID)
+  case renewal(requestID: UUID, status: AppRenewalStatus)
   case failed(requestID: UUID, reason: ControllerCommandFailure)
   case rejected(requestID: UUID, reason: ControllerLinkRejection)
 
@@ -80,6 +83,7 @@ public enum ControllerLinkResponse: Codable, Equatable, Sendable {
       .paired(let requestID, _),
       .applied(let requestID, _),
       .cleared(let requestID),
+      .renewal(let requestID, _),
       .failed(let requestID, _),
       .rejected(let requestID, _):
       requestID
@@ -278,7 +282,8 @@ public actor TrustedControllerLink {
           latitude: latitude,
           longitude: longitude,
           automaticClearAt: automaticClearAt
-        )
+        ),
+        renewal: controllerStatus?.renewal
       )
     }
     return response
@@ -306,7 +311,7 @@ public actor TrustedControllerLink {
       }
     )
     if case .cleared = response, mutationRevision == revision {
-      controllerStatus = ControllerStatus(readiness: .ready, simulation: .idle)
+      controllerStatus = ControllerStatus(readiness: .ready, simulation: .idle, renewal: controllerStatus?.renewal)
     }
     return response
   }
@@ -317,6 +322,19 @@ public actor TrustedControllerLink {
 
   public func currentStatus() -> ControllerStatus? {
     controllerStatus
+  }
+
+  public func renewApp(requestID: UUID) async -> ControllerLinkResponse {
+    // Do not send an unknown command to older controllers.
+    guard controllerStatus?.renewal != nil else {
+      return .failed(requestID: requestID, reason: .backendUnavailable)
+    }
+    return await sendAuthorized(requestID: requestID, makeRequest: {
+      .renewApp(requestID: requestID, authorization: $0)
+    }, accepts: {
+      if case .renewal = $0 { return true }
+      return false
+    })
   }
 
   public func refresh() async -> ControllerLinkState {
@@ -406,7 +424,7 @@ public actor TrustedControllerLink {
     switch reply.response {
     case .failed, .rejected:
       return reply.response
-    case .status, .paired, .applied, .cleared:
+    case .status, .paired, .applied, .cleared, .renewal:
       stateMachine.transportUnavailable()
       return .failed(requestID: requestID, reason: .responseIdentityMismatch)
     }

@@ -24,6 +24,9 @@ if set --query _flag_launch_only; and begin
     exit 2
 end
 
+pinshift_renewal_progress checking
+or exit 1
+
 pinshift_prepare_environment
 or exit $status
 
@@ -244,6 +247,8 @@ if test $resuming_install -eq 0
         set --global --append _pinshift_resign_moved_backups "$backup_path"
     end
 
+    pinshift_renewal_progress signing
+    or exit 1
     echo "Requesting a new Personal Team provisioning profile from Xcode…"
     set --local build_log "$staging_root/xcodebuild.log"
     xcodebuild \
@@ -267,10 +272,14 @@ if test $resuming_install -eq 0
         end
         echo "Check Xcode → Settings → Apple Accounts and Signing & Capabilities, then retry `pinshift`." >&2
         echo "The old profile will be restored; details are kept in the local backup directory." >&2
+        pinshift_renewal_failure_details "$build_log"
         exit $build_status
     end
 
 end
+
+pinshift_renewal_progress verifying
+or exit 1
 
 set --local candidate \
     "$derived_data/Build/Products/Debug-iphoneos/Pinshift.app"
@@ -354,6 +363,8 @@ set --global _pinshift_resign_preserve_staging 1
 # An earlier failed invocation may have left a successful-looking JSON result behind.
 command rm -f -- "$install_json"
 or exit $status
+pinshift_renewal_progress installing
+or exit 1
 xcrun devicectl device install app \
     --quiet \
     --timeout 120 \
@@ -368,14 +379,19 @@ if test $install_status -ne 0
     echo "Connect and unlock the iPhone, accept Trust This Computer and Developer Mode prompts, then retry `pinshift`." >&2
     echo "The phone may or may not contain the renewed app, so the new profile and candidate were preserved." >&2
     echo "The next `pinshift` resumes this installation. Private details are kept at $staging_root." >&2
+    pinshift_renewal_failure_details "$install_log" "$install_json"
     exit $install_status
 end
 if not test -f "$install_json"; or not jq --exit-status '.info.outcome == "success"' "$install_json" >/dev/null 2>&1
     echo "The device command returned success, but its installation result could not be verified." >&2
     echo "Reconnect and unlock the iPhone, then run `pinshift` to resume this installation." >&2
     echo "The new profile and candidate were preserved at $staging_root." >&2
+    pinshift_renewal_failure_details "$install_log" "$install_json"
     exit 1
 end
+
+pinshift_renewal_progress installed "$new_expiration_epoch"
+or exit 1
 
 command rm -- "$pending_install"
 or exit $status

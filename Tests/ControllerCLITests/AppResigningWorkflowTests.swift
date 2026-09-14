@@ -1,3 +1,5 @@
+import ControllerCLI
+import ControllerLink
 import Foundation
 import XCTest
 
@@ -39,6 +41,80 @@ final class AppResigningWorkflowTests: XCTestCase {
     if let fixtureRoot {
       try? FileManager.default.removeItem(at: fixtureRoot)
     }
+  }
+
+  func testRemoteRenewalEmitsConfirmedInstallExpiryAndDoesNotLaunch() throws {
+    _ = try writeProfile(named: "app.mobileprovision",
+      applicationIdentifier: "\(teamIdentifier).\(bundleIdentifier)",
+      expiration: "2099-08-10T08:49:25Z")
+    try writeCandidate(expiration: "2099-08-17T08:49:25Z")
+    let progress = fixtureRoot.appending(path: "progress.json")
+    let result = try runResign(arguments: ["--force", "--no-launch"],
+      environment: ["PINSHIFT_RENEWAL_PROGRESS": progress.path])
+    XCTAssertEqual(result.status, 0, result.output)
+    let json = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: progress)) as? [String: Any])
+    XCTAssertEqual(json["phase"] as? String, "installed")
+    XCTAssertNotNil(json["expiry"] as? Double)
+    XCTAssertFalse(try events().contains("xcrun launch"))
+  }
+
+  func testRemoteUnconfirmedInstallNeverEmitsInstalledExpiry() throws {
+    _ = try writeProfile(named: "app.mobileprovision",
+      applicationIdentifier: "\(teamIdentifier).\(bundleIdentifier)",
+      expiration: "2099-08-10T08:49:25Z")
+    try writeCandidate(expiration: "2099-08-17T08:49:25Z")
+    let progress = fixtureRoot.appending(path: "progress.json")
+    let result = try runResign(arguments: ["--force", "--no-launch"], environment: [
+      "PINSHIFT_RENEWAL_PROGRESS": progress.path, "FAKE_INSTALL_UNCONFIRMED": "1"])
+    XCTAssertNotEqual(result.status, 0)
+    let json = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: progress)) as? [String: Any])
+    XCTAssertEqual(json["phase"] as? String, "installing")
+    XCTAssertTrue(json["expiry"] is NSNull)
+  }
+
+  func testRemoteToolFailuresReachSanitizedServiceDetails() async throws {
+    for (environment, failure, evidence) in [
+      (["FAKE_XCODEBUILD_STATUS": "65"], AppRenewalStatus.Failure.signingFailed, "simulated build failure"),
+      (["FAKE_INSTALL_STATUS": "1"], .installationUnconfirmed, "simulated install evidence"),
+      (["FAKE_INSTALL_UNCONFIRMED": "1"], .installationUnconfirmed, "simulated install evidence"),
+      (["FAKE_INSTALL_INVALID_JSON": "1"], .installationUnconfirmed, "invalid installation result evidence"),
+    ] {
+      _ = try writeProfile(named: "app.mobileprovision",
+        applicationIdentifier: "\(teamIdentifier).\(bundleIdentifier)",
+        expiration: "2099-08-10T08:49:25Z")
+      try writeCandidate(expiration: "2099-08-17T08:49:25Z")
+      let executor = AppRenewalExecutor(repository: resignScript.deletingLastPathComponent().deletingLastPathComponent(),
+        configuration: ControllerRuntimeConfiguration(device: "test-iphone",
+          developerDirectory: fixtureRoot.appending(path: "Developer").path),
+        environment: fixtureEnvironment(environment))
+      let service = AppRenewalService(execute: executor.execute)
+      _ = await service.start(requestID: UUID())
+      await service.finishAcceptedWork(onWaiting: {})
+      let snapshot = await service.snapshot()
+      XCTAssertEqual(snapshot.failure, failure)
+      XCTAssertTrue(snapshot.detail?.contains(evidence) == true, snapshot.detail ?? "missing details")
+      XCTAssertFalse(snapshot.detail?.contains("do-not-transmit") == true)
+      XCTAssertFalse(snapshot.detail?.contains("discarded-old-build-output") == true)
+      XCTAssertLessThan(snapshot.detail?.utf8.count ?? 0, 9000)
+      XCTAssertNil(snapshot.installedExpiresAt)
+    }
+  }
+
+  func testExecutorReadsFinalConfirmedInstallProgress() async throws {
+    _ = try writeProfile(named: "app.mobileprovision",
+      applicationIdentifier: "\(teamIdentifier).\(bundleIdentifier)",
+      expiration: "2099-08-10T08:49:25Z")
+    try writeCandidate(expiration: "2099-08-17T08:49:25Z")
+    let executor = AppRenewalExecutor(repository: resignScript.deletingLastPathComponent().deletingLastPathComponent(),
+      configuration: ControllerRuntimeConfiguration(device: "test-iphone",
+        developerDirectory: fixtureRoot.appending(path: "Developer").path),
+      environment: fixtureEnvironment())
+    let service = AppRenewalService(execute: executor.execute)
+    _ = await service.start(requestID: UUID())
+    await service.finishAcceptedWork(onWaiting: {})
+    let snapshot = await service.snapshot()
+    XCTAssertEqual(snapshot.phase, .installed)
+    XCTAssertNotNil(snapshot.installedExpiresAt)
   }
 
   func testFreshProfileIsANoOpByDefault() throws {
@@ -429,6 +505,19 @@ final class AppResigningWorkflowTests: XCTestCase {
     XCTAssertEqual(try events(), [])
   }
 
+  func testDailyStartPassesItsCheckoutIndependentOfCallerDirectory() throws {
+    _ = try writeProfile(named: "app.mobileprovision",
+      applicationIdentifier: "\(teamIdentifier).\(bundleIdentifier)",
+      expiration: "2099-08-10T08:49:25Z")
+    let record = fixtureRoot.appending(path: "repository.txt")
+    let result = try runDaily(environment: ["FAKE_REPO_RECORD": record.path])
+    XCTAssertEqual(result.status, 0, result.output)
+    let recordedPath = try String(contentsOf: record, encoding: .utf8)
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    XCTAssertEqual(URL(fileURLWithPath: recordedPath).resolvingSymlinksInPath().path,
+      fixtureRoot.resolvingSymlinksInPath().path)
+  }
+
   private func runDaily(
     arguments: [String] = [], environment: [String: String] = [:]
   ) throws -> (status: Int32, output: String) {
@@ -455,6 +544,9 @@ final class AppResigningWorkflowTests: XCTestCase {
       contents: """
         #!/bin/sh
         printf 'controller %s %s\n' "$1" "$2" >> "$FAKE_EVENT_LOG"
+        if [ -n "$FAKE_REPO_RECORD" ]; then
+          printf '%s\n' "$PINSHIFT_REPOSITORY_ROOT" > "$FAKE_REPO_RECORD"
+        fi
         """)
     return try runResign(
       arguments: arguments,
@@ -482,7 +574,9 @@ final class AppResigningWorkflowTests: XCTestCase {
         #!/bin/sh
         printf 'xcodebuild\n' >> "$FAKE_EVENT_LOG"
         if [ "${FAKE_XCODEBUILD_STATUS:-0}" -ne 0 ]; then
-          printf 'simulated build failure\n'
+          printf 'discarded-old-build-output\n'
+          /usr/bin/awk 'BEGIN { for (i = 0; i < 6000; i++) printf "x"; print "" }'
+          printf 'simulated build failure\nauthorization = do-not-transmit\n'
           exit "$FAKE_XCODEBUILD_STATUS"
         fi
         derived_data=''
@@ -531,6 +625,11 @@ final class AppResigningWorkflowTests: XCTestCase {
           printf 'xcrun install\n' >> "$FAKE_EVENT_LOG"
           if [ -n "${FAKE_INSTALLED_PROFILE_PATH:-}" ]; then
             /bin/cp "$previous/embedded.mobileprovision" "$FAKE_INSTALLED_PROFILE_PATH"
+          fi
+          printf 'simulated install evidence\nauthorization = do-not-transmit\n'
+          if [ "${FAKE_INSTALL_INVALID_JSON:-0}" -eq 1 ]; then
+            printf 'invalid installation result evidence\n' > "$json_output"
+            exit 0
           fi
           if [ "${FAKE_INSTALL_UNCONFIRMED:-0}" -eq 1 ]; then
             exit 0
@@ -598,7 +697,19 @@ final class AppResigningWorkflowTests: XCTestCase {
     let output = Pipe()
     process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
     process.arguments = ["fish", (script ?? resignScript).path] + arguments
-    process.environment = ProcessInfo.processInfo.environment.merging(
+    process.environment = fixtureEnvironment(environment)
+    process.standardOutput = output
+    process.standardError = output
+    try process.run()
+    process.waitUntilExit()
+    return (
+      process.terminationStatus,
+      String(data: output.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+    )
+  }
+
+  private func fixtureEnvironment(_ environment: [String: String] = [:]) -> [String: String] {
+    ProcessInfo.processInfo.environment.merging(
       [
         "PATH": "\(fakeBin.path):/etc/profiles/per-user/sayori/bin:/usr/bin:/bin",
         "PINSHIFT_DEVELOPER_DIR": fixtureRoot.appending(path: "Developer").path,
@@ -609,14 +720,6 @@ final class AppResigningWorkflowTests: XCTestCase {
         "FAKE_CANDIDATE_PROFILE": candidateProfile.path,
       ].merging(environment) { _, new in new }
     ) { _, new in new }
-    process.standardOutput = output
-    process.standardError = output
-    try process.run()
-    process.waitUntilExit()
-    return (
-      process.terminationStatus,
-      String(data: output.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-    )
   }
 
   private func events() throws -> [String] {

@@ -11,6 +11,10 @@ enum LocalNetworkPermissionState: Equatable {
 final class ControllerLinkViewModel: ObservableObject {
   @Published private(set) var state: ControllerLinkState = .notDiscovered
   @Published private(set) var controllerStatus: ControllerStatus?
+  @Published private(set) var statusReceivedAt: Date?
+  @Published private(set) var renewalStatus: AppRenewalStatus?
+  @Published private(set) var isRequestingRenewal = false
+  @Published private(set) var renewalRequestFailed = false
   @Published private(set) var localNetworkPermission: LocalNetworkPermissionState =
     .notYetConfirmed
   @Published var pairingCode = ""
@@ -18,6 +22,7 @@ final class ControllerLinkViewModel: ObservableObject {
   private let discovery: any ControllerDiscovering
   private let link: TrustedControllerLink
   private let diagnostics: SimulationDiagnosticPipeline?
+  private var renewalRequestID: UUID?
   private var discoveryTask: Task<Void, Never>?
   private var reconnectTask: Task<Void, Never>?
   private var discoveryRetryPolicy = ControllerDiscoveryRetryPolicy()
@@ -99,7 +104,14 @@ final class ControllerLinkViewModel: ObservableObject {
       if usesE2EFixture {
         localNetworkPermission = .allowed
         state = .connected(Self.e2eFixtureIdentity)
-        controllerStatus = ControllerStatus(readiness: .ready, simulation: .idle)
+        let fixture = ProcessInfo.processInfo.environment["PINSHIFT_E2E_RENEWAL_FIXTURE"]
+        let renewal: AppRenewalStatus? = switch fixture {
+        case "idle": AppRenewalStatus()
+        case "installed": AppRenewalStatus(phase: .installed, installedExpiresAt: Date().addingTimeInterval(604800))
+        case "failed": AppRenewalStatus(phase: .failed, failure: .installationUnconfirmed, detail: "fixture raw installation evidence")
+        default: nil
+        }
+        receiveStatus(ControllerStatus(readiness: .ready, simulation: .idle, renewal: renewal))
         record(kind: "app.controller-link.connected", fields: ["source": .text("fixture")])
         return
       }
@@ -153,7 +165,7 @@ final class ControllerLinkViewModel: ObservableObject {
         pairingCode = ""
         hasPairingCandidate = false
         state = await link.refresh()
-        controllerStatus = await link.currentStatus()
+        receiveStatus(await link.currentStatus())
         record(kind: "app.controller-link.connected", fields: stateFields(state))
         deliverPendingApplyIfConnected()
       }
@@ -243,7 +255,7 @@ final class ControllerLinkViewModel: ObservableObject {
       longitude: request.location.longitude
     )
     state = await link.currentState()
-    controllerStatus = await link.currentStatus()
+    receiveStatus(await link.currentStatus())
     record(
       kind: "app.controller-link.apply-response",
       requestID: response.requestID,
@@ -360,7 +372,7 @@ final class ControllerLinkViewModel: ObservableObject {
     #endif
     let response = await link.clear(requestID: request.requestID)
     state = await link.currentState()
-    controllerStatus = await link.currentStatus()
+    receiveStatus(await link.currentStatus())
     record(
       kind: "app.controller-link.clear-response",
       requestID: response.requestID,
@@ -374,7 +386,7 @@ final class ControllerLinkViewModel: ObservableObject {
       if usesE2EFixture { return controllerStatus }
     #endif
     state = await link.refresh()
-    controllerStatus = await link.currentStatus()
+    receiveStatus(await link.currentStatus())
     if let controllerStatus {
       record(
         kind: "app.controller-link.status-reconciled",
@@ -384,11 +396,77 @@ final class ControllerLinkViewModel: ObservableObject {
     return controllerStatus
   }
 
+  var isConnected: Bool {
+    if case .connected = state { return true }
+    return false
+  }
+
+  var canRenewApp: Bool {
+    isConnected && controllerStatus?.renewal != nil && !isRequestingRenewal
+      && renewalStatus?.phase.isRunning != true
+  }
+
+  func renewApp() {
+    guard canRenewApp else { return }
+    isRequestingRenewal = true
+    renewalRequestFailed = false
+    let requestID = UUID()
+    renewalRequestID = requestID
+    record(kind: "app.renewal.requested", requestID: requestID)
+    // The request belongs to this model, not to a sheet's lifetime.
+    Task { [weak self] in
+      guard let self else { return }
+      defer { isRequestingRenewal = false }
+      #if DEBUG
+        if usesE2EFixture {
+          receiveRenewal(AppRenewalStatus(operationID: requestID, phase: .signing))
+          return
+        }
+      #endif
+      let response = await link.renewApp(requestID: requestID)
+      state = await link.currentState()
+      if case .renewal(_, let status) = response {
+        receiveRenewal(status)
+      } else {
+        renewalRequestFailed = renewalStatus?.operationID != requestID
+      }
+      record(kind: "app.renewal.response", requestID: requestID, fields: responseFields(response))
+    }
+  }
+
+  private func receiveStatus(_ status: ControllerStatus?) {
+    // A transport failure can leave a cached link snapshot; never present it as live.
+    controllerStatus = isConnected ? status : nil
+    guard isConnected, let status else { return }
+    statusReceivedAt = Date()
+    if let renewal = status.renewal { receiveRenewal(renewal) }
+  }
+
+  private func receiveRenewal(_ status: AppRenewalStatus) {
+    if let renewalRequestID, status.operationID == renewalRequestID {
+      renewalRequestFailed = false
+    }
+    guard renewalStatus != status else { return }
+    renewalStatus = status
+    record(kind: "app.renewal.phase", requestID: status.operationID, fields: renewalFields(status))
+  }
+
+  private func renewalFields(_ status: AppRenewalStatus) -> SimulationDiagnosticFields {
+    var fields: SimulationDiagnosticFields = [
+      "phase": .text(status.phase.rawValue), "updatedAt": .date(status.updatedAt),
+      "source": .text("mac-controller"),
+    ]
+    if let expiry = status.installedExpiresAt { fields["installedExpiresAt"] = .date(expiry) }
+    if let failure = status.failure { fields["reason"] = .text(failure.rawValue) }
+    if let detail = status.detail { fields["detail"] = .text(detail) }
+    return fields
+  }
+
   func refreshStatus() {
     Task { [weak self] in
       guard let self else { return }
       state = await link.refresh()
-      controllerStatus = await link.currentStatus()
+      receiveStatus(await link.currentStatus())
       record(kind: "app.controller-link.status-refreshed", fields: stateFields(state))
     }
   }
@@ -434,7 +512,7 @@ final class ControllerLinkViewModel: ObservableObject {
     let connectionState = await link.connect(to: service)
     guard !Task.isCancelled else { return }
     state = connectionState
-    controllerStatus = await link.currentStatus()
+    receiveStatus(await link.currentStatus())
     record(kind: "app.controller-link.connection-result", fields: stateFields(state))
 
     switch state {
@@ -531,6 +609,8 @@ final class ControllerLinkViewModel: ObservableObject {
     switch response {
     case .status(_, let status):
       return ["outcome": .text(String(describing: status.simulation))]
+    case .renewal(_, let status):
+      return renewalFields(status)
     case .paired:
       return ["outcome": .text("paired")]
     case .applied(_, let automaticClearAt):
