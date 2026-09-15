@@ -5,6 +5,10 @@ import Foundation
 /// The open descriptor owns the lock. Never unlink the file: another process may have it open.
 // Descriptor access is synchronized; shutdown marks readiness from a Sendable callback.
 final class ControllerSessionLock: @unchecked Sendable {
+  enum State: String {
+    case stopped, starting, ready, stopping
+  }
+
   private let access = NSLock()
   private var descriptor: Int32
 
@@ -51,7 +55,7 @@ final class ControllerSessionLock: @unchecked Sendable {
           "A Pinshift foreground session is already running. Use that terminal or end it before starting another session."
         )
       }
-      try writeState("stopped", descriptor: descriptor)
+      try writeState(.stopped, descriptor: descriptor)
       if inspect { flock(descriptor, LOCK_UN) }
       return ControllerSessionLock(descriptor: descriptor)
     } catch {
@@ -60,25 +64,26 @@ final class ControllerSessionLock: @unchecked Sendable {
     }
   }
 
-  func setState(_ state: String) throws {
+  func setState(_ state: State) throws {
     try access.withLock { try Self.writeState(state, descriptor: descriptor) }
   }
 
-  private static func writeState(_ state: String, descriptor: Int32) throws {
-    let data = Data(state.utf8)
+  private static func writeState(_ state: State, descriptor: Int32) throws {
+    let data = Data(state.rawValue.utf8)
     guard ftruncate(descriptor, 0) == 0,
       data.withUnsafeBytes({ pwrite(descriptor, $0.baseAddress, $0.count, 0) }) == data.count
     else { throw Self.invalidLocation() }
   }
 
-  func state() -> String {
+  func state() -> State {
     access.withLock { readState() }
   }
 
-  private func readState() -> String {
+  private func readState() -> State {
     var bytes = [UInt8](repeating: 0, count: 64)
     let count = pread(descriptor, &bytes, bytes.count, 0)
-    return count > 0 ? String(decoding: bytes.prefix(count), as: UTF8.self) : "starting"
+    guard count > 0 else { return .starting }
+    return State(rawValue: String(decoding: bytes.prefix(count), as: UTF8.self)) ?? .starting
   }
 
   func release() {

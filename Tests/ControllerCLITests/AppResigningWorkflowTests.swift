@@ -606,9 +606,22 @@ final class AppResigningWorkflowTests: XCTestCase {
     try writeExecutable(named: "sleep", contents: "#!/bin/sh\nexit 0\n")
     let result = try runDaily(environment: ["FAKE_XCODEBUILD_STATUS": "130"], remote: true)
     XCTAssertNotEqual(result.status, 0)
-    XCTAssertTrue(result.output.contains("preparing/manual:"))
+    XCTAssertTrue(result.output.contains("failed: preparation worker/controller stopped"))
     XCTAssertFalse(result.output.contains("controller-ready:"))
     XCTAssertFalse(try events().contains("controller link serve"))
+  }
+
+  func testShortcutAsynchronousControllerFailureReportsAppResultSeparately() throws {
+    _ = try writeProfile(named: "app.mobileprovision",
+      applicationIdentifier: "\(teamIdentifier).\(bundleIdentifier)", expiration: "2099-08-10T08:49:25Z")
+    let result = try runDaily(environment: ["FAKE_TERMINAL_ASYNC": "1", "FAKE_CONTROLLER_FAIL": "1"], remote: true)
+    XCTAssertNotEqual(result.status, 0, result.output)
+    XCTAssertTrue(result.output.contains("failed: preparation worker/controller stopped"), result.output)
+    XCTAssertTrue(result.output.contains("app: preparation command succeeded"), result.output)
+    XCTAssertFalse(result.output.contains("controller-ready:"))
+    XCTAssertFalse(result.output.contains("preparing/manual:"))
+    XCTAssertFalse(result.output.contains("Work continues"))
+    XCTAssertTrue(try events().contains("controller link serve"))
   }
 
   func testShortcutDuplicateObservesExistingRequestAndRejectsArbitraryCommands() throws {
@@ -651,7 +664,11 @@ final class AppResigningWorkflowTests: XCTestCase {
         #!/bin/sh
         echo terminal >> "$FAKE_EVENT_LOG"
         if [ "$FAKE_TERMINAL_DENIED" = 1 ]; then exit 1; fi
-        /bin/sh "$2"
+        if [ "$FAKE_TERMINAL_ASYNC" = 1 ]; then
+          /bin/sh "$2" > "$FAKE_EVENT_LOG.worker" 2>&1 &
+        else
+          /bin/sh "$2"
+        fi
         exit 0
         """)
     }
@@ -668,8 +685,9 @@ final class AppResigningWorkflowTests: XCTestCase {
           if [ -f "$FAKE_STATE_RECORD" ]; then cat "$FAKE_STATE_RECORD"; else echo stopped; fi
           exit 0
         fi
-        echo ready > "$FAKE_STATE_RECORD"
         printf 'controller %s %s\n' "$1" "$2" >> "$FAKE_EVENT_LOG"
+        if [ "$FAKE_CONTROLLER_FAIL" = 1 ]; then exit 1; fi
+        echo ready > "$FAKE_STATE_RECORD"
         if [ -n "$FAKE_REPO_RECORD" ]; then
           printf '%s\n' "$PINSHIFT_REPOSITORY_ROOT" > "$FAKE_REPO_RECORD"
         fi

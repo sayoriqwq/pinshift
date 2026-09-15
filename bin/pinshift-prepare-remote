@@ -60,8 +60,10 @@ if mkdir "$lock_directory" 2>/dev/null
     end
 end
 echo 'preparing: the visible Mac terminal owns signing and startup; this SSH action waits up to 30 seconds.'
+set --local session_state
 for attempt in (seq 1 30)
-    set --local session_state ($controller link session-state)
+    sleep 1
+    set session_state ($controller link session-state)
     or begin
         echo 'failed: unable to inspect the live controller. Run pinshift setup/doctor on the Mac.' >&2
         exit 1
@@ -79,7 +81,6 @@ for attempt in (seq 1 30)
             exit 1
         end
     end
-    sleep 1
 end
 if test -f "$app_result"
     if test (string trim < "$app_result") = 0
@@ -88,5 +89,10 @@ if test -f "$app_result"
         echo 'app: preparation failed/unconfirmed; inspect the Mac terminal and preparation.log.' >&2
     end
 end
-echo 'preparing/manual: preparation or controller readiness is not yet confirmed. Work continues in the visible Mac terminal after SSH ends. Open that terminal for Apple login, unlock or authorization prompts; repeat this shortcut to check. If the worker exited, inspect .build/pinshift-remote/preparation.log and the preparing lock before retrying. No phone connection is confirmed.' >&2
+# Check only after the bounded wait to allow the worker-to-controller handoff.
+if not test -d "$lock_directory"; and test "$session_state" = stopped
+    echo 'failed: preparation worker/controller stopped before readiness was confirmed. Inspect the visible Mac terminal and .build/pinshift-remote/preparation.log, then retry.' >&2
+    exit 1
+end
+echo 'preparing/manual: preparation or controller readiness is not yet confirmed. SSH ending does not cancel the visible Mac terminal session. Open that terminal for Apple login, unlock or authorization prompts; repeat this shortcut to check. No phone connection is confirmed.' >&2
 exit 1

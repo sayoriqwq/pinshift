@@ -160,7 +160,7 @@ public struct PinshiftControllerCommand: AsyncParsableCommand {
         let ownership = try ControllerSessionLock.acquire(inspect: true)
         let state = ownership.state()
         ownership.release()
-        print(state)
+        print(state.rawValue)
       }
     }
 
@@ -282,7 +282,7 @@ public struct PinshiftControllerCommand: AsyncParsableCommand {
       public func run() async throws {
         let ownership = try ControllerSessionLock.acquire()
         defer { ownership.release() }
-        try ownership.setState("starting")
+        try ownership.setState(.starting)
         let tlsIdentity: SecIdentity
         do {
           tlsIdentity = try KeychainTLSIdentity.load(label: identityLabel)
@@ -358,7 +358,7 @@ public struct PinshiftControllerCommand: AsyncParsableCommand {
           )
           throw error
         }
-        try ownership.setState("ready")
+        try ownership.setState(.ready)
         await diagnostics.record(kind: "controller.lifecycle.ready")
         defer { server.stop() }
 
@@ -383,7 +383,7 @@ public struct PinshiftControllerCommand: AsyncParsableCommand {
           controller: simulationController,
           runFor: seconds == 0 ? nil : seconds,
           stopAcceptingCommands: {
-            try? ownership.setState("stopping")
+            try? ownership.setState(.stopping)
             server.stop()
             await renewal.stopAcceptingRequests()
           },
