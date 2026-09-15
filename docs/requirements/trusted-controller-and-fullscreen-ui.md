@@ -1,5 +1,8 @@
 # Durable controller trust and full-screen location picker
 
+> 历史实现规格。v1.1.0 已退役旧常驻项与数据迁移兼容，doctor/clear 统一由 `pinshift` 分发；当前要求以 [使用指南](../../GUIDE.md) 与 [ADR-0012](../adr/0012-establish-v1-1-baseline.md) 为准。
+
+
 Status: Implemented and accepted as a pre-1.0 milestone
 
 Date: 2026-07-28

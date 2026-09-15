@@ -72,11 +72,6 @@ public struct SelectedLocation: Codable, Equatable, Sendable {
     }
   }
 
-  public func encode(to encoder: Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(latitude, forKey: .latitude)
-    try container.encode(longitude, forKey: .longitude)
-  }
 }
 
 public struct LocationObservation: Codable, Equatable, Sendable {
@@ -172,73 +167,5 @@ public enum ObservationMatcher {
         distanceMeters: distanceMeters
       )
     )
-  }
-}
-
-public enum GPXBaselineSessionError: Error, Equatable, Sendable {
-  case noSelectedLocation
-}
-
-public struct GPXBaselineSession: Equatable, Sendable {
-  public private(set) var selected: SelectedLocation?
-  public private(set) var requestedAt: Date?
-  public private(set) var latestObservation: LocationObservation?
-  public private(set) var match: ObservationMatch?
-
-  public init() {}
-
-  public mutating func select(latitude: String, longitude: String) throws {
-    select(
-      try SelectedLocation.parse(
-        latitude: latitude,
-        longitude: longitude
-      )
-    )
-  }
-
-  public mutating func select(_ location: SelectedLocation) {
-    selected = location
-    requestedAt = nil
-    match = nil
-  }
-
-  public mutating func beginObservationWindow(at date: Date) throws {
-    guard selected != nil else {
-      throw GPXBaselineSessionError.noSelectedLocation
-    }
-
-    requestedAt = date
-    match = nil
-  }
-
-  public mutating func record(_ observation: LocationObservation) {
-    latestObservation = observation
-
-    guard let selected, let requestedAt else {
-      match = nil
-      return
-    }
-
-    match = ObservationMatcher.evaluate(
-      selected: selected,
-      requestedAt: requestedAt,
-      observation: observation
-    )
-  }
-
-  public mutating func expireObservationWindow(at date: Date) {
-    guard let requestedAt else {
-      return
-    }
-
-    let elapsedSeconds = date.timeIntervalSince(requestedAt)
-    guard elapsedSeconds > ObservationMatcher.maximumElapsedSeconds else {
-      return
-    }
-    if case .matched = match {
-      return
-    }
-
-    match = .timedOut(elapsedSeconds: elapsedSeconds)
   }
 }

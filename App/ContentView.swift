@@ -18,9 +18,6 @@ struct ContentView: View {
   @State private var renamingSavedLocationID: UUID?
   @State private var showingDeleteSavedLocationConfirmation = false
   @State private var deletingSavedLocation: SavedLocation?
-  @State private var updatingSavedLocation: SavedLocation?
-  @State private var hasReplacementSelection = false
-  @State private var showingSavedLocationUpdatePrompt = false
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   private var locale: Locale { language.locale }
   @Environment(\.openURL) private var openURL
@@ -98,7 +95,7 @@ struct ContentView: View {
         await diagnostics.recordAppLaunch()
       }
       if let selectedLocationFixture {
-        _ = model.select(selectedLocationFixture, source: .manual)
+        model.select(selectedLocationFixture, source: .manual)
       }
       if let languageFixture {
         language = languageFixture
@@ -143,22 +140,6 @@ struct ContentView: View {
 
   private func savedLocationAlerts<Presented: View>(_ view: Presented, inMore: Bool) -> some View {
     view
-      .alert(
-        localized("Choose this place again"),
-        isPresented: presentationBinding($showingSavedLocationUpdatePrompt, inMore: inMore)
-      ) {
-        Button(localized("Choose a new point")) {
-          hasReplacementSelection = false
-          showingMore = false
-          showingLocationPicker = true
-        }
-        Button(localized("Cancel"), role: .cancel) { updatingSavedLocation = nil }
-      } message: {
-        Text(
-          localized(
-            "This older bookmark needs a new map selection. Choose the place, then tap Update bookmark. Its name and original position will be kept."
-          ))
-      }
       .alert(
         Text(
           localized(
@@ -250,12 +231,10 @@ struct ContentView: View {
         searchFocused: $showingLocationPicker
       ) { location, source, name in
         if let name { locationNames[String(describing: location)] = name }
-        _ = model.select(location, source: source)
-        if updatingSavedLocation != nil { hasReplacementSelection = true }
+        model.select(location, source: source)
       }
       .safeAreaInset(edge: .bottom, spacing: 0) {
         VStack(spacing: 8) {
-          savedLocationUpdateBar
           homeSavedLocations.padding(.horizontal, 16)
           ScrollView {
             simulationSection.padding(20)
@@ -382,7 +361,6 @@ struct ContentView: View {
         manualSimulationStatus
       }
       observationSection
-      baselineSection
       limitationsSection
     }
     .navigationTitle(localized("Test Diagnostics"))
@@ -696,9 +674,7 @@ struct ContentView: View {
             Text(savedLocationCoordinateDescription(savedLocation.coordinate))
               .font(.footnote.monospacedDigit())
               .foregroundStyle(.secondary)
-            if savedLocation.coordinateSystem == .legacyUnknown {
-              Text(localized("Choose this place again")).font(.caption)
-            }
+
           }
           .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -781,36 +757,8 @@ struct ContentView: View {
   }
 
   private func chooseSavedLocation(_ savedLocation: SavedLocation) {
-    guard savedLocation.coordinateSystem == .wgs84 else {
-      updatingSavedLocation = savedLocation
-      showingSavedLocationUpdatePrompt = true
-      return
-    }
-    _ = model.select(savedLocation.coordinate, source: .saved)
-  }
 
-  @ViewBuilder private var savedLocationUpdateBar: some View {
-    if let saved = updatingSavedLocation, !showingSavedLocationUpdatePrompt {
-      VStack(alignment: .leading, spacing: 8) {
-        Text(localizedFormat("Choose a new point for %@", saved.name)).font(.subheadline)
-        HStack {
-          Button(localized("Update bookmark")) {
-            guard let coordinate = model.selection.selected,
-              model.updateSavedLocation(id: saved.id, coordinate: coordinate)
-            else { return }
-            updatingSavedLocation = nil
-            hasReplacementSelection = false
-          }
-          .disabled(!hasReplacementSelection)
-          .accessibilityIdentifier("update-saved-location-coordinate")
-          Spacer()
-          Button(localized("Cancel")) { updatingSavedLocation = nil }
-        }
-      }
-      .padding(12)
-      .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-      .padding(.horizontal, 16)
-    }
+    model.select(savedLocation.coordinate, source: .saved)
   }
 
   private func savedLocationCoordinateDescription(
@@ -1012,7 +960,7 @@ struct ContentView: View {
 
   private func backToCurrentButton(_ location: SelectedLocation) -> some View {
     Button {
-      _ = model.select(location, source: .map)
+      model.select(location, source: .map)
     } label: {
       ActionButtonLabel(
         title: Text(localized("Back to current location")), systemImage: "arrow.uturn.backward")
@@ -1029,7 +977,7 @@ struct ContentView: View {
 
   private var selectedSavedLocation: SavedLocation? {
     model.savedLocations.locations.first {
-      $0.coordinateSystem == .wgs84 && $0.coordinate == model.selection.selected
+      $0.coordinate == model.selection.selected
     }
   }
 
@@ -1282,7 +1230,7 @@ struct ContentView: View {
         EmptyView()
       }
 
-      if let observation = model.session.latestObservation {
+      if let observation = model.manualSession.latestObservation {
         LabeledContent("Latitude") {
           Text(observation.coordinate.latitude.formatted(.number.precision(.fractionLength(6))))
             .accessibilityIdentifier("observed-latitude")
@@ -1331,81 +1279,6 @@ struct ContentView: View {
           .foregroundStyle(PinshiftDesign.destructive)
           .accessibilityIdentifier("location-error")
       }
-    }
-  }
-
-  private var baselineSection: some View {
-    Section(localized("GPX Observation Baseline")) {
-      Text(
-        "This button does not apply a location. Start the 15-second window, then choose a GPX location from Xcode."
-      )
-      .font(.footnote)
-      .foregroundStyle(.secondary)
-
-      Button {
-        model.beginObservationWindow()
-      } label: {
-        ActionButtonLabel(
-          title: Text("Start 15-second Observation Window"),
-          systemImage: "timer"
-        )
-      }
-      .buttonStyle(PinshiftSoftButtonStyle())
-      .disabled(model.session.selected == nil)
-      .accessibilityIdentifier("start-observation-window")
-
-      if let requestedAt = model.session.requestedAt {
-        LabeledContent("Requested", value: formattedDateTime(requestedAt))
-      }
-
-      matchStatus
-    }
-  }
-
-  @ViewBuilder
-  private var matchStatus: some View {
-    switch model.session.match {
-    case .matched(let evidence):
-      Label("GPX baseline matched", systemImage: "checkmark.circle.fill")
-        .foregroundStyle(PinshiftDesign.positive)
-        .accessibilityIdentifier("match-status")
-      LabeledContent("Elapsed") {
-        Text("\(evidence.elapsedSeconds.formatted(.number.precision(.fractionLength(2)))) s")
-          .accessibilityIdentifier("match-elapsed")
-      }
-      LabeledContent("Distance") {
-        Text("\(evidence.distanceMeters.formatted(.number.precision(.fractionLength(2)))) m")
-          .accessibilityIdentifier("match-distance")
-      }
-    case .notAfterRequest:
-      Label(
-        "Observation is not newer than this request", systemImage: "clock.badge.exclamationmark"
-      )
-      .accessibilityIdentifier("match-status")
-    case .timedOut(let elapsedSeconds):
-      Label(
-        AppLocalization.format(
-          "Observation arrived after 15 seconds (%@ s)",
-          locale: locale,
-          elapsedSeconds.formatted(.number.precision(.fractionLength(2)))
-        ),
-        systemImage: "timer"
-      )
-      .accessibilityIdentifier("match-status")
-    case .tooFar(let distanceMeters):
-      Label(
-        AppLocalization.format(
-          "Observation is %@ m away",
-          locale: locale,
-          distanceMeters.formatted(.number.precision(.fractionLength(2)))
-        ),
-        systemImage: "location.slash"
-      )
-      .accessibilityIdentifier("match-status")
-    case nil:
-      Text("No baseline result yet")
-        .foregroundStyle(.secondary)
-        .accessibilityIdentifier("match-status")
     }
   }
 

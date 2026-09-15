@@ -328,7 +328,9 @@ final class ControllerCLIRuntimeTests: XCTestCase {
 
   func testBuildsProductionControllerFromDevicectlConfiguration() async {
     let executor = RuntimeRecordingDevicectlExecutor(
-      results: [.exited(0), .exited(0), .exited(0)]
+      results: Array(
+        repeating: .completed(.init(launchSucceeded: true, exitStatus: 0, duration: 0)),
+        count: 3)
     )
     let environment = [
       "PINSHIFT_DEVICE": "Active Test Device",

@@ -519,22 +519,6 @@ public actor InMemoryInjectionBackend: InjectionBackend {
   }
 }
 
-public struct UnavailableInjectionBackend: InjectionBackend {
-  private let reason: InjectionBackendFailure
-
-  public init(reason: InjectionBackendFailure) {
-    self.reason = reason
-  }
-
-  public func readiness() -> InjectionBackendReadiness {
-    .unavailable(reason)
-  }
-
-  public func execute(_ command: InjectionBackendCommand) -> InjectionBackendResult {
-    .failed(requestID: command.requestID, reason: reason)
-  }
-}
-
 extension InjectionBackendCommand {
   fileprivate var requestID: UUID {
     switch self {

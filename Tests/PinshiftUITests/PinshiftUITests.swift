@@ -46,7 +46,7 @@ final class PinshiftUITests: XCTestCase {
     super.tearDown()
   }
 
-  func testPinshiftAppExposesPublicGateObservationSeam() {
+  func testPinshiftAppExposesLatestObservation() {
     let app = pinshiftApp()
     app.launch()
     app.tap()
@@ -75,56 +75,6 @@ final class PinshiftUITests: XCTestCase {
     scrollUp(until: observationSource, in: app)
     XCTAssertTrue(observationSource.waitForExistence(timeout: 5))
 
-    openDiagnostics(in: app)
-    let startObservation = app.buttons["start-observation-window"]
-    scrollUp(until: startObservation, in: app)
-    XCTAssertTrue(startObservation.waitForExistence(timeout: 5))
-
-    openDiagnostics(in: app)
-    let matchStatus = app.staticTexts["match-status"]
-    scrollUp(until: matchStatus, in: app)
-    XCTAssertTrue(matchStatus.waitForExistence(timeout: 5))
-  }
-
-  func testLegacyBookmarkReselectionDoesNotExposeCoordinateSystemChoices() {
-    let app = pinshiftApp()
-    let id = UUID().uuidString
-    app.launchEnvironment["PINSHIFT_E2E_LOCATION_PERMISSION"] = "allowed"
-    app.launchEnvironment["PINSHIFT_E2E_LOCAL_NETWORK_PERMISSION"] = "allowed"
-    app.launchEnvironment["PINSHIFT_E2E_SEARCH_FIXTURE"] = "1"
-    app.launchEnvironment["PINSHIFT_E2E_SAVED_LOCATIONS_RESET_TOKEN"] = UUID().uuidString
-    app.launchEnvironment["PINSHIFT_E2E_LEGACY_SAVED_FIXTURE"] = """
-      {"version":1,"locations":[{"id":"\(id)","name":"Legacy reference","coordinate":{"latitude":31.2419382,"longitude":121.4951673}}]}
-      """
-    app.launch()
-    let choose = app.buttons["saved-location-select-\(id)"].firstMatch
-    XCTAssertTrue(choose.waitForExistence(timeout: 10))
-    choose.tap()
-    let reselect = app.buttons["Choose a new point"]
-    XCTAssertTrue(reselect.waitForExistence(timeout: 5))
-    XCTAssertFalse(app.buttons["Already WGS84 / independent reference"].exists)
-    reselect.tap()
-    let update = app.buttons["update-saved-location-coordinate"]
-    XCTAssertTrue(update.waitForExistence(timeout: 5))
-    XCTAssertFalse(update.isEnabled)
-    let search = app.textFields["place-search-input"]
-    search.tap()
-    search.typeText("Tower")
-    app.buttons["search-places"].tap()
-    let result = app.buttons["place-search-result"]
-    XCTAssertTrue(result.waitForExistence(timeout: 5))
-    result.tap()
-    XCTAssertTrue(update.isEnabled)
-    update.tap()
-    XCTAssertTrue(
-      waitForLabel(app.staticTexts["selected-location-name"], equalTo: "Legacy reference"))
-    app.terminate()
-    app.launch()
-    XCTAssertTrue(choose.waitForExistence(timeout: 10))
-    choose.tap()
-    XCTAssertFalse(reselect.exists)
-    openSettings(in: app)
-    XCTAssertFalse(app.descendants(matching: .any)["map-coordinate-alignment"].exists)
   }
 
   func testPinshiftMapFirstHomeKeepsSecondaryToolsInSettings() {
@@ -195,7 +145,10 @@ final class PinshiftUITests: XCTestCase {
     scrollUp(until: clear, in: app)
     XCTAssertTrue(clear.exists)
     clear.tap()
-    app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", "Clear Diagnostics", "diagnostics-clear")).firstMatch.tap()
+    app.buttons.matching(
+      NSPredicate(
+        format: "label == %@ AND identifier != %@", "Clear Diagnostics", "diagnostics-clear")
+    ).firstMatch.tap()
     XCTAssertTrue(
       waitForLabel(
         eventCount,
@@ -230,7 +183,7 @@ final class PinshiftUITests: XCTestCase {
     waitForDiagnostics(in: app)
 
     let coordinate = CLLocationCoordinate2D(latitude: 31.2304, longitude: 121.4737)
-    selectAndBeginObservation(of: coordinate, in: app)
+    selectCoordinate(of: coordinate, in: app)
     applyAndVerifySimulation(of: coordinate, in: app)
 
     let clear = app.buttons["clear-simulation"]
@@ -315,7 +268,7 @@ final class PinshiftUITests: XCTestCase {
     clearDiagnostics(in: app)
 
     let coordinate = CLLocationCoordinate2D(latitude: 31.2304, longitude: 121.4737)
-    selectAndBeginObservation(of: coordinate, in: app)
+    selectCoordinate(of: coordinate, in: app)
     applyAndAcknowledgeSimulation(in: app)
     returnHome(in: app)
 
@@ -472,7 +425,8 @@ final class PinshiftUITests: XCTestCase {
     app.launchEnvironment["PINSHIFT_E2E_RENEWAL_FIXTURE"] = "failed"
     app.launch()
     openSettings(in: app)
-    XCTAssertTrue(waitForLabel(app.staticTexts["renewal-status"], equalTo: "Renewal needs attention"))
+    XCTAssertTrue(
+      waitForLabel(app.staticTexts["renewal-status"], equalTo: "Renewal needs attention"))
     XCTAssertTrue(app.buttons["renew-app"].isEnabled)
     XCTAssertFalse(app.staticTexts["fixture raw installation evidence"].exists)
     app.buttons["Renewal details"].tap()
@@ -528,7 +482,14 @@ final class PinshiftUITests: XCTestCase {
     let observed = CLLocationCoordinate2D(latitude: 31.2419, longitude: 121.4951)
     XCUIDevice.shared.location = XCUILocation(
       location: CLLocation(latitude: observed.latitude, longitude: observed.longitude))
-    waitForObservedCoordinate(observed, in: app)
+    openDiagnostics(in: app)
+    let observedLatitude = app.staticTexts["observed-latitude"]
+    scrollUp(until: observedLatitude, in: app)
+    let expectedLatitude = String(format: "%.6f", observed.latitude)
+    let matchingLatitude = app.staticTexts.matching(identifier: "observed-latitude")
+      .matching(NSPredicate(format: "label ENDSWITH %@", expectedLatitude))
+      .firstMatch
+    XCTAssertTrue(matchingLatitude.waitForExistence(timeout: 10))
     returnHome(in: app)
     let recenter = app.buttons["select-observed-location"]
     XCTAssertTrue(recenter.waitForExistence(timeout: 5))
@@ -920,28 +881,6 @@ final class PinshiftUITests: XCTestCase {
     XCTAssertFalse(restricted.buttons["open-location-settings"].exists)
   }
 
-  func testPublicLocationSetAndReplaceAreVerifiedByPinshiftApp() {
-    let app = pinshiftApp()
-    if ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"] != nil {
-      app.resetAuthorizationStatus(for: .location)
-    }
-    app.launch()
-    app.tap()
-    defer { XCUIDevice.shared.location = nil }
-
-    let primer = CLLocationCoordinate2D(latitude: -33.8688, longitude: 151.2093)
-    XCUIDevice.shared.location = XCUILocation(
-      location: CLLocation(latitude: primer.latitude, longitude: primer.longitude)
-    )
-    waitForObservedCoordinate(primer, in: app)
-
-    let coordinateA = CLLocationCoordinate2D(latitude: 37.3349, longitude: -122.0090)
-    let coordinateB = CLLocationCoordinate2D(latitude: 52.5200, longitude: 13.4050)
-
-    applyAndVerify(coordinateA, in: app)
-    applyAndVerify(coordinateB, in: app)
-  }
-
   func testHomeSearchPreservesCoordinatesAndRequiresExplicitApply() {
     let app = dailyApp()
     app.launchEnvironment["PINSHIFT_E2E_DIAGNOSTICS_ARTIFACT_FIXTURE"] = "1"
@@ -1135,97 +1074,6 @@ final class PinshiftUITests: XCTestCase {
     }
   }
 
-  func testPublicLocationBackendRemainsStableForTenMinutes() throws {
-    if ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"] != nil {
-      throw XCTSkip("The ten-minute backend gate is recorded only on a physical device.")
-    }
-
-    let app = pinshiftApp()
-    app.launch()
-    app.tap()
-    defer { XCUIDevice.shared.location = nil }
-
-    let coordinateA = CLLocationCoordinate2D(latitude: 37.3349, longitude: -122.0090)
-    let coordinateB = CLLocationCoordinate2D(latitude: 52.5200, longitude: 13.4050)
-    let minimumDuration: TimeInterval = 600
-    let startedAt = Date()
-    var completedRounds = 0
-
-    repeat {
-      applyAndVerify(coordinateA, in: app)
-      applyAndVerify(coordinateB, in: app)
-      clearAndVerifyProxyInactive(in: app)
-      completedRounds += 1
-      XCTContext.runActivity(named: "Completed public A/B/clear round \(completedRounds)") { _ in }
-    } while Date().timeIntervalSince(startedAt) < minimumDuration
-
-    let duration = Date().timeIntervalSince(startedAt)
-    XCTAssertGreaterThanOrEqual(completedRounds, 2)
-    XCTAssertGreaterThanOrEqual(duration, minimumDuration)
-    XCTContext.runActivity(
-      named:
-        "Public location gate completed \(completedRounds) rounds in \(duration.formatted(.number.precision(.fractionLength(1)))) seconds"
-    ) { _ in }
-  }
-
-  private func applyAndVerify(
-    _ coordinate: CLLocationCoordinate2D,
-    in app: XCUIApplication
-  ) {
-    selectAndBeginObservation(of: coordinate, in: app)
-
-    verifyFreshObservation(of: coordinate, in: app)
-  }
-
-  private func verifyFreshObservation(
-    of coordinate: CLLocationCoordinate2D,
-    in app: XCUIApplication
-  ) {
-    openSettings(in: app)
-    let start = app.buttons["start-observation-window"]
-    for _ in 0..<10 where !start.exists {
-      app.collectionViews.firstMatch.swipeUp()
-    }
-    XCTAssertTrue(start.waitForExistence(timeout: 5))
-    start.tap()
-
-    XCUIDevice.shared.location = XCUILocation(
-      location: CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
-    )
-
-    openDiagnostics(in: app)
-    let status = app.staticTexts["match-status"]
-    for _ in 0..<4 where !status.exists {
-      app.collectionViews.firstMatch.swipeUp()
-    }
-    let matched = app.staticTexts.matching(identifier: "match-status")
-      .matching(NSPredicate(format: "label == %@", "GPX baseline matched"))
-      .firstMatch
-    XCTAssertTrue(matched.waitForExistence(timeout: 15))
-
-    openDiagnostics(in: app)
-    let observedTimestamp = app.staticTexts["observed-timestamp"]
-    for _ in 0..<4 where !observedTimestamp.exists {
-      app.collectionViews.firstMatch.swipeDown()
-    }
-    XCTAssertTrue(observedTimestamp.waitForExistence(timeout: 5))
-    let observedTimestampLabel = observedTimestamp.label
-
-    openDiagnostics(in: app)
-    let elapsed = app.staticTexts["match-elapsed"]
-    openDiagnostics(in: app)
-    let distance = app.staticTexts["match-distance"]
-    for _ in 0..<4 where !elapsed.exists || !distance.exists {
-      app.collectionViews.firstMatch.swipeUp()
-    }
-    XCTAssertTrue(elapsed.waitForExistence(timeout: 5))
-    XCTAssertTrue(distance.waitForExistence(timeout: 5))
-    XCTContext.runActivity(
-      named:
-        "Pinshift app verified fresh observation (\(observedTimestampLabel); \(elapsed.label); \(distance.label))"
-    ) { _ in }
-  }
-
   private func applyAndVerifySimulation(
     of coordinate: CLLocationCoordinate2D,
     in app: XCUIApplication
@@ -1260,30 +1108,7 @@ final class PinshiftUITests: XCTestCase {
     returnHome(in: app)
   }
 
-  private func clearAndVerifyProxyInactive(in app: XCUIApplication) {
-    XCUIDevice.shared.location = nil
-    XCTAssertNil(
-      XCUIDevice.shared.location,
-      "The public XCUIDevice location getter still reports an active proxy after clear."
-    )
-
-    openSettings(in: app)
-    openDiagnostics(in: app)
-    let recencyNote = app.staticTexts["observation-recency-note"]
-    for _ in 0..<4 where !recencyNote.exists {
-      app.collectionViews.firstMatch.swipeDown()
-    }
-    XCTAssertTrue(recencyNote.waitForExistence(timeout: 5))
-    XCTAssertEqual(
-      recencyNote.label,
-      "This is the last successful Core Location observation. It may remain after a simulation stops and does not indicate an active simulation."
-    )
-    XCTContext.runActivity(
-      named: "Public location proxy cleared; Pinshift app retains only last-observation evidence"
-    ) { _ in }
-  }
-
-  private func selectAndBeginObservation(
+  private func selectCoordinate(
     of coordinate: CLLocationCoordinate2D,
     in app: XCUIApplication
   ) {
@@ -1304,21 +1129,6 @@ final class PinshiftUITests: XCTestCase {
     app.buttons["Return"].tap()
     app.buttons["save-selection"].tap()
 
-  }
-
-  private func waitForObservedCoordinate(
-    _ coordinate: CLLocationCoordinate2D,
-    in app: XCUIApplication
-  ) {
-    openSettings(in: app)
-    openDiagnostics(in: app)
-    let observedLatitude = app.staticTexts["observed-latitude"]
-    scrollUp(until: observedLatitude, in: app)
-    let expectedSuffix = String(format: "%.6f", coordinate.latitude)
-    let matchingLatitude = app.staticTexts.matching(identifier: "observed-latitude")
-      .matching(NSPredicate(format: "label ENDSWITH %@", expectedSuffix))
-      .firstMatch
-    XCTAssertTrue(matchingLatitude.waitForExistence(timeout: 10))
   }
 
   private func replaceText(in field: XCUIElement, with text: String) {
@@ -1379,7 +1189,10 @@ final class PinshiftUITests: XCTestCase {
     scrollUp(until: clear, in: app)
     XCTAssertTrue(clear.waitForExistence(timeout: 5))
     clear.tap()
-    app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", "Clear Diagnostics", "diagnostics-clear")).firstMatch.tap()
+    app.buttons.matching(
+      NSPredicate(
+        format: "label == %@ AND identifier != %@", "Clear Diagnostics", "diagnostics-clear")
+    ).firstMatch.tap()
     let eventCount = app.staticTexts["diagnostics-event-count"]
     XCTAssertTrue(waitForLabel(eventCount, endingWith: ", 0", timeout: 5))
   }
@@ -1833,28 +1646,15 @@ private enum ExportedDiagnosticValue: Decodable {
   case null
 
   init(from decoder: Decoder) throws {
-    if let keyed = try? decoder.container(keyedBy: AnyCodingKey.self) {
-      var values: [String: ExportedDiagnosticValue] = [:]
-      for key in keyed.allKeys {
-        values[key.stringValue] = try keyed.decode(
-          ExportedDiagnosticValue.self,
-          forKey: key
-        )
-      }
-      self = .object(values)
-      return
-    }
-
-    if var unkeyed = try? decoder.unkeyedContainer() {
-      var values: [ExportedDiagnosticValue] = []
-      while !unkeyed.isAtEnd {
-        values.append(try unkeyed.decode(ExportedDiagnosticValue.self))
-      }
-      self = .array(values)
-      return
-    }
-
     let container = try decoder.singleValueContainer()
+    if let object = try? container.decode([String: Self].self) {
+      self = .object(object)
+      return
+    }
+    if let array = try? container.decode([Self].self) {
+      self = .array(array)
+      return
+    }
     if container.decodeNil() {
       self = .null
     } else if let value = try? container.decode(Bool.self) {
@@ -1866,20 +1666,5 @@ private enum ExportedDiagnosticValue: Decodable {
     } else {
       self = .string(try container.decode(String.self))
     }
-  }
-}
-
-private struct AnyCodingKey: CodingKey {
-  let stringValue: String
-  let intValue: Int?
-
-  init?(stringValue: String) {
-    self.stringValue = stringValue
-    intValue = nil
-  }
-
-  init?(intValue: Int) {
-    stringValue = String(intValue)
-    self.intValue = intValue
   }
 }

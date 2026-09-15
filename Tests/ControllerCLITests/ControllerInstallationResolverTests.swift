@@ -14,7 +14,7 @@ final class ControllerInstallationResolverTests: XCTestCase {
 
   override func setUpWithError() throws {
     fixtureRoot = FileManager.default.temporaryDirectory
-      .appending(path: "pinshift-resolver-(UUID().uuidString)")
+      .appending(path: "pinshift-resolver-\(UUID().uuidString)")
     fakeBin = fixtureRoot.appending(path: "fake-bin")
     let controllerRoot = fixtureRoot.appending(path: ".build/controller")
     let executable = controllerRoot.appending(path: "bin/pinshift-controller")
@@ -113,6 +113,37 @@ final class ControllerInstallationResolverTests: XCTestCase {
     result = try runResolver(requirement: validRequirement)
     XCTAssertNotEqual(result.status, 0)
     XCTAssertTrue(result.output.contains("source changed"))
+  }
+
+  func testDailyDoctorAndClearDispatchThroughTheVerifiedInstallation() throws {
+    let scripts = fixtureRoot.appending(path: "bin")
+    try FileManager.default.createDirectory(at: scripts, withIntermediateDirectories: true)
+    for name in ["pinshift", "_pinshift-common.fish"] {
+      try FileManager.default.copyItem(
+        at: commonScript.deletingLastPathComponent().appending(path: name),
+        to: scripts.appending(path: name))
+    }
+    let requirement =
+      "designated => identifier \"dev.sayori.pinshift.controller\" and anchor apple generic"
+    try requirement.write(
+      to: fixtureRoot.appending(path: ".build/controller/designated-requirement"),
+      atomically: true, encoding: .utf8)
+    try "#!/bin/sh\nprintf '%s' \"$*\"\nexit 23\n".write(
+      to: fixtureRoot.appending(path: ".build/controller/bin/pinshift-controller"),
+      atomically: true, encoding: .utf8)
+    for (command, expected) in [
+      ("doctor", "doctor"), ("check", "doctor"), ("clear", "reset"), ("reset", "reset"),
+    ] {
+      let result = try runFish(
+        "fish '\(scripts.appending(path: "pinshift").path)' \(command)",
+        environment: [
+          "PINSHIFT_DEVICE": "fixture-device",
+          "PINSHIFT_DEVELOPER_DIR": fixtureRoot.path,
+          "FAKE_CODESIGN_REQUIREMENT": requirement,
+        ])
+      XCTAssertEqual(result.status, 23, result.output)
+      XCTAssertEqual(result.output, expected)
+    }
   }
 
   private func runResolver(

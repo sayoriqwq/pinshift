@@ -24,28 +24,15 @@ public enum SimulationDiagnosticValue: Codable, Equatable, Sendable {
   case null
 
   public init(from decoder: Decoder) throws {
-    if let keyed = try? decoder.container(keyedBy: StringCodingKey.self) {
-      var values: [String: SimulationDiagnosticValue] = [:]
-      for key in keyed.allKeys {
-        values[key.stringValue] = try keyed.decode(
-          SimulationDiagnosticValue.self,
-          forKey: key
-        )
-      }
-      self = .object(values)
-      return
-    }
-
-    if var unkeyed = try? decoder.unkeyedContainer() {
-      var values: [SimulationDiagnosticValue] = []
-      while !unkeyed.isAtEnd {
-        values.append(try unkeyed.decode(SimulationDiagnosticValue.self))
-      }
-      self = .array(values)
-      return
-    }
-
     let container = try decoder.singleValueContainer()
+    if let object = try? container.decode([String: Self].self) {
+      self = .object(object)
+      return
+    }
+    if let array = try? container.decode([Self].self) {
+      self = .array(array)
+      return
+    }
     if container.decodeNil() {
       self = .null
     } else if let value = try? container.decode(Bool.self) {
@@ -217,12 +204,15 @@ public actor SimulationDiagnosticRecorder {
     self.maximumBytes = max(1, maximumBytes)
     self.sessionID = sessionID
 
-    let resolvedDirectory = directory
+    let resolvedDirectory =
+      directory
       ?? Self.defaultDirectory(environment: ProcessInfo.processInfo.environment)
-    let resolvedFileURL = fileURL
+    let resolvedFileURL =
+      fileURL
       ?? resolvedDirectory.appendingPathComponent(side.fileName, isDirectory: false)
     self.fileURL = resolvedFileURL
-    self.metadataURL = resolvedFileURL
+    self.metadataURL =
+      resolvedFileURL
       .deletingPathExtension()
       .appendingPathExtension("metadata.json")
     self.lockURL = resolvedFileURL.appendingPathExtension("lock")
@@ -253,11 +243,13 @@ public actor SimulationDiagnosticRecorder {
       }
     }
 
-    let applicationSupport = FileManager.default.urls(
-      for: .applicationSupportDirectory,
-      in: .userDomainMask
-    ).first ?? FileManager.default.temporaryDirectory
-    return applicationSupport
+    let applicationSupport =
+      FileManager.default.urls(
+        for: .applicationSupportDirectory,
+        in: .userDomainMask
+      ).first ?? FileManager.default.temporaryDirectory
+    return
+      applicationSupport
       .appendingPathComponent("Pinshift", isDirectory: true)
       .appendingPathComponent("SimulationDiagnostics", isDirectory: true)
   }
@@ -679,7 +671,8 @@ public enum SimulationDiagnosticText {
   }
 
   private static func redactValue(after marker: String, in value: String) -> String {
-    let pattern = "(?i)"
+    let pattern =
+      "(?i)"
       + NSRegularExpression.escapedPattern(for: marker)
       + "(?:[^\\r\\n:=]*[:=][^\\r\\n]*|\\s+[^\\r\\n]*)"
     guard let expression = try? NSRegularExpression(pattern: pattern) else {

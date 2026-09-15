@@ -34,7 +34,7 @@ final class ControllerIdentityAccessAuthorizerTests: XCTestCase {
     }
   }
 
-  func testAuthorizationStopsWhenTheKeychainRejectsMigration() throws {
+  func testAuthorizationStopsWhenTheKeychainRejectsAccessChanges() throws {
     let identity = try ControllerIdentity(fingerprint: Data(repeating: 0x51, count: 32))
     let manager = RecordingControllerIdentityAccessManager(
       fingerprints: [identity],

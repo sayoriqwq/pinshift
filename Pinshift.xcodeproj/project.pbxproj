@@ -113,19 +113,10 @@
 		F221E02F577319085D683B02 /* PinshiftApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinshiftApp.swift; sourceTree = "<group>"; };
 		F7A56D0AD7C85F7B154FF4B2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FC6769CE9F8E503B07026CE1 /* SavedLocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedLocation.swift; sourceTree = "<group>"; };
-		FC8337A285DAE963F2F32304 /* ShanghaiBaseline.gpx */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = ShanghaiBaseline.gpx; sourceTree = "<group>"; };
 		FCD882448B122ABE148B63B7 /* SimulationDiagnosticsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationDiagnosticsViewModelTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
-		13A1DC3A5EF1E038705B0EA9 /* Fixtures */ = {
-			isa = PBXGroup;
-			children = (
-				FC8337A285DAE963F2F32304 /* ShanghaiBaseline.gpx */,
-			);
-			path = Fixtures;
-			sourceTree = "<group>";
-		};
 		2F8E827214B472030F08F53C /* LocationDomain */ = {
 			isa = PBXGroup;
 			children = (
@@ -161,7 +152,6 @@
 			children = (
 				F038141B49145E020A7CB2FD /* App */,
 				2FF612E748D6D925F6888467 /* Config */,
-				13A1DC3A5EF1E038705B0EA9 /* Fixtures */,
 				8E172B8B3F8D099685EDE9C7 /* Sources */,
 				BD169F5E62B64595CC5B706E /* Tests */,
 				B2314D0251BC6CAEE2A734AC /* Products */,
@@ -561,14 +551,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/Pinshift-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.2;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.sayori.pinshift;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -583,14 +573,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/Pinshift-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.2;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.sayori.pinshift;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;

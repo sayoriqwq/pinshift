@@ -54,42 +54,4 @@ struct CoordinateBoundaryTests {
     #expect(unchanged.location.longitude == item.placemark.coordinate.longitude)
   }
 
-  @Test func legacyStoreReselectionRetainsOriginalAndDoesNotApply() throws {
-    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-    defer { try? FileManager.default.removeItem(at: directory) }
-    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-    let file = directory.appendingPathComponent("saved.json")
-    let id = UUID()
-    let legacy = Data(
-      """
-      {"version":1,"locations":[{"id":"\(id)","name":"Original","coordinate":{"latitude":31.239703,"longitude":121.499718}}]}
-      """.utf8)
-    try legacy.write(to: file)
-    let store = FileSavedLocationStore(fileURL: file)
-    let model = BaselineViewModel(
-      savedLocationStore: store,
-      manualSessionStore: FileManualSimulationSessionStore(
-        fileURL: directory.appendingPathComponent("session.json")))
-    #expect(model.savedLocations.locations.first?.coordinateSystem == .legacyUnknown)
-    #expect(
-      try Data(contentsOf: file.appendingPathExtension("before-coordinate-migration")) == legacy)
-    #expect(
-      model.updateSavedLocation(
-        id: id, coordinate: try SelectedLocation(latitude: 31.2419382, longitude: 121.4951673)))
-    let firstRepair = try #require(model.savedLocations.locations.first)
-    #expect(
-      model.updateSavedLocation(
-        id: id, coordinate: try SelectedLocation(latitude: 31.2419382, longitude: 121.4951673)))
-    #expect(model.savedLocations.locations.first == firstRepair)
-    #expect(model.operationRevision == 0)
-    #expect(model.manualSession.activeAppliedRequest == nil)
-    #expect(
-      model.updateSavedLocation(id: id, coordinate: try #require(firstRepair.originalCoordinate)))
-    let restored = try #require(store.load().locations.first)
-    #expect(restored.coordinate == firstRepair.originalCoordinate)
-    #expect(restored.id == id)
-    #expect(restored.name == "Original")
-    #expect(
-      try Data(contentsOf: file.appendingPathExtension("before-coordinate-migration")) == legacy)
-  }
 }

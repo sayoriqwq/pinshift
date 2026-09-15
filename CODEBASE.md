@@ -1,6 +1,6 @@
 # Pinshift 代码库导览
 
-这份文档说明系统边界、一次 Apply/Clear 的路径和推荐阅读顺序。领域术语以
+本导览对应 **v1.1.0**。这份文档说明系统边界、一次 Apply/Clear 的路径和推荐阅读顺序。领域术语以
 [CONTEXT.md](CONTEXT.md) 为准，用户流程见 [GUIDE.md](GUIDE.md)。
 
 ## 一眼看懂系统
@@ -73,8 +73,8 @@ Applied 与 Verified 故意分离：后端确认设置成功不等于 Pinshift �
 
 `pinshift-start` 先检查 App 签名并按需续签，再在当前终端运行 `pinshift-controller link serve`。同一前台进程创建一个
 `SimulationController` 并交给 TLS session；正常 Ctrl-C 或时限结束先执行真实 Clear，失败时前台等待并重试；再次明确中断可强制退出。
-`pinshift-install` 卸载旧 authority 后先用已签名 candidate 执行一次真实 reset，成功后才删除旧 lifecycle
-文件并发布新二进制。
+`pinshift-install` 停止当前 checkout 的前台控制器，用已签名 candidate 执行真实 reset，确认成功后发布新二进制。
+安装器不再处理旧 LaunchAgent、Guardian 或 lifecycle 文件；`pinshift doctor` 和 `pinshift clear` 直接通过统一入口分发。
 
 `SimulationController` 是深模块边界：
 
@@ -119,6 +119,8 @@ Clear Now 不依赖历史 operation：每次都调用 backend。自动 timer 与
 到期流程：标记 `clearPending` → 调用 backend → 成功清空 `current`；失败保留原因，并在当前前台会话中有界退避重试。Mac 或设备不可达是显式失败，不是 UI 锁。
 
 ## 权威与持久化
+
+只读取当前持久格式：收藏版本 2 且坐标标记为 WGS84，选点版本 3。旧格式不转换，未知格式报错；没有旧收藏修复界面或 GPX 独立状态机。
 
 | 信息 | 权威来源 | 持久位置 |
 | --- | --- | --- |

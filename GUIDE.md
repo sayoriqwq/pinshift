@@ -1,4 +1,4 @@
-# Pinshift 使用与审计指南
+# Pinshift 1.1.0 使用与审计指南
 
 这份指南面向已经完成 [首次使用与配置](docs/getting-started.md) 的用户。Apple 账号、首次安装与续签排错见 [签名教程](docs/apple-signing.md)。
 
@@ -24,12 +24,11 @@ pinshift setup
 pinshift doctor
 ```
 
-🛠️ 安装稳定签名控制器、移除旧常驻项，并执行只读环境检查。
+🛠️ 更新稳定签名控制器，并执行只读环境检查。
 
-安装器只发布稳定签名的控制器，不会注册或启动 LaunchAgent。升级旧版本时，它会停止并删除
-`dev.sayori.pinshift.controller` 与旧 Cleanup Guardian 的精确 LaunchAgent 目标，并安全替换旧的前台
-Controller Link。删除旧 lifecycle 文件前，已签名 candidate 会执行一次真实 `reset`；如果设备不可达或
-Clear 失败，安装会明确失败且不会发布新二进制。Saved Locations、可信控制器身份和配对信任都会保留。
+安装器停止当前 checkout 的前台 Controller Link，用已签名 candidate 执行真实 `reset`，确认成功后发布新二进制。
+如果设备不可达或 Clear 失败，安装会明确失败。它不注册 LaunchAgent，也不处理已退役的 Guardian、旧常驻项或旧 lifecycle 文件。
+当前格式的 Saved Locations、可信控制器身份和配对信任保持可用。收藏版本 1、未确认坐标来源的收藏与选点版本 1/2 不受支持，不再自动备份转换或提供修复界面。
 
 如果 macOS 显示 Keychain 窗口，输入登录密码并选择 **始终允许**。安装器不会删除或替换既有 TLS
 身份；如果签名要求发生意外变化，它会在修改信任前停止。
@@ -167,14 +166,6 @@ Mac 睡眠期间不保证计时器执行；存活会话恢复运行后处理已�
 
 ## 审计
 
-确认旧常驻 authority 已移除：
-
-```fish
-launchctl print gui/(id -u)/dev.sayori.pinshift.controller
-```
-
-🔎 正常结果是找不到该服务；安装器不再注册 LaunchAgent。
-
 测试期间检查唯一的前台 Controller Link：
 
 ```fish
@@ -200,7 +191,7 @@ pinshift logs --copy-to .build/audit/(date +%Y%m%d-%H%M%S)
 | --- | --- |
 | `pinshift` / `pinshift start` | 检查签名、按需续签，再启动前台控制器；保持终端运行 |
 | `pinshift clear` | 紧急执行一次真实 clear，不启动常驻进程 |
-| `pinshift setup` | 首次安装或源码变化后更新稳定签名控制器，并移除旧常驻项 |
+| `pinshift setup` | 首次安装或源码变化后更新稳定签名控制器 |
 | `pinshift doctor` | 只读检查开发环境和控制器状态 |
 | `pinshift register-remote` | 为 iPhone 快捷指令注册固定准备入口，捕获本机设备和签名配置 |
 | `pinshift app` | 签名临近到期时续签并原位安装 App |
@@ -208,8 +199,7 @@ pinshift logs --copy-to .build/audit/(date +%Y%m%d-%H%M%S)
 | `pinshift app --launch-only` | 不续签，只补做启动验证 |
 | `pinshift logs --copy-to <目录>` | 导出 Mac 侧诊断包 |
 
-原来的 `pinshift-start`、`pinshift-reset`、`pinshift-install` 等脚本继续作为兼容实现保留；日常使用
-不再需要记住它们。`pinshift-controller` 是底层维护接口，不是普通测试入口。
+日常命令统一通过 `pinshift` 分发；`pinshift-start`、`pinshift-install` 是其内部实现。独立的 `pinshift-doctor` 和 `pinshift-reset` 包装脚本已删除。`pinshift-controller` 是底层维护接口，不是普通测试入口。
 
 ### App 内续签
 

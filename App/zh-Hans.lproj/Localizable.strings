@@ -7,40 +7,25 @@
 "About %@ m" = "约 %@ 米";
 "About %@ km" = "约 %@ 千米";
 "Test Diagnostics" = "测试诊断";
-"Local evidence only. Diagnostics never retries, clears, or changes simulation state." = "仅记录本地证据。诊断不会重试、清除或改变模拟状态。";
 "Record status" = "记录状态";
 "Enabled" = "已启用";
 "Approximate size" = "大致大小";
 "Events" = "事件数";
 "Exporting…" = "正在导出…";
-"Export Diagnostics" = "导出诊断记录";
 "Clear Diagnostics" = "清除诊断记录";
 "The diagnostic record could not be exported." = "无法导出诊断记录。";
 "The diagnostic record could not be cleared." = "无法清除诊断记录。";
 
 /* Mac controller */
-"Mac Controller" = "Mac 模拟控制器";
 "Local Network Permission" = "本地网络权限";
 "Controller Link" = "控制器连接";
-"Active Test Device / Xcode" = "活动测试设备 / Xcode";
 "Injection Backend" = "注入后端";
 "Applied Simulation" = "已应用模拟";
-"Verified Simulation" = "已验证模拟";
 "6-digit pairing code" = "6 位配对码";
-"Pair Controller" = "配对控制器";
 "Try Pairing Code Again" = "重新尝试配对码";
-"Local Network access is not yet confirmed. iOS decides when to show the prompt; discovery readiness confirms access without reading a private permission API." = "尚未确认本地网络访问权限。提示何时出现由 iOS 决定；发现服务就绪即可确认访问权限，无需读取私有权限 API。";
 "Allow Local Network access in Settings → Privacy & Security → Local Network, then retry." = "请前往“设置”→“隐私与安全性”→“本地网络”允许访问，然后重试。";
 "Open Local Network Settings" = "打开本地网络设置";
-"Retry Controller Discovery" = "重新发现控制器";
-"Refresh Injection Backend Status" = "刷新注入后端状态";
-"Searching for your Mac controller…" = "正在查找 Mac 模拟控制器…";
-"Controller found — enter the code shown on your Mac" = "已找到控制器 — 请输入 Mac 上显示的配对码";
-"Trusted controller connected" = "可信控制器已连接";
-"Controller disconnected" = "控制器连接已断开";
-"Controller identity changed — connection rejected" = "控制器身份已更改 — 已拒绝连接";
 "Pairing code was rejected" = "配对码被拒绝";
-"Controller unavailable" = "控制器不可用";
 "Local Network access is denied" = "本地网络访问被拒绝";
 "Not yet confirmed" = "尚未确认";
 "Allowed" = "已允许";
@@ -49,8 +34,6 @@
 "No Active Test Device — run doctor on the Mac" = "没有活动测试设备 — 请在 Mac 上运行 doctor";
 "Not ready — run doctor on the Mac" = "尚未就绪 — 请在 Mac 上运行 doctor";
 "Unavailable — run doctor on the Mac" = "不可用 — 请在 Mac 上运行 doctor";
-"Controller reported a workflow failure" = "控制器报告工作流失败";
-"Waiting for Controller Link" = "正在等待控制器连接";
 "devicectl ready" = "devicectl 已就绪";
 "Checking…" = "正在检查…";
 "Unavailable until connected" = "连接后方可使用";
@@ -59,9 +42,7 @@
 "Xcode device workflow is not ready" = "Xcode 设备工作流尚未就绪";
 "Injection Backend is unavailable" = "注入后端不可用";
 "Injection Backend timed out" = "注入后端超时";
-"Controller Link authorization failed" = "控制器连接授权失败";
 "The active simulation could not be cleared" = "无法清除当前活动模拟";
-"Controller response mismatch" = "控制器响应不匹配";
 
 /* 面向用户的简化 Mac 文案 */
 "Mac" = "Mac";
@@ -98,7 +79,6 @@
 "Selected Location" = "待应用位置";
 "Latitude (-90…90)" = "纬度 (-90…90)";
 "Longitude (-180…180)" = "经度 (-180…180)";
-"Save Selected Location" = "保存待应用位置";
 "Typing does not change the Selected Location until you use the button below." = "输入经纬度不会立即更改待应用位置；请点击下方按钮确认。";
 "Use Entered Coordinates" = "使用输入的坐标";
 "Choose on Map or Search" = "通过地图或搜索选择";
@@ -119,8 +99,6 @@
 "Saved Location Name" = "已保存地点名称";
 "Save" = "保存";
 "Cancel" = "取消";
-"Name the current Selected Location so you can choose it later." = "请为当前待应用位置命名，以便稍后选择。";
-"Renaming changes only the Saved Location name." = "重命名只会更改已保存地点的名称。";
 "Rename Saved Location" = "重命名已保存地点";
 "Delete Saved Location?" = "删除已保存地点？";
 "Delete" = "删除";
@@ -143,34 +121,21 @@
 "Saved Locations could not be saved. Your existing collection is unchanged." = "无法保存已保存地点；现有集合未更改。";
 "The Selected Location could not be restored." = "无法恢复待应用位置。";
 "The Selected Location could not be saved." = "无法保存待应用位置。";
-"Unknown until Controller Link reconnects" = "未知——等待控制器链路重新连接";
-"Acknowledged locally — awaiting reconciliation" = "本地已确认——等待与控制器对账";
 
 /* Static simulation */
-"Static Simulation" = "静态模拟";
-"Apply sends only the current Selected Location to your paired Mac controller. Applied confirms the backend; Verified additionally requires a fresh nearby observation in this app." = "“应用”只会把当前待应用位置发送给已配对的 Mac 模拟控制器。“已应用”表示注入后端已确认；“已验证”还要求本 App 获得一次新的邻近观测。";
-"Applying…" = "正在应用…";
-"Apply Selected Location" = "应用待应用位置";
-"Applied Simulation acknowledged" = "已应用模拟已确认";
-"Active Applied Request" = "当前已应用请求";
 "Save a Selected Location to begin." = "请先保存待应用位置。";
 "Selected — waiting to apply" = "已选择 — 等待应用";
-"Applying to the Injection Backend…" = "正在应用到注入后端…";
-"Applied Simulation — waiting for a fresh observation" = "已应用模拟 — 等待新的观测";
 "Applied, but not verified" = "已应用，但尚未验证";
-"Verified Simulation in Pinshift" = "已在 Pinshift 中验证模拟";
 "Elapsed" = "耗时";
 "Distance" = "距离";
 "Simulation request failed" = "模拟请求失败";
 "Request" = "请求";
-"Injection Backend cleared" = "注入后端已清除";
 "The simulation proxy is inactive. A fresh physical-location callback is separate and may not arrive immediately." = "模拟代理已停用。新的物理位置回调是独立事件，可能不会立即到达。";
 "Inactive" = "未激活";
 "Acknowledged" = "已确认";
 "Verified by a fresh app observation" = "已通过 App 的新观测验证";
 "Not verified" = "尚未验证";
 "The response did not match this request. Nothing was marked Applied; retry after checking the controller." = "响应与此请求不匹配。当前请求未标记为已应用；请检查控制器后重试。";
-"The trusted controller became unavailable. Retry discovery without changing the Selected Location." = "可信控制器已不可用。请重新发现控制器，不要更改待应用位置。";
 "The controller rejected the request (%@). Check the backend status and retry." = "控制器拒绝了请求（%@）。请检查注入后端状态后重试。";
 "The observation is older than the current request. Wait for a fresh location update." = "该观测早于当前请求。请等待新的位置更新。";
 "No matching observation arrived within 15 seconds (%@ s)." = "15 秒内未收到匹配的观测（%@ 秒）。";
@@ -200,39 +165,15 @@
 "Location authorization is in an unknown state." = "位置授权处于未知状态。";
 "Location is temporarily unavailable. Showing the last successful observation." = "位置暂时不可用，当前显示最近一次成功的观测。";
 
-/* GPX observation baseline */
-"GPX Observation Baseline" = "GPX 观测基线";
-"This button does not apply a location. Start the 15-second window, then choose a GPX location from Xcode." = "此按钮不会应用位置。请先启动 15 秒观测窗口，然后在 Xcode 中选择一个 GPX 位置。";
-"Start 15-second Observation Window" = "启动 15 秒观测窗口";
 "Requested" = "请求时间";
-"GPX baseline matched" = "GPX 基线已匹配";
-"Observation is not newer than this request" = "观测时间不晚于本次请求";
-"Observation arrived after 15 seconds (%@ s)" = "观测在 15 秒后到达（%@ 秒）";
-"Observation is %@ m away" = "观测相距 %@ 米";
-"No baseline result yet" = "尚无基线结果";
 "Scope" = "范围";
 "A match only proves that Pinshift observed the selected coordinate. It does not prove cross-app propagation." = "匹配结果只能证明 Pinshift 观测到了所选坐标，并不能证明跨 App 传播。";
 
 /* Location picker */
-"Choosing here only replaces the current Selected Location. It never applies a simulation until you use Apply Selected Location." = "在此选择只会替换当前待应用位置。只有点击“应用待应用位置”后才会应用模拟。";
-"Choose Location" = "选择位置";
 "Done" = "完成";
 "Selected" = "已选择";
-"Use Map Center as Selected Location" = "将地图中心设为待应用位置";
-"Use Map Center" = "使用地图中心";
-"Map Center Selected" = "地图中心已选中";
-"Map center" = "地图中心";
-"Displacement from opening location" = "相对打开时位置的位移";
-"Map visible range" = "地图可视范围";
-"Broad default view" = "广域默认视图";
-"Restore Opening Location" = "恢复打开时位置";
-"Opening location restored as the Selected Location." = "打开时位置已恢复为待应用位置。";
-"Map restored to the opening location." = "地图已恢复到打开时位置。";
-"Commits the map center without applying a simulation." = "提交地图中心，但不会应用模拟。";
-"Place Search" = "地点搜索";
 "Search for a place" = "搜索地点";
 "Search Places" = "搜索地点";
-"Enter a place name or address." = "请输入地点名称或地址。";
 "Searching…" = "正在搜索…";
 "No places found. Try a more specific query." = "未找到地点，请尝试更具体的关键词。";
 "Place search is unavailable. Check your network connection and try again; your previous selection is unchanged." = "地点搜索不可用。请检查网络连接后重试；之前的选择不会改变。";
@@ -240,46 +181,28 @@
 "Search Fixture" = "搜索测试地点";
 "Deterministic UI test result" = "确定性的 UI 测试结果";
 "%@ is now the Selected Location." = "%@ 已设为待应用位置。";
-"Map center is now the Selected Location." = "地图中心已设为待应用位置。";
 
 /* Temporary simulation */
 "Temporary Simulation" = "临时位置模拟";
-"The selected location applies for 3 minutes. Choose and apply another location at any time to replace it." = "待应用位置会生效 3 分钟。你可以随时选择并应用其他地点来替换它。";
 "Simulated Location" = "模拟位置";
-"Automatic clear at" = "自动解除时间";
 "Automatic clear in %@" = "%@ 后自动解除";
-"Automatic clear is due. Use Clear Now if the location remains active." = "已到自动解除时间。如果模拟位置仍然生效，请点“立即解除”。";
-"Clearing…" = "正在解除…";
 "Clear Now" = "立即解除";
-"Simulation active" = "位置模拟中";
 "Verified by a fresh observation in this app" = "已通过本 App 的新观测验证";
 "Applied; latest observation is not yet verified" = "已应用；最新观测尚未验证";
 "Applied; waiting for a fresh observation" = "已应用；正在等待新的观测";
 "Clearing simulated location…" = "正在解除模拟位置…";
 "Simulated Location cleared" = "已清除模拟位置";
 "Clear could not be confirmed" = "未能确认立即解除";
-"Keep the Mac session open and tap Clear Now again when the device is reachable." = "请保持 Mac 测试会话运行，等设备可连接后再次点“立即解除”。";
 "Automatic Clear" = "自动解除";
 "Every applied location clears automatically after 3 minutes." = "每个已应用地点都会在 3 分钟后自动解除。";
 "Apply outcome unknown; automatic clear remains scheduled" = "应用结果未知；自动解除仍按计划执行";
 "Clear failed; tap Clear Now to retry" = "解除失败；请点“立即解除”重试";
-"The trusted controller is unavailable. Reconnect and try again." = "可信控制器不可用。请重新连接后重试。";
-"The controller is connected to a different Active Test Device" = "控制器连接的是另一台活动测试设备";
-"Refresh Controller Status" = "刷新控制器状态";
 
 /* Pinshift 主页与设置 */
 "Settings" = "设置";
 "Appearance" = "外观";
 "Language" = "语言";
-"Active Simulation" = "当前模拟位置";
-"Choose a Location" = "选择地点";
-"Adjust Selected Location" = "调整待应用位置";
-"Choose a place on the map before starting a simulation." = "开始模拟前，请先在地图上选择地点。";
-"Controller, permissions, diagnostics, and saved locations" = "控制器、权限、诊断与已保存地点";
 "Ready" = "已就绪";
-"Finding Mac" = "正在查找 Mac";
-"Pairing Required" = "需要配对";
-"Mac Unavailable" = "Mac 不可用";
 "Selected via %@" = "选择方式：%@";
 "Coordinates" = "坐标位置";
 "Map Selection" = "地图选点";
@@ -287,7 +210,6 @@
 
 "More" = "更多";
 
-"Current location" = "当前地点";
 
 "Current status unconfirmed" = "当前状态未确认";
 
@@ -321,16 +243,9 @@
 
 "App renewal" = "App 续签";
 
-"Run pinshift on your Mac to check the app signature and renew it when needed. Follow the Mac instructions if Apple sign-in or iPhone confirmation is required." = "在 Mac 上运行 pinshift，检查 App 签名并按需续签。如果需要 Apple 登录或 iPhone 确认，请按 Mac 上的提示操作。";
 
-"Save this place" = "收藏此地";
 
 "Enter WGS84 coordinates" = "输入 WGS84 经纬度";
-"Choose this place again" = "请重新选择这个地点";
-"Choose a new point" = "重新选点";
-"This older bookmark needs a new map selection. Choose the place, then tap Update bookmark. Its name and original position will be kept." = "这个旧收藏需要重新选点。选好地点后，点击“更新收藏位置”。收藏名称和原始位置都会保留。";
-"Choose a new point for %@" = "为“%@”重新选点";
-"Update bookmark" = "更新收藏位置";
 "Open-source notices" = "开源声明";
 
 "Last confirmed installation expiry" = "最近一次确认安装的签名到期时间";

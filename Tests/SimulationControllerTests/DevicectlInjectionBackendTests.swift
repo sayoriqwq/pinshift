@@ -7,7 +7,7 @@ import XCTest
 
 final class DevicectlInjectionBackendTests: XCTestCase {
   func testReadinessUsesTheConfiguredDeviceAndXcodeToolchain() async {
-    let executor = RecordingDevicectlCommandExecutor(results: [.exited(0)])
+    let executor = RecordingDevicectlCommandExecutor(results: [.completed(.init(launchSucceeded: true, exitStatus: 0, duration: 0))])
     let backend = DevicectlInjectionBackend(
       device: "Active Test Device",
       developerDirectory: "/Applications/Xcode-beta.app/Contents/Developer",
@@ -35,7 +35,7 @@ final class DevicectlInjectionBackendTests: XCTestCase {
   }
 
   func testApplyBindsNegativeCoordinatesToTheirOptionsAndPreservesRequestIdentity() async throws {
-    let executor = RecordingDevicectlCommandExecutor(results: [.exited(0)])
+    let executor = RecordingDevicectlCommandExecutor(results: [.completed(.init(launchSucceeded: true, exitStatus: 0, duration: 0))])
     let backend = DevicectlInjectionBackend(
       device: "Developer iPhone; do-not-run",
       developerDirectory: "/Applications/Xcode-beta.app/Contents/Developer",
@@ -63,7 +63,7 @@ final class DevicectlInjectionBackendTests: XCTestCase {
     let successfulID = UUID(uuidString: "00000000-0000-0000-0000-000000000102")!
     let failedID = UUID(uuidString: "00000000-0000-0000-0000-000000000103")!
     let executor = RecordingDevicectlCommandExecutor(
-      results: [.exited(0), .exited(1)]
+      results: [.completed(.init(launchSucceeded: true, exitStatus: 0, duration: 0)), .completed(.init(launchSucceeded: true, exitStatus: 1, duration: 0))]
     )
     let backend = DevicectlInjectionBackend(
       device: "Developer iPhone",
@@ -96,7 +96,7 @@ final class DevicectlInjectionBackendTests: XCTestCase {
       developerDirectory: "/Applications/Xcode-beta.app/Contents/Developer",
       executor: unusedExecutor
     )
-    let failedExecutor = RecordingDevicectlCommandExecutor(results: [.failedToLaunch])
+    let failedExecutor = RecordingDevicectlCommandExecutor(results: [.launchFailed(.init(launchSucceeded: false, exitStatus: nil, duration: 0))])
     let failedLaunch = DevicectlInjectionBackend(
       device: "Developer iPhone",
       developerDirectory: "/Applications/Xcode-beta.app/Contents/Developer",
@@ -362,7 +362,7 @@ final class DevicectlInjectionBackendTests: XCTestCase {
       side: .macController,
       fileURL: URL(fileURLWithPath: "/dev/null/diagnostics.jsonl")
     )
-    let executor = RecordingDevicectlCommandExecutor(results: [.exited(0)])
+    let executor = RecordingDevicectlCommandExecutor(results: [.completed(.init(launchSucceeded: true, exitStatus: 0, duration: 0))])
     let backend = DevicectlInjectionBackend(
       device: "Active Test Device",
       executor: executor,

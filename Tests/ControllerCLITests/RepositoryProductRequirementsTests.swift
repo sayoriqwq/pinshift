@@ -9,32 +9,6 @@ final class RepositoryProductRequirementsTests: XCTestCase {
       .deletingLastPathComponent()
   }
 
-  func testSingleDailyEntrypointDispatchesToTheExistingHelpers() throws {
-    let helperURL = repositoryRoot.appending(path: "bin/pinshift")
-    XCTAssertTrue(FileManager.default.isExecutableFile(atPath: helperURL.path))
-    let contents = try String(contentsOf: helperURL, encoding: .utf8)
-
-    for requiredText in [
-      "case start",
-      "pinshift-start",
-      "case setup install",
-      "pinshift-install",
-      "case clear reset",
-      "pinshift-reset",
-      "case doctor check",
-      "pinshift-doctor",
-      "case app resign-app",
-      "pinshift-resign-app",
-      "case logs diagnostics",
-      "pinshift-diagnostics",
-    ] {
-      XCTAssertTrue(contents.contains(requiredText), requiredText)
-    }
-    XCTAssertTrue(contents.contains("set --local command start"))
-    XCTAssertFalse(contents.contains("launchctl"))
-    XCTAssertFalse(contents.contains("pinshift-controller link serve"))
-  }
-
   func testSingleDailyEntrypointHelpIsShortAndSideEffectFree() throws {
     let process = Process()
     let output = Pipe()
@@ -57,44 +31,6 @@ final class RepositoryProductRequirementsTests: XCTestCase {
     XCTAssertFalse(help.contains("--device"))
     XCTAssertFalse(help.contains("--developer-directory"))
     XCTAssertFalse(help.contains("link serve"))
-  }
-
-  func testDailyHelpersUseOnlyTheInstalledController() throws {
-    for helper in ["pinshift-start", "pinshift-doctor", "pinshift-reset"] {
-      let contents = try String(
-        contentsOf: repositoryRoot.appending(path: "bin/\(helper)"),
-        encoding: .utf8
-      )
-      XCTAssertFalse(contents.contains("swift run"), "\(helper) must not compile on daily use")
-      XCTAssertTrue(
-        contents.contains("pinshift_controller_executable"),
-        "\(helper) must resolve the verified installed controller"
-      )
-    }
-  }
-
-  func testDailyStartRunsTheInstalledControllerInTheForeground() throws {
-    let contents = try String(
-      contentsOf: repositoryRoot.appending(path: "bin/pinshift-start"),
-      encoding: .utf8
-    )
-
-    XCTAssertTrue(contents.contains("exec $controller link serve"))
-    XCTAssertTrue(contents.contains("Keep this terminal open"))
-    XCTAssertFalse(contents.contains("launchctl"))
-    XCTAssertFalse(contents.contains("pairing_code_file"))
-    XCTAssertFalse(contents.contains("background controller"))
-  }
-
-  func testResetDirectlyExecutesTheInstalledControllerWithoutLaunchd() throws {
-    let contents = try String(
-      contentsOf: repositoryRoot.appending(path: "bin/pinshift-reset"),
-      encoding: .utf8
-    )
-
-    XCTAssertTrue(contents.contains("exec $controller reset"))
-    XCTAssertFalse(contents.contains("launchctl"))
-    XCTAssertFalse(contents.contains("authority_plist"))
   }
 
   func testAppCopyDoesNotExposeTheInjectionBackendImplementation() throws {
@@ -180,42 +116,6 @@ final class RepositoryProductRequirementsTests: XCTestCase {
     XCTAssertTrue(contents.contains("codesign --verify"))
   }
 
-  func testInstallRemovesPersistentAuthoritiesWithoutRegisteringOne() throws {
-    let contents = try String(
-      contentsOf: repositoryRoot.appending(path: "bin/pinshift-install"),
-      encoding: .utf8
-    )
-
-    XCTAssertFalse(contents.contains("launchctl bootstrap"))
-    XCTAssertFalse(contents.contains("launchctl kickstart"))
-    let authorityBootout = try XCTUnwrap(
-      contents.range(of: "launchctl bootout gui/$user_id/$authority_label")
-    )
-    let migrationClear = try XCTUnwrap(contents.range(of: "\"$candidate\" reset"))
-    let lifecycleRemoval = try XCTUnwrap(
-      contents.range(of: "command rm -f -- $legacy_lifecycle_file")
-    )
-    let executablePublish = try XCTUnwrap(contents.range(of: "cp $candidate $executable"))
-    XCTAssertLessThan(authorityBootout.lowerBound, migrationClear.lowerBound)
-    XCTAssertLessThan(migrationClear.lowerBound, lifecycleRemoval.lowerBound)
-    XCTAssertLessThan(lifecycleRemoval.lowerBound, executablePublish.lowerBound)
-    XCTAssertLessThan(authorityBootout.lowerBound, executablePublish.lowerBound)
-    XCTAssertTrue(contents.contains("--device \"$PINSHIFT_DEVICE\""))
-    XCTAssertTrue(contents.contains("--developer-directory \"$PINSHIFT_DEVELOPER_DIR\""))
-    XCTAssertTrue(contents.contains("command rm -f -- $authority_plist"))
-    XCTAssertTrue(contents.contains("legacy_guardian_label"))
-    XCTAssertTrue(contents.contains("command rm -f -- $legacy_guardian_plist"))
-    XCTAssertTrue(contents.contains("command rm -f -- $legacy_lifecycle_file"))
-    XCTAssertTrue(contents.contains("command rm -f -- $legacy_pairing_code_file"))
-    XCTAssertFalse(
-      FileManager.default.fileExists(
-        atPath: repositoryRoot.appending(
-          path: "Support/dev.sayori.pinshift.controller.plist"
-        ).path
-      )
-    )
-  }
-
   func testInstallStopsOnlyTheExactSupersededForegroundController() throws {
     let contents = try String(
       contentsOf: repositoryRoot.appending(path: "bin/pinshift-install"),
@@ -264,48 +164,6 @@ final class RepositoryProductRequirementsTests: XCTestCase {
     XCTAssertLessThan(createRoot.lowerBound, createStaging.lowerBound)
   }
 
-  func testAppResigningWorkflowValidatesBeforeUpdatingTheExistingApp() throws {
-    let helperURL = repositoryRoot.appending(path: "bin/pinshift-resign-app")
-    XCTAssertTrue(
-      FileManager.default.isExecutableFile(atPath: helperURL.path),
-      "The repository must provide an executable app renewal workflow"
-    )
-
-    let contents = try String(contentsOf: helperURL, encoding: .utf8)
-    let signingHelpers = try String(
-      contentsOf: repositoryRoot.appending(path: "bin/_pinshift-app-signing.fish"),
-      encoding: .utf8
-    )
-
-    XCTAssertTrue(contents.contains("-allowProvisioningUpdates"))
-    XCTAssertTrue(contents.contains("embedded.mobileprovision"))
-    XCTAssertTrue(contents.contains("codesign --verify --deep --strict"))
-    XCTAssertTrue(contents.contains("dev.sayori.pinshift"))
-    XCTAssertTrue(contents.contains("devicectl device install app"))
-    XCTAssertFalse(contents.contains("device uninstall"))
-    XCTAssertTrue(signingHelpers.contains("ApplicationIdentifierPrefix.0"))
-    XCTAssertTrue(signingHelpers.contains("$prefix.$bundle_identifier"))
-
-    let verification = try XCTUnwrap(contents.range(of: "codesign --verify --deep --strict"))
-    let installation = try XCTUnwrap(contents.range(of: "devicectl device install app"))
-    XCTAssertLessThan(verification.lowerBound, installation.lowerBound)
-  }
-
-  func testInstalledControllerResolverRejectsEveryUnsafeInstallationState() throws {
-    let contents = try String(
-      contentsOf: repositoryRoot.appending(path: "bin/_pinshift-common.fish"),
-      encoding: .utf8
-    )
-
-    XCTAssertTrue(contents.contains("not test -x $executable"), "missing executable")
-    XCTAssertTrue(contents.contains("codesign --verify --strict $executable"), "invalid signature")
-    XCTAssertTrue(
-      contents.contains("The controller source changed after installation"), "stale source")
-    XCTAssertTrue(
-      contents.contains("$actual_requirement\" != \"$expected_requirement"), "requirement rotation")
-    XCTAssertTrue(contents.contains("required fixed identifier"), "fixed identifier")
-  }
-
   func testRequirementRotationIsRejectedBeforeKeychainAuthorization() throws {
     let contents = try String(
       contentsOf: repositoryRoot.appending(path: "bin/pinshift-install"),
@@ -318,7 +176,7 @@ final class RepositoryProductRequirementsTests: XCTestCase {
     XCTAssertLessThan(requirementCheck.lowerBound, authorization.lowerBound)
   }
 
-  func testAuthorizationMigrationIncludesTheExistingServerAuthorizationStoreWithoutReplacingIt()
+  func testAuthorizationIncludesTheServerAuthorizationStoreWithoutReplacingIt()
     throws
   {
     let contents = try String(

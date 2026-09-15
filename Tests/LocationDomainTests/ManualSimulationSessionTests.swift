@@ -82,7 +82,7 @@ final class ManualSimulationSessionTests: XCTestCase {
     }
   }
 
-  func testDefaultStoreMigratesTheExistingAppFileInPlace() {
+  func testDefaultStoreUsesTheAppSelectionFile() {
     let url = FileManualSimulationSessionStore.defaultFileURL(environment: [:])
 
     XCTAssertTrue(url.path.hasSuffix("/Pinshift/AppLifecycle/session.json"))
@@ -338,39 +338,4 @@ final class ManualSimulationSessionTests: XCTestCase {
     XCTAssertEqual(session.clearStatus, .clearing(requestID: clear.requestID))
   }
 
-  func testLegacyControlAndAmbiguousDraftAreDiscardedWithRecoverableBackup() throws {
-    let directory = FileManager.default.temporaryDirectory
-      .appendingPathComponent("pinshift-app-migration-\(UUID().uuidString)")
-    defer { try? FileManager.default.removeItem(at: directory) }
-    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-    let file = directory.appendingPathComponent("session.json")
-    let legacy = """
-      {
-        "schemaVersion": 1,
-        "session": {
-          "selected": {"latitude":31.2304,"longitude":121.4737},
-          "pendingStopIntent": {
-            "requestID":"00000000-0000-0000-0000-000000000001",
-            "generationID":"00000000-0000-0000-0000-000000000002",
-            "requestedAt":1000
-          },
-          "cleanupStatus":{"restoreRequested":{"requestID":"00000000-0000-0000-0000-000000000001"}}
-        }
-      }
-      """
-    try Data(legacy.utf8).write(to: file)
-
-    let restored = try XCTUnwrap(FileManualSimulationSessionStore(fileURL: file).load())
-    XCTAssertNil(restored.selected)
-    XCTAssertEqual(
-      try Data(contentsOf: file.appendingPathExtension("before-coordinate-migration")),
-      Data(legacy.utf8))
-    XCTAssertNil(restored.activeAppliedRequest)
-    XCTAssertEqual(restored.clearStatus, .idle)
-    let migrated = try XCTUnwrap(
-      JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any]
-    )
-    XCTAssertEqual(migrated["schemaVersion"] as? Int, 3)
-    XCTAssertNil(migrated["session"])
-  }
 }

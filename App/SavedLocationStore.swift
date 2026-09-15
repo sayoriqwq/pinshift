@@ -30,18 +30,12 @@ final class FileSavedLocationStore: SavedLocationStore, ResettableSavedLocationS
 
     let data = try Data(contentsOf: fileURL)
     let collection = try JSONDecoder().decode(SavedLocationCollection.self, from: data)
-    if collection.locations.contains(where: { $0.coordinateSystem == .legacyUnknown }) {
-      let backup = fileURL.appendingPathExtension("before-coordinate-migration")
-      if !fileManager.fileExists(atPath: backup.path) {
-        try fileManager.copyItem(at: fileURL, to: backup)
-      }
-    }
     return collection
   }
 
   func save(_ collection: SavedLocationCollection) throws {
     // A failed load must never allow the view model's empty fallback to replace
-    // unreadable, newer-version, or unbacked-up legacy data.
+    // unreadable or unsupported-version data.
     if fileManager.fileExists(atPath: fileURL.path) { _ = try load() }
     #if DEBUG
       saveAttemptCount += 1
@@ -72,13 +66,6 @@ final class FileSavedLocationStore: SavedLocationStore, ResettableSavedLocationS
     if fileManager.fileExists(atPath: fileURL.path) {
       try fileManager.removeItem(at: fileURL)
     }
-    #if DEBUG
-      if let legacy = ProcessInfo.processInfo.environment["PINSHIFT_E2E_LEGACY_SAVED_FIXTURE"] {
-        try fileManager.createDirectory(
-          at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try Data(legacy.utf8).write(to: fileURL, options: .atomic)
-      }
-    #endif
   }
 
   private static var defaultFileURL: URL {

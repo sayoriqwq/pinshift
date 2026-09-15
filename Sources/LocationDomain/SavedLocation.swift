@@ -13,17 +13,11 @@ public struct SavedLocation: Codable, Equatable, Identifiable, Sendable {
   public let name: String
   public let coordinate: SelectedLocation
   public let coordinateSystem: SavedCoordinateSystem
-  /// Original legacy numbers survive every repair, including a mistaken repair.
-  public let originalCoordinate: SelectedLocation?
-  public let originalMapBoundary: MapCoordinateBoundary?
 
   public init(
     id: UUID = UUID(),
     name: String,
-    coordinate: SelectedLocation,
-    coordinateSystem: SavedCoordinateSystem = .wgs84,
-    originalCoordinate: SelectedLocation? = nil,
-    originalMapBoundary: MapCoordinateBoundary? = nil
+    coordinate: SelectedLocation
   ) throws {
     let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmedName.isEmpty else {
@@ -33,9 +27,7 @@ public struct SavedLocation: Codable, Equatable, Identifiable, Sendable {
     self.id = id
     self.name = trimmedName
     self.coordinate = coordinate
-    self.coordinateSystem = coordinateSystem
-    self.originalCoordinate = originalCoordinate
-    self.originalMapBoundary = originalMapBoundary
+    self.coordinateSystem = .wgs84
   }
 
   private enum CodingKeys: String, CodingKey {
@@ -43,39 +35,22 @@ public struct SavedLocation: Codable, Equatable, Identifiable, Sendable {
     case name
     case coordinate
     case coordinateSystem
-    case originalCoordinate
-    case originalMapBoundary
   }
 
   public init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
+    _ = try container.decode(SavedCoordinateSystem.self, forKey: .coordinateSystem)
     self = try SavedLocation(
       id: container.decode(UUID.self, forKey: .id),
       name: container.decode(String.self, forKey: .name),
-      coordinate: container.decode(SelectedLocation.self, forKey: .coordinate),
-      coordinateSystem: container.decodeIfPresent(
-        SavedCoordinateSystem.self, forKey: .coordinateSystem) ?? .legacyUnknown,
-      originalCoordinate: container.decodeIfPresent(
-        SelectedLocation.self, forKey: .originalCoordinate),
-      originalMapBoundary: container.decodeIfPresent(
-        MapCoordinateBoundary.self, forKey: .originalMapBoundary)
+      coordinate: container.decode(SelectedLocation.self, forKey: .coordinate)
     )
   }
 
-  public func encode(to encoder: Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(id, forKey: .id)
-    try container.encode(name, forKey: .name)
-    try container.encode(coordinate, forKey: .coordinate)
-    try container.encode(coordinateSystem, forKey: .coordinateSystem)
-    try container.encodeIfPresent(originalCoordinate, forKey: .originalCoordinate)
-    try container.encodeIfPresent(originalMapBoundary, forKey: .originalMapBoundary)
-  }
 }
 
 public enum SavedCoordinateSystem: String, Codable, Sendable {
   case wgs84
-  case legacyUnknown
 }
 
 public struct SavedLocationCollection: Codable, Equatable, Sendable {
@@ -107,17 +82,6 @@ public struct SavedLocationCollection: Codable, Equatable, Sendable {
   public func adding(
     _ location: SavedLocation
   ) throws -> SavedLocationCollection {
-    guard !locations.contains(where: { $0.id == location.id }) else {
-      throw SavedLocationError.duplicateIdentity
-    }
-    guard
-      !locations.contains(where: {
-        Self.normalizedName($0.name) == Self.normalizedName(location.name)
-      })
-    else {
-      throw SavedLocationError.duplicateName
-    }
-
     return try SavedLocationCollection(locations: locations + [location])
   }
 
@@ -133,10 +97,7 @@ public struct SavedLocationCollection: Codable, Equatable, Sendable {
     let renamed = try SavedLocation(
       id: current.id,
       name: name,
-      coordinate: current.coordinate,
-      coordinateSystem: current.coordinateSystem,
-      originalCoordinate: current.originalCoordinate,
-      originalMapBoundary: current.originalMapBoundary
+      coordinate: current.coordinate
     )
     var updatedLocations = locations
     updatedLocations[index] = renamed
@@ -151,21 +112,6 @@ public struct SavedLocationCollection: Codable, Equatable, Sendable {
     return try SavedLocationCollection(
       locations: locations.filter { $0.id != id }
     )
-  }
-
-  public func updatingCoordinate(id: UUID, coordinate: SelectedLocation) throws
-    -> SavedLocationCollection
-  {
-    guard let index = locations.firstIndex(where: { $0.id == id }) else {
-      throw SavedLocationError.notFound
-    }
-    let current = locations[index]
-    var updated = locations
-    updated[index] = try SavedLocation(
-      id: current.id, name: current.name, coordinate: coordinate,
-      originalCoordinate: current.originalCoordinate ?? current.coordinate
-    )
-    return try SavedLocationCollection(locations: updated)
   }
 
   private static func normalizedName(_ name: String) -> String {
@@ -193,7 +139,7 @@ public struct SavedLocationCollection: Codable, Equatable, Sendable {
   public init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     let version = try container.decode(Int.self, forKey: .version)
-    guard version == 1 || version == Self.currentVersion else {
+    guard version == Self.currentVersion else {
       throw SavedLocationError.unsupportedVersion(version)
     }
 
@@ -257,9 +203,4 @@ public struct SavedLocationRepository {
     collection = updatedCollection
   }
 
-  public mutating func updateCoordinate(id: UUID, coordinate: SelectedLocation) throws {
-    let updated = try collection.updatingCoordinate(id: id, coordinate: coordinate)
-    try store.save(updated)
-    collection = updated
-  }
 }

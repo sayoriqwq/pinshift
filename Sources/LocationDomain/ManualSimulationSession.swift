@@ -358,8 +358,6 @@ public final class FileManualSimulationSessionStore: @unchecked Sendable {
     return
       applicationSupport
       .appendingPathComponent("Pinshift", isDirectory: true)
-      // Keep the existing production path so upgrade can discard the old
-      // control state while preserving its Selected Location in place.
       .appendingPathComponent("AppLifecycle", isDirectory: true)
       .appendingPathComponent("session.json", isDirectory: false)
   }
@@ -368,26 +366,11 @@ public final class FileManualSimulationSessionStore: @unchecked Sendable {
     try lock.withLock {
       guard fileManager.fileExists(atPath: fileURL.path) else { return nil }
       let data = try Data(contentsOf: fileURL)
-      if let current = try? Self.decoder().decode(PersistedSelection.self, from: data),
-        current.schemaVersion != 1
-      {
-        if current.schemaVersion == PersistedSelection.currentSchemaVersion {
-          return ManualSimulationSession(selected: current.selected)
-        }
-        guard current.schemaVersion == 2 else { throw CocoaError(.fileReadCorruptFile) }
-      } else {
-        let legacy = try Self.decoder().decode(LegacyPersistedSession.self, from: data)
-        guard legacy.schemaVersion == 1 else { throw CocoaError(.fileReadCorruptFile) }
+      let current = try JSONDecoder().decode(PersistedSelection.self, from: data)
+      guard current.schemaVersion == PersistedSelection.currentSchemaVersion else {
+        throw CocoaError(.fileReadCorruptFile)
       }
-      // Pre-WGS84 drafts carry no provenance. Keep the original file recoverable,
-      // but require a fresh selection rather than silently labelling an old map value WGS84.
-      let backup = fileURL.appendingPathExtension("before-coordinate-migration")
-      if !fileManager.fileExists(atPath: backup.path) {
-        try fileManager.copyItem(at: fileURL, to: backup)
-      }
-      let migrated = ManualSimulationSession()
-      try writeSelection(migrated)
-      return migrated
+      return ManualSimulationSession(selected: current.selected)
     }
   }
 
@@ -403,7 +386,7 @@ public final class FileManualSimulationSessionStore: @unchecked Sendable {
       withIntermediateDirectories: true,
       attributes: [.posixPermissions: 0o700]
     )
-    let data = try Self.encoder().encode(PersistedSelection(selected: session.selected))
+    let data = try JSONEncoder().encode(PersistedSelection(selected: session.selected))
     try data.write(to: fileURL, options: [.atomic, .completeFileProtectionUnlessOpen])
     try fileManager.setAttributes(
       [.posixPermissions: 0o600],
@@ -422,25 +405,4 @@ public final class FileManualSimulationSessionStore: @unchecked Sendable {
     }
   }
 
-  private struct LegacyPersistedSession: Decodable {
-    let schemaVersion: Int
-    let session: LegacySession
-  }
-
-  private struct LegacySession: Decodable {
-    let selected: SelectedLocation?
-  }
-
-  private static func encoder() -> JSONEncoder {
-    let encoder = JSONEncoder()
-    encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
-    encoder.dateEncodingStrategy = .secondsSince1970
-    return encoder
-  }
-
-  private static func decoder() -> JSONDecoder {
-    let decoder = JSONDecoder()
-    decoder.dateDecodingStrategy = .secondsSince1970
-    return decoder
-  }
 }

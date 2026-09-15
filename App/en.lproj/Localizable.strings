@@ -3,13 +3,11 @@
  localization so locale-specific lookups never fall through to zh-Hans.
  */
 "Test Diagnostics" = "Test Diagnostics";
-"Local evidence only. Diagnostics never retries, clears, or changes simulation state." = "Local evidence only. Diagnostics never retries, clears, or changes simulation state.";
 "Record status" = "Record status";
 "Enabled" = "Enabled";
 "Approximate size" = "Approximate size";
 "Events" = "Events";
 "Exporting…" = "Exporting…";
-"Export Diagnostics" = "Export Diagnostics";
 "Clear Diagnostics" = "Clear Diagnostics";
 "The diagnostic record could not be exported." = "The diagnostic record could not be exported.";
 "The diagnostic record could not be cleared." = "The diagnostic record could not be cleared.";
@@ -20,8 +18,6 @@
 "Saved Location Name" = "Saved Location Name";
 "Save" = "Save";
 "Cancel" = "Cancel";
-"Name the current Selected Location so you can choose it later." = "Name the current Selected Location so you can choose it later.";
-"Renaming changes only the Saved Location name." = "Renaming changes only the Saved Location name.";
 "Rename Saved Location" = "Rename Saved Location";
 "Delete Saved Location?" = "Delete Saved Location?";
 "Delete" = "Delete";
@@ -45,8 +41,6 @@
 "Saved Locations could not be saved. Your existing collection is unchanged." = "Saved Locations could not be saved. Your existing collection is unchanged.";
 "The Selected Location could not be restored." = "The Selected Location could not be restored.";
 "The Selected Location could not be saved." = "The Selected Location could not be saved.";
-"Unknown until Controller Link reconnects" = "Unknown until Controller Link reconnects";
-"Acknowledged locally — awaiting reconciliation" = "Acknowledged locally — awaiting reconciliation";
 
 /* Selected location */
 "Typing does not change the Selected Location until you use the button below." = "Typing does not change the Selected Location until you use the button below.";
@@ -55,40 +49,22 @@
 "%@ km" = "%@ km";
 "About %@ m" = "About %@ m";
 "About %@ km" = "About %@ km";
-"Displacement from opening location" = "Displacement from opening location";
-"Map visible range" = "Map visible range";
-"Broad default view" = "Broad default view";
-"Restore Opening Location" = "Restore Opening Location";
-"Opening location restored as the Selected Location." = "Opening location restored as the Selected Location.";
-"Map restored to the opening location." = "Map restored to the opening location.";
-"Commits the map center without applying a simulation." = "Commits the map center without applying a simulation.";
-"Use Map Center" = "Use Map Center";
-"Map Center Selected" = "Map Center Selected";
 
 /* Temporary simulation */
 "Temporary Simulation" = "Temporary Simulation";
-"The selected location applies for 3 minutes. Choose and apply another location at any time to replace it." = "The selected location applies for 3 minutes. Choose and apply another location at any time to replace it.";
 "Simulated Location" = "Simulated Location";
-"Automatic clear at" = "Automatic clear at";
 "Automatic clear in %@" = "Automatic clear in %@";
-"Automatic clear is due. Use Clear Now if the location remains active." = "Automatic clear is due. Use Clear Now if the location remains active.";
-"Clearing…" = "Clearing…";
 "Clear Now" = "Clear Now";
-"Simulation active" = "Simulation active";
 "Verified by a fresh observation in this app" = "Verified by a fresh observation in this app";
 "Applied; latest observation is not yet verified" = "Applied; latest observation is not yet verified";
 "Applied; waiting for a fresh observation" = "Applied; waiting for a fresh observation";
 "Clearing simulated location…" = "Clearing simulated location…";
 "Simulated Location cleared" = "Simulated Location cleared";
 "Clear could not be confirmed" = "Clear could not be confirmed";
-"Keep the Mac session open and tap Clear Now again when the device is reachable." = "Keep the Mac session open and tap Clear Now again when the device is reachable.";
 "Automatic Clear" = "Automatic Clear";
 "Every applied location clears automatically after 3 minutes." = "Every applied location clears automatically after 3 minutes.";
 "Apply outcome unknown; automatic clear remains scheduled" = "Apply outcome unknown; automatic clear remains scheduled";
 "Clear failed; tap Clear Now to retry" = "Clear failed; tap Clear Now to retry";
-"The trusted controller is unavailable. Reconnect and try again." = "The trusted controller is unavailable. Reconnect and try again.";
-"The controller is connected to a different Active Test Device" = "The controller is connected to a different Active Test Device";
-"Refresh Controller Status" = "Refresh Controller Status";
 
 /* Simple Mac-facing product language */
 "Mac" = "Mac";
@@ -125,15 +101,7 @@
 "Settings" = "Settings";
 "Appearance" = "Appearance";
 "Language" = "Language";
-"Active Simulation" = "Active Simulation";
-"Choose a Location" = "Choose a Location";
-"Adjust Selected Location" = "Adjust Selected Location";
-"Choose a place on the map before starting a simulation." = "Choose a place on the map before starting a simulation.";
-"Controller, permissions, diagnostics, and saved locations" = "Controller, permissions, diagnostics, and saved locations";
 "Ready" = "Ready";
-"Finding Mac" = "Finding Mac";
-"Pairing Required" = "Pairing Required";
-"Mac Unavailable" = "Mac Unavailable";
 "Selected via %@" = "Selected via %@";
 "Coordinates" = "Coordinates";
 "Map Selection" = "Map Selection";
@@ -141,7 +109,6 @@
 
 "More" = "More";
 
-"Current location" = "Current location";
 
 "Current status unconfirmed" = "Current status unconfirmed";
 
@@ -175,16 +142,9 @@
 
 "App renewal" = "App renewal";
 
-"Run pinshift on your Mac to check the app signature and renew it when needed. Follow the Mac instructions if Apple sign-in or iPhone confirmation is required." = "Run pinshift on your Mac to check the app signature and renew it when needed. Follow the Mac instructions if Apple sign-in or iPhone confirmation is required.";
 
-"Save this place" = "Save this place";
 
 "Enter WGS84 coordinates" = "Enter WGS84 coordinates";
-"Choose this place again" = "Choose this place again";
-"Choose a new point" = "Choose a new point";
-"This older bookmark needs a new map selection. Choose the place, then tap Update bookmark. Its name and original position will be kept." = "This older bookmark needs a new map selection. Choose the place, then tap Update bookmark. Its name and original position will be kept.";
-"Choose a new point for %@" = "Choose a new point for %@";
-"Update bookmark" = "Update bookmark";
 "Open-source notices" = "Open-source notices";
 
 "Last confirmed installation expiry" = "Last confirmed installation expiry";

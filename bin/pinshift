@@ -43,10 +43,22 @@ switch $command
         exec $script_dir/pinshift-start $arguments
     case setup install
         exec $script_dir/pinshift-install $arguments
-    case clear reset
-        exec $script_dir/pinshift-reset $arguments
-    case doctor check
-        exec $script_dir/pinshift-doctor $arguments
+    case clear reset doctor check
+        if test (count $arguments) -gt 0
+            echo "pinshift $command does not accept additional arguments." >&2
+            exit 2
+        end
+        source $script_dir/_pinshift-common.fish
+        or exit 1
+        pinshift_prepare_environment
+        or exit $status
+        set --local controller (pinshift_controller_executable)
+        or exit $status
+        set --local action doctor
+        if contains -- $command clear reset
+            set action reset
+        end
+        exec $controller $action
     case app resign-app
         exec $script_dir/pinshift-resign-app $arguments
     case logs diagnostics

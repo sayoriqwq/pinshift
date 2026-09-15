@@ -4,7 +4,6 @@ import Foundation
 final class BaselineViewModel: ObservableObject {
   @Published var latitudeText = ""
   @Published var longitudeText = ""
-  @Published private(set) var session = GPXBaselineSession()
   @Published private(set) var manualSession = ManualSimulationSession()
   @Published private(set) var selection = LocationSelectionState()
   @Published private(set) var inputError: String?
@@ -17,7 +16,6 @@ final class BaselineViewModel: ObservableObject {
   private let diagnostics: SimulationDiagnosticPipeline?
   private let manualSessionStore: FileManualSimulationSessionStore
   private var savedLocationRepository: SavedLocationRepository
-  private var expirationTask: Task<Void, Never>?
   private var manualExpirationTask: Task<Void, Never>?
 
   init(
@@ -82,7 +80,7 @@ final class BaselineViewModel: ObservableObject {
         latitude: latitudeText,
         longitude: longitudeText
       )
-      _ = select(selection, source: .manual)
+      select(selection, source: .manual)
     } catch {
       inputError = error.localizedDescription
       record(
@@ -138,20 +136,6 @@ final class BaselineViewModel: ObservableObject {
     }
   }
 
-  func updateSavedLocation(id: UUID, coordinate: SelectedLocation) -> Bool {
-    do {
-      try savedLocationRepository.updateCoordinate(id: id, coordinate: coordinate)
-      savedLocations = savedLocationRepository.collection
-      clearSavedLocationError()
-      return true
-    } catch {
-      savedLocationError =
-        "Saved Locations could not be saved. Your existing collection is unchanged."
-      savedLocationPersistenceError = true
-      return false
-    }
-  }
-
   func deleteSavedLocation(id: UUID) {
     do {
       try savedLocationRepository.delete(id: id)
@@ -168,19 +152,16 @@ final class BaselineViewModel: ObservableObject {
     }
   }
 
-  @discardableResult
   func select(
     _ location: SelectedLocation,
     source: LocationSelectionSource
-  ) -> Bool {
+  ) {
     selection.select(location, source: source)
-    session.select(location)
     manualSession.select(location)
     inputError = nil
     persistManualSession()
     latitudeText = String(location.latitude)
     longitudeText = String(location.longitude)
-    expirationTask?.cancel()
     record(
       kind: "app.selection.replaced",
       fields: [
@@ -189,41 +170,10 @@ final class BaselineViewModel: ObservableObject {
         "longitude": .number(location.longitude),
       ]
     )
-    return true
-  }
 
-  func beginObservationWindow(at date: Date = Date()) {
-    do {
-      try session.beginObservationWindow(at: date)
-      inputError = nil
-      record(
-        kind: "app.observation-window.started",
-        fields: ["requestedAt": .date(date)]
-      )
-      expirationTask?.cancel()
-      expirationTask = Task { [weak self] in
-        try? await Task.sleep(for: .milliseconds(15_001))
-        guard !Task.isCancelled else {
-          return
-        }
-        self?.session.expireObservationWindow(
-          at: date.addingTimeInterval(15.001)
-        )
-        if case .timedOut = self?.session.match {
-          self?.record(
-            kind: "app.observation-window.timed-out",
-            fields: ["requestedAt": .date(date)]
-          )
-        }
-      }
-    } catch {
-      inputError = "Save a valid Selected Location first."
-      record(kind: "app.observation-window.rejected")
-    }
   }
 
   func record(_ observation: LocationObservation) {
-    session.record(observation)
     manualSession.record(observation)
     var fields: SimulationDiagnosticFields = [
       "latitude": .number(observation.coordinate.latitude),

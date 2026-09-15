@@ -42,13 +42,9 @@ public struct DevicectlCommandExecutionDetails: Equatable, Sendable {
 }
 
 public enum DevicectlCommandExecutionResult: Equatable, Sendable {
-  /// Legacy fake-executor result retained for the existing stable seam.
-  case exited(Int32)
   case completed(DevicectlCommandExecutionDetails)
   case timedOut(DevicectlCommandExecutionDetails)
   case launchFailed(DevicectlCommandExecutionDetails)
-  /// Legacy launch-failure result retained for the existing stable seam.
-  case failedToLaunch
 }
 
 public protocol DevicectlCommandExecuting: Sendable {
@@ -206,13 +202,11 @@ public actor DevicectlInjectionBackend: InjectionBackend {
       commandKind: "readiness"
     )
     switch result {
-    case .exited(0):
-      return .ready
     case .completed(let details) where details.exitStatus == 0:
       return .ready
     case .timedOut:
       return .unavailable(.timedOut)
-    case .exited, .completed, .launchFailed, .failedToLaunch:
+    case .completed, .launchFailed:
       return .unavailable(.backendUnavailable)
     }
   }
@@ -273,7 +267,6 @@ public actor DevicectlInjectionBackend: InjectionBackend {
       environmentOverrides: ["DEVELOPER_DIR": developerDirectory],
       timeoutSeconds: Double(Self.timeoutSeconds) ?? 15
     )
-    let startedAt = Date()
     await record(
       kind: "controller.devicectl.started",
       requestID: requestID,
@@ -282,11 +275,7 @@ public actor DevicectlInjectionBackend: InjectionBackend {
     let result = executor.execute(invocation)
     let duration: TimeInterval
     switch result {
-    case .completed(let details), .timedOut(let details):
-      duration = details.duration
-    case .exited, .failedToLaunch:
-      duration = Date().timeIntervalSince(startedAt)
-    case .launchFailed(let details):
+    case .completed(let details), .timedOut(let details), .launchFailed(let details):
       duration = details.duration
     }
     await record(
@@ -342,10 +331,6 @@ public actor DevicectlInjectionBackend: InjectionBackend {
       "durationSeconds": .number(duration),
     ]
     switch result {
-    case .exited(let status):
-      fields["launchResult"] = .text("launched")
-      fields["exitStatus"] = .integer(Int64(status))
-      fields["outcome"] = .text(status == 0 ? "success" : "nonzero-exit")
     case .completed(let details):
       fields["launchResult"] = .text(details.launchSucceeded ? "launched" : "failed")
       if let status = details.exitStatus {
@@ -364,9 +349,6 @@ public actor DevicectlInjectionBackend: InjectionBackend {
       fields["launchResult"] = .text("failed")
       fields["outcome"] = .text("launch-failed")
       addFailureOutput(from: details, selector: device, to: &fields)
-    case .failedToLaunch:
-      fields["launchResult"] = .text("failed")
-      fields["outcome"] = .text("launch-failed")
     }
     return fields
   }
@@ -390,9 +372,8 @@ public actor DevicectlInjectionBackend: InjectionBackend {
 
   private func isSuccessful(_ result: DevicectlCommandExecutionResult) -> Bool {
     switch result {
-    case .exited(0): true
     case .completed(let details): details.exitStatus == 0
-    case .exited, .timedOut, .launchFailed, .failedToLaunch: false
+    case .timedOut, .launchFailed: false
     }
   }
 

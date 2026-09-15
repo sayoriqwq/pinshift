@@ -14,14 +14,6 @@ set --local executable $install_bin/pinshift-controller
 set --local requirement_file $install_root/designated-requirement
 set --local source_file $install_root/source-fingerprint
 
-set --local authority_label dev.sayori.pinshift.controller
-set --local launch_agents_directory $HOME/Library/LaunchAgents
-set --local authority_plist $launch_agents_directory/$authority_label.plist
-
-set --local legacy_guardian_label dev.sayori.pinshift.cleanup-guardian
-set --local legacy_guardian_plist $launch_agents_directory/$legacy_guardian_label.plist
-set --local legacy_lifecycle_file $HOME/Library/Application\ Support/Pinshift/SimulationLifecycle/lifecycle.json
-set --local legacy_pairing_code_file $HOME/Library/Application\ Support/Pinshift/ControllerLink/pairing-code
 set --local user_id (id -u)
 
 set --local generated_root (path resolve .build)
@@ -134,25 +126,8 @@ function rollback_install --no-scope-shadowing
     return $rollback_status
 end
 
-# Persistent authorities are deliberately retired. A test session owns one
-# foreground controller process, started explicitly with pinshift.
-if launchctl print gui/$user_id/$authority_label >/dev/null 2>&1
-    launchctl bootout gui/$user_id/$authority_label
-    or exit $status
-end
-if launchctl print gui/$user_id/$legacy_guardian_label >/dev/null 2>&1
-    launchctl bootout gui/$user_id/$legacy_guardian_label
-    or exit $status
-end
-command rm -f -- $authority_plist
-or exit $status
-command rm -f -- $legacy_guardian_plist
-or exit $status
-
-# Older pinshift-start versions kept `link serve` in a foreground terminal.
-# Stop only processes owned by this user whose full command begins with the
-# exact installed executable and subcommand; broad process-name killing is not
-# safe enough for an installer.
+# Stop the current checkout's foreground controller before replacing its executable.
+# Match the full executable path so other processes are left alone.
 set --local superseded_foreground_pids
 for candidate_pid in (pgrep -u $user_id -f 'pinshift-controller link serve' 2>/dev/null)
     if not string match --quiet --regex '^[0-9]+$' -- $candidate_pid
@@ -160,19 +135,6 @@ for candidate_pid in (pgrep -u $user_id -f 'pinshift-controller link serve' 2>/d
     end
     set --local candidate_command (ps -p $candidate_pid -o command= 2>/dev/null | string trim)
     if string match --quiet "$executable link serve*" -- $candidate_command
-        set --local parent_pid (ps -p $candidate_pid -o ppid= 2>/dev/null | string trim)
-        if string match --quiet --regex '^[0-9]+$' -- $parent_pid
-            set --local parent_command (ps -p $parent_pid -o command= 2>/dev/null | string trim)
-            if string match --quiet "*$script_dir/pinshift-start*" -- $parent_command
-                kill -TERM $parent_pid 2>/dev/null
-                or if kill -0 $parent_pid 2>/dev/null
-                    rollback_install
-                    echo "The superseded pinshift-start wrapper could not be stopped safely." >&2
-                    exit 1
-                end
-                set --append superseded_foreground_pids $parent_pid
-            end
-        end
         if kill -0 $candidate_pid 2>/dev/null
             kill -TERM $candidate_pid 2>/dev/null
             or if kill -0 $candidate_pid 2>/dev/null
@@ -201,22 +163,15 @@ for candidate_pid in $superseded_foreground_pids
     end
 end
 
-# Before discarding obsolete bookkeeping, use the signed candidate to perform
-# one authoritative, idempotent backend clear. A failure stops the migration
-# without publishing the new binary or claiming the old simulation is gone.
+# Confirm a real Clear with the signed candidate before publishing it.
 "$candidate" reset \
     --device "$PINSHIFT_DEVICE" \
     --developer-directory "$PINSHIFT_DEVELOPER_DIR"
 or begin
     set --local failure_status $status
-    echo "The persistent controller was removed, but its final Clear failed. Restore device connectivity and retry `pinshift setup`." >&2
+    echo "Clear was not confirmed before installation. Restore device connectivity and retry `pinshift setup`." >&2
     exit $failure_status
 end
-command rm -f -- $legacy_lifecycle_file
-or exit $status
-command rm -f -- $legacy_pairing_code_file
-or exit $status
-
 cp $candidate $executable
 or begin
     set --local failure_status $status
