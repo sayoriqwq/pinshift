@@ -15,6 +15,8 @@ Pinshift 是一套由 iPhone App 和一个可信 Mac 控制器组成的个人开
 生产注入统一使用 devicectl，并通过 Apply 后的观测验证结果。
 收藏只接受版本 2 的 WGS84 数据，选点只接受版本 3；旧格式会报错，不自动转换或清空。
 
+当前正式版本为 **1.1.0**（build 5），见 [GitHub Release](https://github.com/sayoriqwq/pinshift/releases/tag/v1.1.0)。
+
 ## 核心能力
 
 - **直观选点**：地图中心选点、地点搜索、经纬度输入、收藏地点和近距离微调。
