@@ -134,6 +134,10 @@ pinshift unregister
 
 卸载后若仍有同名命令，使用 `type -a pinshift` 检查是否来自其他软件管理器；它不会替你卸载 Home Manager 等工具管理的入口。
 
+## 可选：从 iPhone 一键准备
+
+本机流程和配对成功后，按 [iPhone 快捷指令设置](iphone-shortcut.md) 配置独立 SSH 密钥与固定准备入口。此后在 Mac 已登录、未睡眠且网络可达时，可从手机触发准备，再进入 App 选点。
+
 ## 可选：用 direnv 自动进入环境
 
 Nix 是上述教程的工具环境提供者；direnv 只是免去每次手动进入环境的便利层。
