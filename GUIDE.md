@@ -54,6 +54,10 @@ Injection Backend 和 Controller Link 都是当前诊断信息，不是操作门
 可用；尚未连接时，点击 Apply 会自动尝试连接。连接或后端当下确实不可用时，本次 Apply 会在有限时间内
 明确失败，按钮仍然可用，用户可以直接重试或改选其他地点。
 
+## 从 iPhone 启动
+
+完成 [独立快捷指令设置](docs/iphone-shortcut.md) 后，可在 iPhone 主屏幕触发按需签名准备并启动或复用 Mac 前台会话，然后打开 Pinshift 选点、应用。Mac 需保持已登录、未睡眠且网络可达；手机显示的 SSH 完成结果仍需以真实 Controller Link 确认。
+
 ## 日常使用
 
 ### 选择并应用

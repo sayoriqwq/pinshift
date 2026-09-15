@@ -54,6 +54,8 @@ pinshift
 
 需要在任意目录启动时，可按 [本机注册教程](docs/getting-started.md#可选注册到本机从任意目录启动) 使用 `pinshift register`；也可以只在项目环境中使用。
 
+希望从手机启动时，按 [iPhone 快捷指令配置](docs/iphone-shortcut.md) 添加「准备使用 Pinshift」主屏幕按钮；需先完成一次本机设置和独立 SSH 密钥授权。
+
 日常操作、更新与故障恢复见 [GUIDE.md](GUIDE.md)。历史验收材料见 [验证证据](docs/evidence/)；其中未执行的场景不是已通过的保证，坐标修复的已接受范围见 [修复记录](docs/evidence/coordinate-semantics-fix.md)。
 
 ## 项目边界
