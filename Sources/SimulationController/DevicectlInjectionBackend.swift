@@ -305,12 +305,7 @@ public actor DevicectlInjectionBackend: InjectionBackend {
   ) -> SimulationDiagnosticFields {
     [
       "commandKind": .text(commandKind),
-      "arguments": .array(
-        DevicectlDiagnosticRedactor.arguments(
-          invocation.arguments,
-          selector: device
-        )
-      ),
+      "arguments": .array(invocation.arguments.map(SimulationDiagnosticValue.text)),
       "developerDirectory": .text(
         invocation.environmentOverrides["DEVELOPER_DIR"] ?? developerDirectory
       ),
@@ -337,36 +332,31 @@ public actor DevicectlInjectionBackend: InjectionBackend {
         fields["exitStatus"] = .integer(Int64(status))
       }
       fields["outcome"] = .text(details.exitStatus == 0 ? "success" : "nonzero-exit")
-      addFailureOutput(from: details, selector: device, to: &fields)
+      addFailureOutput(from: details, to: &fields)
     case .timedOut(let details):
       fields["launchResult"] = .text(details.launchSucceeded ? "launched" : "failed")
       if let status = details.exitStatus {
         fields["exitStatus"] = .integer(Int64(status))
       }
       fields["outcome"] = .text("timeout")
-      addFailureOutput(from: details, selector: device, to: &fields)
+      addFailureOutput(from: details, to: &fields)
     case .launchFailed(let details):
       fields["launchResult"] = .text("failed")
       fields["outcome"] = .text("launch-failed")
-      addFailureOutput(from: details, selector: device, to: &fields)
+      addFailureOutput(from: details, to: &fields)
     }
     return fields
   }
 
   private func addFailureOutput(
     from details: DevicectlCommandExecutionDetails,
-    selector: String,
     to fields: inout SimulationDiagnosticFields
   ) {
     if !details.standardOutput.isEmpty {
-      fields["standardOutput"] = .text(
-        DevicectlDiagnosticRedactor.text(details.standardOutput, selector: selector)
-      )
+      fields["standardOutput"] = .text(details.standardOutput)
     }
     if !details.standardError.isEmpty {
-      fields["standardError"] = .text(
-        DevicectlDiagnosticRedactor.text(details.standardError, selector: selector)
-      )
+      fields["standardError"] = .text(details.standardError)
     }
   }
 
@@ -388,32 +378,6 @@ public actor DevicectlInjectionBackend: InjectionBackend {
       locale: Locale(identifier: "en_US_POSIX"),
       coordinate
     )
-  }
-}
-
-private enum DevicectlDiagnosticRedactor {
-  // SimulationDiagnosticValue.text performs credential-shaped redaction. The
-  // active selector itself is deliberately retained in local diagnostics.
-  static func text(_ value: String, selector _: String) -> String { value }
-
-  static func arguments(
-    _ arguments: [String],
-    selector: String
-  ) -> [SimulationDiagnosticValue] {
-    var redacted: [SimulationDiagnosticValue] = []
-    var index = 0
-    while index < arguments.count {
-      let argument = arguments[index]
-      if argument == "--device", index + 1 < arguments.count {
-        redacted.append(.text(argument))
-        redacted.append(.text(selector))
-        index += 2
-      } else {
-        redacted.append(.text(text(argument, selector: selector)))
-        index += 1
-      }
-    }
-    return redacted
   }
 }
 

@@ -363,19 +363,23 @@ public final class FileManualSimulationSessionStore: @unchecked Sendable {
   }
 
   public func load() throws -> ManualSimulationSession? {
-    try lock.withLock {
-      guard fileManager.fileExists(atPath: fileURL.path) else { return nil }
-      let data = try Data(contentsOf: fileURL)
-      let current = try JSONDecoder().decode(PersistedSelection.self, from: data)
-      guard current.schemaVersion == PersistedSelection.currentSchemaVersion else {
-        throw CocoaError(.fileReadCorruptFile)
-      }
-      return ManualSimulationSession(selected: current.selected)
+    try lock.withLock { try readSelection() }
+  }
+
+  private func readSelection() throws -> ManualSimulationSession? {
+    guard fileManager.fileExists(atPath: fileURL.path) else { return nil }
+    let data = try Data(contentsOf: fileURL)
+    let current = try JSONDecoder().decode(PersistedSelection.self, from: data)
+    guard current.schemaVersion == PersistedSelection.currentSchemaVersion else {
+      throw CocoaError(.fileReadCorruptFile)
     }
+    return ManualSimulationSession(selected: current.selected)
   }
 
   public func save(_ session: ManualSimulationSession) throws {
     try lock.withLock {
+      // Preserve unreadable input even when the caller recovered with an empty session.
+      _ = try readSelection()
       try writeSelection(session)
     }
   }

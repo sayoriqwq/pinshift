@@ -87,3 +87,75 @@ private actor RenewalReconciliationTransport: ControllerLinkTransport {
     return ControllerTransportReply(presentedIdentity: identity, response: response)
   }
 }
+
+@MainActor
+struct DeferredApplyReconciliationTests {
+  @Test(arguments: [false, true])
+  func clearSupersedesUnsentApply(existingConnection: Bool) async throws {
+    let identity = try ControllerIdentity(fingerprint: Data(repeating: 1, count: 32))
+    let authorization = try ControllerAuthorization(bytes: Data(repeating: 2, count: 32))
+    let transport = DeferredApplyTransport(identity: identity)
+    let discovery = DeferredApplyDiscovery()
+    let service = ControllerService(name: "deferred-apply-test")
+    let link = TrustedControllerLink(
+      trust: ControllerTrust(store: InMemoryControllerTrustStore(identity: identity)),
+      authorizationStore: InMemoryControllerAuthorizationStore(authorization: authorization),
+      transport: transport)
+    if existingConnection { _ = await link.connect(to: service) }
+    let model = ControllerLinkViewModel(discovery: discovery, link: link)
+    let request = ManualSimulationRequest(requestID: UUID(),
+      location: try SelectedLocation(latitude: 1, longitude: 2), requestedAt: Date())
+    let apply = Task { await model.apply(request) }
+    // Discovery starts only after apply() has installed its pending continuation.
+    var started = discovery.started.stream.makeAsyncIterator()
+    _ = await started.next()
+    let clearID = UUID()
+    let cleared = await model.clear(ManualSimulationClearRequest(requestID: clearID, requestedAt: Date()))
+    #expect(cleared == (existingConnection
+      ? .cleared(requestID: clearID)
+      : .failed(requestID: clearID, reason: .controllerUnavailable)))
+    discovery.eventsStream.continuation.yield(.found(service))
+    #expect(await apply.value == .failed(requestID: request.requestID, reason: .controllerUnavailable))
+    for _ in 0..<100 where !model.isConnected {
+      try await Task.sleep(for: .milliseconds(5))
+    }
+    #expect(model.isConnected)
+    // Allow any delivery task scheduled by discovery to run.
+    try await Task.sleep(for: .milliseconds(50))
+    #expect(await transport.commands == (existingConnection ? ["clear"] : []))
+    discovery.eventsStream.continuation.finish()
+  }
+}
+
+private final class DeferredApplyDiscovery: ControllerDiscovering, Sendable {
+  let eventsStream = AsyncStream<ControllerDiscoveryEvent>.makeStream()
+  let started = AsyncStream<Void>.makeStream()
+  func events() -> AsyncStream<ControllerDiscoveryEvent> {
+    started.continuation.yield(())
+    return eventsStream.stream
+  }
+  func stop() {}
+}
+
+private actor DeferredApplyTransport: ControllerLinkTransport {
+  let identity: ControllerIdentity
+  private(set) var commands: [String] = []
+  init(identity: ControllerIdentity) { self.identity = identity }
+  func send(_ request: ControllerLinkRequest, to service: ControllerService,
+    expectedIdentity: ControllerIdentity?) async throws -> ControllerTransportReply {
+    let response: ControllerLinkResponse
+    switch request {
+    case .status(let id, _):
+      response = .status(requestID: id, status: ControllerStatus(readiness: .ready, simulation: .idle))
+    case .apply(let id, _, _, _):
+      commands.append("apply")
+      response = .applied(requestID: id, automaticClearAt: Date().addingTimeInterval(180))
+    case .clear(let id, _):
+      commands.append("clear")
+      response = .cleared(requestID: id)
+    default:
+      throw CocoaError(.featureUnsupported)
+    }
+    return ControllerTransportReply(presentedIdentity: identity, response: response)
+  }
+}

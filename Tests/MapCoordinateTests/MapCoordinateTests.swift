@@ -35,11 +35,19 @@ struct CoordinateProvenanceTests {
       let data = Data("{\"schemaVersion\":\(version),\"selected\":null}".utf8)
       try data.write(to: file)
       #expect(throws: Error.self) { try store.load() }
+      #expect(throws: Error.self) { try store.save(ManualSimulationSession()) }
       #expect(try Data(contentsOf: file) == data)
     }
+    let corrupt = Data("invalid JSON".utf8)
+    try corrupt.write(to: file)
+    #expect(throws: Error.self) { try store.save(ManualSimulationSession()) }
+    #expect(try Data(contentsOf: file) == corrupt)
+    try FileManager.default.removeItem(at: file)
     let coordinate = try SelectedLocation(latitude: 31.24, longitude: 121.49)
     try store.save(ManualSimulationSession(selected: coordinate))
     #expect(try store.load()?.selected == coordinate)
+    try store.save(ManualSimulationSession())
+    #expect(try store.load()?.selected == nil)
     let saved = try SavedLocationCollection().adding(name: "Current", coordinate: coordinate)
     let data = try JSONEncoder().encode(saved)
     #expect(try JSONDecoder().decode(SavedLocationCollection.self, from: data) == saved)

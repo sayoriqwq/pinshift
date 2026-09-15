@@ -266,11 +266,11 @@ final class ControllerLinkViewModel: ObservableObject {
 
   private func deliverPendingApplyIfConnected() {
     guard case .connected = state, let pendingApply else { return }
-    self.pendingApply = nil
-    pendingApplyTimeoutTask?.cancel()
-    pendingApplyTimeoutTask = nil
     Task { [weak self] in
-      guard let self else { return }
+      guard let self, self.pendingApply?.request.requestID == pendingApply.request.requestID else { return }
+      self.pendingApply = nil
+      pendingApplyTimeoutTask?.cancel()
+      pendingApplyTimeoutTask = nil
       let response = await sendApply(pendingApply.request)
       pendingApply.continuation.resume(returning: response)
     }
@@ -317,6 +317,11 @@ final class ControllerLinkViewModel: ObservableObject {
   }
 
   func clear(_ request: ManualSimulationClearRequest) async -> ControllerLinkResponse {
+    // A later Clear supersedes an Apply that has not reached the controller yet.
+    if let pendingApply {
+      finishPendingApply(pendingApply, with: .failed(
+        requestID: pendingApply.request.requestID, reason: .controllerUnavailable))
+    }
     record(kind: "app.controller-link.clear-started", requestID: request.requestID)
     #if DEBUG
       if usesE2EFixture {
