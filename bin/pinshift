@@ -14,6 +14,7 @@ function pinshift_usage
     echo "  pinshift app [OPTIONS]   Renew, install, or launch the iOS app"
     echo "  pinshift logs [OPTIONS]  Locate or copy Mac diagnostics"
     echo "  pinshift register        Register this checkout in ~/.local/bin"
+    echo "  pinshift register-remote Register the fixed iPhone SSH preparation action"
     echo "  pinshift unregister      Remove that command; retain checkout and data"
     echo "  pinshift help            Show this help"
     echo
@@ -34,6 +35,8 @@ switch $command
             exit 2
         end
         pinshift_usage
+    case register-remote
+        exec $script_dir/pinshift-register-remote $arguments
     case register unregister
         exec $script_dir/pinshift-command $command $arguments
     case start

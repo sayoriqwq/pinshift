@@ -8,6 +8,27 @@ import XCTest
 @testable import ControllerCLI
 
 final class ControllerCLIRuntimeTests: XCTestCase {
+  func testSessionReadinessRequiresLiveOwnershipAndInspectionNeverClearsIt() throws {
+    let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let owner = try ControllerSessionLock.acquire(directory: directory)
+    try owner.setState(.ready)
+    let observer = try ControllerSessionLock.acquire(directory: directory, inspect: true)
+    XCTAssertEqual(observer.state(), .ready)
+    try "invalid".write(to: directory.appending(path: "session.lock"), atomically: false, encoding: .utf8)
+    XCTAssertEqual(observer.state(), .starting, "Unknown on-disk values must not imply readiness")
+    observer.release()
+    XCTAssertThrowsError(try ControllerSessionLock.acquire(directory: directory))
+    try owner.setState(.stopping)
+    let stopping = try ControllerSessionLock.acquire(directory: directory, inspect: true)
+    XCTAssertEqual(stopping.state(), .stopping)
+    stopping.release()
+    owner.release()
+    let stopped = try ControllerSessionLock.acquire(directory: directory, inspect: true)
+    XCTAssertEqual(stopped.state(), .stopped, "Stale ready data cannot imply a live listener")
+    stopped.release()
+  }
+
   func testForegroundSessionWaitsOnceThenClearsBeforeReturning() async throws {
     let backend = RuntimeCountingBackend()
     let controller = SimulationController(
