@@ -624,6 +624,36 @@ final class AppResigningWorkflowTests: XCTestCase {
     XCTAssertTrue(try events().contains("controller link serve"))
   }
 
+  func testShortcutWaitsForStoppingSessionBeforeStartingReplacement() throws {
+    _ = try writeProfile(named: "app.mobileprovision",
+      applicationIdentifier: "\(teamIdentifier).\(bundleIdentifier)", expiration: "2099-08-10T08:49:25Z")
+    try "stopping".write(to: fixtureRoot.appending(path: "state"), atomically: true, encoding: .utf8)
+    try writeExecutable(named: "sleep", contents: """
+      #!/bin/sh
+      if [ "$(cat "$FAKE_STATE_RECORD")" = stopping ]; then
+        echo waited-for-stop >> "$FAKE_EVENT_LOG"
+        echo stopped > "$FAKE_STATE_RECORD"
+      fi
+      """)
+    let result = try runDaily(remote: true)
+    XCTAssertEqual(result.status, 0, result.output)
+    try assertEventsContainInOrder(["waited-for-stop", "controller link serve"])
+    XCTAssertTrue(result.output.contains("controller-ready:"))
+  }
+
+  func testShortcutNeverReusesSessionStillStoppingAfterWait() throws {
+    _ = try writeProfile(named: "app.mobileprovision",
+      applicationIdentifier: "\(teamIdentifier).\(bundleIdentifier)", expiration: "2099-08-10T08:49:25Z")
+    try "stopping".write(to: fixtureRoot.appending(path: "state"), atomically: true, encoding: .utf8)
+    try writeExecutable(named: "sleep", contents: "#!/bin/sh\nexit 0\n")
+    let result = try runDaily(remote: true)
+    XCTAssertNotEqual(result.status, 0, result.output)
+    XCTAssertTrue(result.output.contains("still clearing before exit"))
+    XCTAssertFalse(result.output.contains("Reusing the existing controller session"))
+    XCTAssertFalse(result.output.contains("controller-ready:"))
+    XCTAssertFalse(try events().contains("controller link serve"))
+  }
+
   func testShortcutDuplicateObservesExistingRequestAndRejectsArbitraryCommands() throws {
     let request = fixtureRoot.appending(path: ".build/pinshift-remote")
     try FileManager.default.createDirectory(at: request.appending(path: "preparing"), withIntermediateDirectories: true)

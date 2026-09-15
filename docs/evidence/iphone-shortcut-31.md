@@ -33,10 +33,12 @@ These local startup/reuse checks used the first implementation before the review
 - The existing installer successfully rebuilt and signed the final controller while preserving its identity. The installed final controller reported `stopped`, ready for a fresh iPhone-triggered start.
 - Fish syntax, AppleScript compilation, and diff whitespace checks passed during implementation. All implementer worktrees were removed after their commits were merged.
 
-## End-to-end acceptance
+## End-to-end acceptance — owner report
 
-Pending: configure the iPhone shortcut and its dedicated SSH public key, then perform the physical checks in the shortcut guide. Local command tests cannot establish that iPhone Shortcuts can reach this Mac, that the user's SSH context can launch Terminal, or that the actual phone establishes Controller Link.
+The owner confirmed successful real-iPhone SSH authorization and preparation, followed by all three requested daily-flow checks: Controller Link remained connected after the shortcut ended, selecting/applying a location succeeded, and another shortcut invocation left the existing session working. The owner additionally confirmed renewal succeeded and authorized merging PR #40.
 
-The user agreed to perform the phone steps and was given the setup instructions. At the end of the automated checks, the phone public key had not yet been supplied and local TCP port 22 still had no listener. SSH authorization was not fabricated or configured using another key.
+The dedicated public key was validated and installed with a fixed command and OpenSSH restrictions; a local probe confirmed port 22 listening. No public key, private key, host address or device identifier is retained in this record.
 
-Do not treat the host preflight as successful remote preparation, signing renewal, installation, or location simulation.
+This accepts the core personal-device workflow on the owner's reported results. The agent did not independently observe the phone UI or capture a new provisioning-profile expiry. The report does not establish every failure scenario, recovery from an already-expired/unlaunchable App, precise three-minute timing during repeated preparation, or preservation of each preference after renewal; those remain separate regression scenarios.
+
+A subsequent PR review identified reuse of a stopping controller. The merge follow-up waits up to 30 seconds for the session to finish, then starts a replacement only after shutdown; an unfinished shutdown produces a manual-action result. All 9 shortcut workflow tests passed, including shutdown completion and a session that remains stopping. Fish syntax and diff whitespace checks also passed.

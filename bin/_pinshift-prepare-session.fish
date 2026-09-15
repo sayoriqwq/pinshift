@@ -27,7 +27,19 @@ set --local controller (pinshift_controller_executable)
 or exit 1
 set --local session_state ($controller link session-state)
 or exit 1
-if test "$session_state" != stopped
+for attempt in (seq 1 30)
+    if test "$session_state" != stopping
+        break
+    end
+    sleep 1
+    set session_state ($controller link session-state)
+    or exit 1
+end
+if test "$session_state" = stopping
+    echo 'manual: the existing controller is still clearing before exit. Wait for that terminal to finish, then retry.' >&2
+    exit 1
+end
+if contains -- "$session_state" starting ready
     echo "Reusing the existing controller session ($session_state); no Clear or second controller was requested."
     exit $app_status
 end

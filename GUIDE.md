@@ -6,7 +6,7 @@
 
 ## 用户只需要记住的模型
 
-> 运行 `pinshift`，选一个地点并 Apply；它固定生效 3 分钟，也可随时点 Clear Now 真实解除。
+> 在 iPhone 点「准备使用 Pinshift」快捷指令，或在 Mac 运行 `pinshift`；连接后选点并 Apply，固定生效 3 分钟，也可随时点 Clear Now 真实解除。
 
 - 没有时长设置。每次真正的新 Apply 都固定从头计时 3 分钟。
 - 当前是否已有地点、立即解除是否失败、上一次响应是否丢失，都不能阻止选点或新 Apply。
@@ -56,7 +56,14 @@ Injection Backend 和 Controller Link 都是当前诊断信息，不是操作门
 
 ## 从 iPhone 启动
 
-完成 [独立快捷指令设置](docs/iphone-shortcut.md) 后，可在 iPhone 主屏幕触发按需签名准备并启动或复用 Mac 前台会话，然后打开 Pinshift 选点、应用。Mac 需保持已登录、未睡眠且网络可达；手机显示的 SSH 完成结果仍需以真实 Controller Link 确认。
+先按 [独立快捷指令设置](docs/iphone-shortcut.md) 完成 Mac 远程登录、专用 SSH 密钥授权和主屏幕按钮。之后的日常流程是：
+
+1. Mac 保持已登录、未睡眠且网络可达，Xcode 能连接已配对的 iPhone。
+2. 在 iPhone 点「准备使用 Pinshift」。Mac 检查签名，按需续签并原位安装，再启动或复用前台控制器。
+3. 结果出现 `controller-ready` 后打开 Pinshift，确认 Controller Link 已连接，再选点并点「应用 3 分钟」。快捷指令可在显示结果后自动打开 App。
+4. 保持 Mac 终端中的会话运行；快捷指令结束不会结束控制器。停止测试时，在该终端按 Ctrl-C，等待解除完成。
+
+若提示 `preparing/manual`，查看 Mac 的登录、授权或设备提示，再重试。旧控制器正在退出时，准备入口会先等待解除；尚未退出则提示稍后重试。不要把等待超时当作准备成功。
 
 ## 日常使用
 
@@ -123,7 +130,7 @@ pinshift clear
 
 ## 签名续期
 
-日常只运行 `pinshift`：它检查 App 签名，剩余不超过 24 小时时按需续签。需要单独维护时运行：
+日常使用「准备使用 Pinshift」快捷指令或运行 `pinshift`，都会检查 App 签名，剩余不超过 24 小时时按需续签。控制器已连接时，也可在 App「更多 → App 续签」点击「立即续签」。需要在 Mac 单独维护时运行：
 
 ```fish
 pinshift app
@@ -195,6 +202,7 @@ pinshift logs --copy-to .build/audit/(date +%Y%m%d-%H%M%S)
 | `pinshift clear` | 紧急执行一次真实 clear，不启动常驻进程 |
 | `pinshift setup` | 首次安装或源码变化后更新稳定签名控制器，并移除旧常驻项 |
 | `pinshift doctor` | 只读检查开发环境和控制器状态 |
+| `pinshift register-remote` | 为 iPhone 快捷指令注册固定准备入口，捕获本机设备和签名配置 |
 | `pinshift app` | 签名临近到期时续签并原位安装 App |
 | `pinshift app --force` | 立即请求新 profile、验证并原位安装 |
 | `pinshift app --launch-only` | 不续签，只补做启动验证 |
