@@ -162,7 +162,7 @@ pinshift app --launch-only
 Mac 睡眠期间不保证计时器执行；存活会话恢复运行后处理已到期责任。进程被杀、断电或终端直接
 关闭后没有后台保证。不要把手机退出 Pinshift 当作结束模拟：Mac 仍按原期限处理解除。
 
-历史功能验收步骤见 [验收清单](docs/evidence/spec-24-owner-acceptance.md)。它是开发阶段的检查记录，不是新用户安装前置要求；后续接受范围见 [坐标修复记录](docs/evidence/coordinate-semantics-fix.md)。
+地图适配仅有当前上海环境的地标级验证，不承诺米级精度或其他地区的适配；详见 [坐标边界](CODEBASE.md#坐标边界)。
 
 ## 审计
 
@@ -181,9 +181,6 @@ pinshift logs --copy-to .build/audit/(date +%Y%m%d-%H%M%S)
 ```
 
 📦 复制脱敏诊断事件和元数据，不触发 Apply、Clear 或恢复操作。
-
-历史真机验证记录保留在 [docs/evidence](docs/evidence/)；其中旧 Lease/Guardian 实验是历史证据，不是
-当前产品协议。
 
 ## 常用命令
 

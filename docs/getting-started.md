@@ -16,7 +16,7 @@
 | Apple 账号 | 在 Xcode 中登录自己的账号，用自己的开发团队签名；首次步骤见下一篇签名教程 |
 | 网络 | 首次下载 Nix/Swift 依赖、Xcode 登录与签名需要联网；App 与 Mac 还需允许本地网络通信 |
 
-当前维护者验证环境是 macOS 27、Xcode 27 与个人 iPhone；其他系统组合尚未全面验证。上海地图坐标转换也仅有当前环境的地标级证据，详见 [坐标修复范围](evidence/coordinate-semantics-fix.md)。
+当前维护者验证环境是 macOS 27、Xcode 27 与个人 iPhone；其他系统组合尚未全面验证。上海地图坐标转换也仅有当前环境的地标级证据，详见 [坐标边界](../CODEBASE.md#坐标边界)。
 
 先安装完整 Xcode，打开一次，按界面完成许可与所需组件下载。然后按 [Nix 官方 macOS 安装说明](https://nix.dev/install-nix) 安装 Nix，重新打开终端，确认 `nix --version` 能输出版本。无需安装 NixOS、nix-darwin 或 Home Manager。
 
@@ -168,4 +168,4 @@ type -a pinshift
 | `Expected one valid code-signing identity` | 按签名教程创建或明确选择自己的开发证书 |
 | 提示 App 准备未确认但控制器仍启动 | 不代表手机 App 已装好，先单独解决上方签名/安装错误 |
 
-本文按当前源码与官方配置说明整理。[同一 Mac 下的新克隆验证](evidence/first-run-2026-09-13.md) 已走通配置、重新配对、应用与三分钟到期回归；仍复用了工具、Apple 账号/证书与 TLS 身份，尚未在全新 Mac 或其他 Apple 账号上完成端到端验证。
+本文按当前源码与官方配置说明整理。安装流程仅在维护者已有工具、Apple 账号/证书与 TLS 身份的 Mac 上完成验证，尚未在全新 Mac 或其他 Apple 账号上完成端到端验证。

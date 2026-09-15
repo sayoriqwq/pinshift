@@ -14,7 +14,6 @@ Pinshift 是一套由 iPhone App 和一个可信 Mac 控制器组成的个人开
 
 生产注入统一使用 devicectl，并通过 Apply 后的观测验证结果。
 收藏只接受版本 2 的 WGS84 数据，选点只接受版本 3；旧格式会报错，不自动转换或清空。
-历史规格与验收记录用于追溯，当前行为以仓库代码与使用指南为准。
 
 ## 核心能力
 
@@ -59,7 +58,7 @@ pinshift
 
 希望从手机启动时，按 [iPhone 快捷指令配置](docs/iphone-shortcut.md) 添加「准备使用 Pinshift」主屏幕按钮；需先完成一次本机设置和独立 SSH 密钥授权。
 
-日常操作、更新与故障恢复见 [GUIDE.md](GUIDE.md)。历史验收材料见 [验证证据](docs/evidence/)；其中未执行的场景不是已通过的保证，坐标修复的已接受范围见 [修复记录](docs/evidence/coordinate-semantics-fix.md)。
+日常操作、更新与故障恢复见 [GUIDE.md](GUIDE.md)，地图适配范围见 [坐标边界](CODEBASE.md#坐标边界)。
 
 ## 项目边界
 
@@ -75,10 +74,8 @@ Pinshift 当前针对一台开发者自有 Mac、一个已配对的 iPhone 和�
 | [iPhone 快捷指令配置](docs/iphone-shortcut.md) | 希望从手机启动的用户 | 远程登录、公钥授权、主屏幕按钮和故障恢复 |
 | [使用与审计指南](GUIDE.md) | 日常使用者 | 安装、配对、选点、替换、解除与状态审计 |
 | [代码库导览](CODEBASE.md) | 维护者 | 模块职责、关键数据流和推荐阅读顺序 |
-| [开发环境补充](docs/tutorial.md) | 开发者 | 工程生成、配置位置与工具链说明 |
 | [领域词汇](CONTEXT.md) | 设计与开发 | 项目的统一概念和边界 |
 | [架构决策](docs/adr/) | 维护者 | 关键技术取舍及其原因 |
-| [验证证据](docs/evidence/) | 审计者 | 真机、构建和历史行为记录 |
 
 ## 技术栈
 

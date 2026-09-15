@@ -133,6 +133,22 @@ Clear Now 不依赖历史 operation：每次都调用 backend。自动 timer 与
 
 App 重连后用当前 Mac 会话 snapshot 替换显示状态。iOS 不持久化待重投的 Clear、时长延长或清理确认。
 
+## 坐标边界
+
+Selected Location、收藏、Apply 请求和 Core Location 观测比较统一使用 WGS84。地图原始值使用独立的
+`MapLocationCoordinate` 类型：搜索结果和地图中心在输入边界转换一次，选点与已应用标记在显示边界反向投影；
+手动 WGS84 输入、收藏复用、传输和后端不再转换。`Double` 原值贯穿持久化与发送，显示格式不会写回坐标。
+
+`Sources/LocationDomain/MapCoordinateBoundary.swift` 内部选用 `verifiedShanghai`，在 WGS84 纬度
+30.7–31.6、经度 120.9–122.0 的区域内作近似 GCJ-02 适配；逆变换覆盖该区域略有偏移的映射像，区域外透传。
+这是当前个人地图环境的适配范围；其他大陆地区与区域外过渡尚未验证。地图服务环境变化需要重新验证，
+不根据语言、SIM、IP 或模拟位置推断提供方，也不向用户提供坐标系选择器。
+
+现有真机证据仅覆盖上海东方明珠附近两种输入路径的地标级一致性，以及当时 Pinshift 与 QQ 的显示一致性。
+附近其他地标和境外真机对照未执行；数值传输一致不等于地理精度，不承诺米级精度、全地区适用或跨 App 传播。
+近似算法来自 eviltransform，BSD 许可保留在 `App/ThirdPartyNotices.txt`；地图往返、边界和地标回归见
+`Tests/MapCoordinateTests/MapCoordinateTests.swift`。
+
 ## 推荐阅读顺序
 
 1. [CONTEXT.md](CONTEXT.md)：建立 Temporary Simulation、Automatic Clear 和 Clear Now 的区别。
@@ -143,6 +159,37 @@ App 重连后用当前 Mac 会话 snapshot 替换显示状态。iOS 不持久化
 6. `App/ControllerLinkViewModel.swift` 与 `App/BaselineViewModel.swift`：看 UI 如何投递并吸收 Mac 状态。
 7. `Tests/SimulationControllerTests/SimulationControllerTests.swift`：复核替换、清理失败重试和竞态。
 8. `Tests/ControllerCLITests/TemporarySimulationAcceptanceTests.swift`：复核 App→Link→Mac 的完整协议。
+
+## 开发环境
+
+`flake.nix` / `flake.lock` 声明并锁定 Fish、jq、XcodeGen 的环境，目前仅提供 Apple Silicon macOS 输出。Swift 编译器来自完整 Xcode，Swift Package Manager 根据 `Package.swift` / `Package.resolved` 解析依赖。Nix 不安装 Xcode，也不创建 Apple 账号或设备签名。
+
+`.envrc` 为可选的 direnv 集成，加载 `.env.local` 并将仓库 `bin` 加入 PATH。手动 `nix develop --command fish` 不执行 `.envrc`，需按首次教程设置必要的环境变量。flake 的 shellHook 在项目根目录将 `bin` 加入 PATH，提供 `pinshift`。
+
+### 工程与本地签名
+
+仓库已提交 `Pinshift.xcodeproj`，普通使用无需生成工程。修改 `project.yml` 后，在 Nix 工具环境、仓库根目录执行：
+
+```fish
+xcodegen generate
+```
+
+🏗️ 重新生成 Xcode 工程；检查差异，避免提交自己的 Team 或设备配置。
+
+本地开发团队配置放在 Git 忽略的 `Config/Signing.local.xcconfig`，由 `Config/Signing.xcconfig` 引入；首次教程说明了具体写法。直接在 Xcode 中编辑的项目设置可能在重新生成时丢失。
+
+### 本地文件的职责
+
+| 位置 | 用途 |
+| --- | --- |
+| `.env.local` | direnv 使用的可选路径、设备或证书覆盖项 |
+| `Config/Signing.local.xcconfig` | 自己的开发团队配置 |
+| `.build/controller` | 已签名控制器安装，不只是编译缓存 |
+| `.build/resign-profile-backups` | 续签过程保留的恢复材料 |
+| Mac Application Support 下的 Pinshift 数据 | 配对关联状态与诊断数据，独立于 Git |
+| iPhone App 数据 | 收藏、设置与本地诊断；升级应原位安装 |
+
+移动仓库后重新安装控制器；在新入口验证完成前保留旧安装和必要配置。不要将整个 `.build` 或 App 数据一概当作无用缓存删除。
 
 ## 验证
 
