@@ -1,0 +1,92 @@
+#!/usr/bin/env fish
+# Fixed action only; register-remote supplies the noninteractive environment.
+if test (count $argv) -ne 0; or begin
+        set --query SSH_ORIGINAL_COMMAND
+        and not contains -- "$SSH_ORIGINAL_COMMAND" '' prepare
+    end
+    echo 'failed: only the fixed prepare action is allowed.' >&2
+    exit 2
+end
+set --local script_dir (path resolve (path dirname (status filename)))
+source $script_dir/_pinshift-common.fish
+or exit 1
+echo 'accepted: Mac received the preparation request.'
+if test (/usr/bin/stat -f %u /dev/console) != (/usr/bin/id -u)
+    echo 'manual: log in to this Mac user account locally before preparing Pinshift.' >&2
+    exit 1
+end
+pinshift_prepare_environment
+or begin
+    echo 'manual: complete the initial Xcode/device configuration on the Mac.' >&2
+    exit 1
+end
+set --local controller (pinshift_controller_executable)
+or begin
+    echo 'manual: run pinshift setup in the Mac terminal, then retry.' >&2
+    exit 1
+end
+# ponytail: one checkout-wide request; an interrupted worker requires manual inspection.
+set --local work_root (path resolve .build)
+set --local result_directory "$work_root/pinshift-remote"
+if test -L "$result_directory"
+    echo 'failed: unsafe remote result directory.' >&2
+    exit 1
+end
+umask 077
+mkdir -p "$result_directory"
+or exit 1
+set --local lock_directory "$result_directory/preparing"
+set --local app_result "$result_directory/app-status"
+if mkdir "$lock_directory" 2>/dev/null
+    command rm -f "$app_result"
+    set --local session_script "$result_directory/session.command"
+    function remote_shell_quote
+        printf "'%s'" (string replace --all -- "'" "'\\''" "$argv[1]")
+    end
+    begin
+        echo '#!/bin/sh'
+        printf 'exec /usr/bin/env PATH=%s PINSHIFT_DEVICE=%s PINSHIFT_DEVELOPER_DIR=%s PINSHIFT_CODE_SIGN_IDENTITY=%s %s %s\n' \
+            (remote_shell_quote (string join : $PATH)) \
+            (remote_shell_quote "$PINSHIFT_DEVICE") (remote_shell_quote "$PINSHIFT_DEVELOPER_DIR") \
+            (remote_shell_quote "$PINSHIFT_CODE_SIGN_IDENTITY") \
+            (remote_shell_quote (command --search fish)) \
+            (remote_shell_quote "$script_dir/_pinshift-prepare-session.fish")
+    end > "$session_script"
+    or exit 1
+    /usr/bin/osascript "$script_dir/_pinshift-terminal.applescript" "$session_script" >/dev/null
+    or begin
+        echo 'manual: Terminal automation was not confirmed. Inspect the logged-in Mac and allow Terminal automation for this SSH action, or start pinshift in Terminal yourself. Inspect .build/pinshift-remote/preparing before removing a stale request lock.' >&2
+        exit 1
+    end
+end
+echo 'preparing: the visible Mac terminal owns signing and startup; this SSH action waits up to 30 seconds.'
+for attempt in (seq 1 30)
+    set --local session_state ($controller link session-state)
+    or begin
+        echo 'failed: unable to inspect the live controller. Run pinshift setup/doctor on the Mac.' >&2
+        exit 1
+    end
+    if test -f "$app_result"
+        set --local app_status (string trim < "$app_result")
+        if test "$session_state" = ready
+            echo 'controller-ready: the live foreground Controller Link listener is ready. Open Pinshift and confirm Controller Link before applying a location.'
+            if test "$app_status" = 0
+                echo 'app: preparation command succeeded; a cached profile alone does not confirm installation. Open Pinshift to verify.'
+                exit 0
+            end
+            echo 'app: preparation failed/unconfirmed; an existing usable app can still connect. Inspect the visible Mac terminal and .build/pinshift-remote/preparation.log for Apple login, signing, unlock or installation instructions.' >&2
+            echo 'controller-ready: existing usable apps can connect; app preparation was not confirmed.' >&2
+            exit 1
+        end
+    end
+    sleep 1
+end
+if test -f "$app_result"
+    if test (string trim < "$app_result") = 0
+        echo 'app: preparation command succeeded; installation/usability still needs confirmation in Pinshift.' >&2
+    else
+        echo 'app: preparation failed/unconfirmed; inspect the Mac terminal and preparation.log.' >&2
+    end
+end
+echo 'preparing/manual: preparation or controller readiness is not yet confirmed. Work continues in the visible Mac terminal after SSH ends. Open that terminal for Apple login, unlock or authorization prompts; repeat this shortcut to check. If the worker exited, inspect .build/pinshift-remote/preparation.log and the preparing lock before retrying. No phone connection is confirmed.' >&2
+exit 1

@@ -1,0 +1,54 @@
+#!/usr/bin/env fish
+if test (count $argv) -ne 0
+    echo 'Usage: pinshift register-remote' >&2
+    exit 2
+end
+set --local script_dir (path resolve (path dirname (status filename)))
+source $script_dir/_pinshift-common.fish
+or exit 1
+pinshift_prepare_environment
+or exit 1
+pinshift_controller_executable >/dev/null
+or exit 1
+set --local nix_executable (command --search nix)
+if test -z "$nix_executable"
+    echo 'Nix is required. Run registration in the configured project environment.' >&2
+    exit 1
+end
+set --local destination "$HOME/.local/bin"
+set --local entry "$destination/pinshift-prepare-remote"
+set --local marker '# Pinshift fixed remote preparation v1'
+set --local existing_marker
+if test -f "$entry"
+    set existing_marker (sed -n '2p' "$entry")
+end
+if test -L "$entry"; or begin
+        test -e "$entry"
+        and test "$existing_marker" != "$marker"
+    end
+    echo 'An unrelated remote entry already exists; refusing to replace it.' >&2
+    exit 1
+end
+mkdir -p "$destination"
+or exit 1
+function remote_quote
+    printf "'%s'" (string replace --all -- "'" "'\\''" "$argv[1]")
+end
+set --local staged (mktemp "$destination/.pinshift-remote.XXXXXX")
+or exit 1
+begin
+    echo '#!/bin/sh'
+    echo "$marker"
+    echo 'if [ "$#" -ne 0 ]; then echo "Only prepare is allowed." >&2; exit 2; fi'
+    echo 'case "${SSH_ORIGINAL_COMMAND-}" in ""|prepare) ;; *) echo "Only prepare is allowed." >&2; exit 2;; esac'
+    printf 'exec /usr/bin/env PINSHIFT_DEVICE=%s PINSHIFT_DEVELOPER_DIR=%s PINSHIFT_CODE_SIGN_IDENTITY=%s %s --extra-experimental-features "nix-command flakes" develop %s --command fish %s\n' \
+        (remote_quote "$PINSHIFT_DEVICE") (remote_quote "$PINSHIFT_DEVELOPER_DIR") (remote_quote "$PINSHIFT_CODE_SIGN_IDENTITY") \
+        (remote_quote "$nix_executable") (remote_quote (path resolve "$script_dir/..")) \
+        (remote_quote "$script_dir/pinshift-prepare-remote")
+end > "$staged"
+chmod 700 "$staged"
+and mv -- "$staged" "$entry"
+or exit 1
+echo "Registered fixed preparation action: $entry"
+echo 'Device and Xcode directory were captured. Re-register after moving the checkout or changing configuration.'
+echo 'Use this absolute path as the SSH key forced command; authorize only the dedicated key and disable forwarding/PTY.'

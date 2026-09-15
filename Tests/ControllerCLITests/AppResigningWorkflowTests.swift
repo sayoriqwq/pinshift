@@ -518,14 +518,121 @@ final class AppResigningWorkflowTests: XCTestCase {
       fixtureRoot.resolvingSymlinksInPath().path)
   }
 
+  func testFixedSSHRegistrationWorksWithStrippedPATHAndRejectsOtherActions() throws {
+    try writeExecutable(named: "nix", contents: """
+      #!/bin/sh
+      printf '%s\n' "$PINSHIFT_DEVICE" "$PINSHIFT_DEVELOPER_DIR" "$PINSHIFT_CODE_SIGN_IDENTITY" "$@" >> "$FAKE_EVENT_LOG"
+      """)
+    let registered = try runDaily(arguments: ["register-remote"], environment: [
+      "HOME": fixtureRoot.path, "PINSHIFT_CODE_SIGN_IDENTITY": "private signing identity"])
+    XCTAssertEqual(registered.status, 0, registered.output)
+    let wrapper = fixtureRoot.appending(path: ".local/bin/pinshift-prepare-remote")
+    for (command, arguments, expected) in [("prepare", [String](), Int32(0)),
+      ("touch /tmp/unwanted", [], 2), ("prepare", ["unexpected"], 2)] {
+      let process = Process()
+      let output = Pipe()
+      process.executableURL = wrapper
+      process.arguments = arguments
+      process.environment = ["PATH": "/usr/bin:/bin", "SSH_ORIGINAL_COMMAND": command,
+        "FAKE_EVENT_LOG": eventLog.path]
+      process.standardOutput = output
+      process.standardError = output
+      try process.run()
+      process.waitUntilExit()
+      XCTAssertEqual(process.terminationStatus, expected,
+        String(decoding: output.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self))
+    }
+    let recorded = try events()
+    XCTAssertEqual(recorded.filter { $0 == "test-iphone" }.count, 1)
+    XCTAssertTrue(recorded.contains("private signing identity"))
+    XCTAssertTrue(recorded.contains(fixtureRoot.appending(path: "Developer").path))
+    try "unrelated file".write(to: wrapper, atomically: true, encoding: .utf8)
+    let collision = try runDaily(arguments: ["register-remote"], environment: ["HOME": fixtureRoot.path])
+    XCTAssertNotEqual(collision.status, 0)
+    XCTAssertEqual(try String(contentsOf: wrapper, encoding: .utf8), "unrelated file")
+  }
+
+  func testShortcutFreshSigningStartsVisibleSessionWithoutRebuilding() throws {
+    _ = try writeProfile(named: "app.mobileprovision",
+      applicationIdentifier: "\(teamIdentifier).\(bundleIdentifier)", expiration: "2099-08-10T08:49:25Z")
+    let result = try runDaily(remote: true)
+    XCTAssertEqual(result.status, 0, result.output)
+    XCTAssertTrue(result.output.contains("controller-ready:"))
+    XCTAssertTrue(result.output.contains("cached profile alone does not confirm installation"))
+    XCTAssertEqual(try events(), ["terminal", "security app.mobileprovision", "controller link serve"])
+  }
+
+  func testShortcutRenewsInPlaceWithoutLaunchingOrReplacingRunningSession() throws {
+    _ = try writeProfile(named: "app.mobileprovision",
+      applicationIdentifier: "\(teamIdentifier).\(bundleIdentifier)", expiration: "2020-08-10T08:49:25Z")
+    try writeCandidate(expiration: "2099-08-17T08:49:25Z")
+    try "ready".write(to: fixtureRoot.appending(path: "state"), atomically: true, encoding: .utf8)
+    let result = try runDaily(remote: true)
+    XCTAssertEqual(result.status, 0, result.output)
+    try assertEventsContainInOrder(["xcodebuild", "codesign", "xcrun install"])
+    XCTAssertFalse(try events().contains("xcrun launch"))
+    XCTAssertFalse(try events().contains("controller link serve"))
+  }
+
+  func testShortcutFailedSigningOrInstallDoesNotClaimAppSuccess() throws {
+    for failure in [["FAKE_XCODEBUILD_STATUS": "65"], ["FAKE_INSTALL_UNCONFIRMED": "1"]] {
+      _ = try writeProfile(named: "app.mobileprovision",
+        applicationIdentifier: "\(teamIdentifier).\(bundleIdentifier)", expiration: "2020-08-10T08:49:25Z")
+      try writeCandidate(expiration: "2099-08-17T08:49:25Z")
+      let result = try runDaily(environment: failure, remote: true)
+      XCTAssertNotEqual(result.status, 0, result.output)
+      XCTAssertTrue(result.output.contains("app: preparation failed/unconfirmed"))
+      XCTAssertTrue(result.output.contains("controller-ready:"))
+      XCTAssertFalse(result.output.contains("app: preparation command succeeded"))
+    }
+  }
+
+  func testShortcutMissingProfileAndDeniedAutomationNeedManualAction() throws {
+    let denied = try runDaily(environment: ["FAKE_TERMINAL_DENIED": "1"], remote: true)
+    XCTAssertNotEqual(denied.status, 0)
+    XCTAssertTrue(denied.output.contains("manual: Terminal automation"))
+    XCTAssertFalse(denied.output.contains("controller-ready:"))
+    try FileManager.default.removeItem(at: fixtureRoot.appending(path: ".build/pinshift-remote/preparing"))
+    let missing = try runDaily(remote: true)
+    XCTAssertNotEqual(missing.status, 0)
+    let log = try String(contentsOf: fixtureRoot.appending(path: ".build/pinshift-remote/preparation.log"), encoding: .utf8)
+    XCTAssertTrue(log.contains("Signing & Capabilities"))
+    XCTAssertTrue(missing.output.contains("app: preparation failed/unconfirmed"))
+  }
+
+  func testShortcutInterruptedPreparationNeverStartsOrClaimsReady() throws {
+    _ = try writeProfile(named: "app.mobileprovision",
+      applicationIdentifier: "\(teamIdentifier).\(bundleIdentifier)", expiration: "2020-08-10T08:49:25Z")
+    try writeExecutable(named: "sleep", contents: "#!/bin/sh\nexit 0\n")
+    let result = try runDaily(environment: ["FAKE_XCODEBUILD_STATUS": "130"], remote: true)
+    XCTAssertNotEqual(result.status, 0)
+    XCTAssertTrue(result.output.contains("preparing/manual:"))
+    XCTAssertFalse(result.output.contains("controller-ready:"))
+    XCTAssertFalse(try events().contains("controller link serve"))
+  }
+
+  func testShortcutDuplicateObservesExistingRequestAndRejectsArbitraryCommands() throws {
+    let request = fixtureRoot.appending(path: ".build/pinshift-remote")
+    try FileManager.default.createDirectory(at: request.appending(path: "preparing"), withIntermediateDirectories: true)
+    try "0".write(to: request.appending(path: "app-status"), atomically: true, encoding: .utf8)
+    try "ready".write(to: fixtureRoot.appending(path: "state"), atomically: true, encoding: .utf8)
+    let duplicate = try runDaily(remote: true)
+    XCTAssertEqual(duplicate.status, 0, duplicate.output)
+    XCTAssertEqual(try events(), [])
+    let rejected = try runDaily(environment: ["SSH_ORIGINAL_COMMAND": "touch /tmp/unwanted"], remote: true)
+    XCTAssertEqual(rejected.status, 2)
+    XCTAssertEqual(try events(), [])
+  }
+
   private func runDaily(
-    arguments: [String] = [], environment: [String: String] = [:]
+    arguments: [String] = [], environment: [String: String] = [:], remote: Bool = false
   ) throws -> (status: Int32, output: String) {
     let scripts = fixtureRoot.appending(path: "bin")
     try FileManager.default.createDirectory(at: scripts, withIntermediateDirectories: true)
     for name in [
       "pinshift", "pinshift-start", "pinshift-resign-app", "_pinshift-common.fish",
-      "_pinshift-app-signing.fish",
+      "_pinshift-app-signing.fish", "pinshift-prepare-remote", "_pinshift-prepare-session.fish",
+      "_pinshift-terminal.applescript", "pinshift-register-remote",
     ] {
       let source = resignScript.deletingLastPathComponent().appending(path: name)
       let destination = scripts.appending(path: name)
@@ -533,6 +640,20 @@ final class AppResigningWorkflowTests: XCTestCase {
         try FileManager.default.removeItem(at: destination)
       }
       try FileManager.default.copyItem(at: source, to: destination)
+    }
+    if remote {
+      let entry = scripts.appending(path: "pinshift-prepare-remote")
+      let contents = try String(contentsOf: entry, encoding: .utf8)
+        .replacingOccurrences(of: "/usr/bin/osascript", with: "osascript")
+      try contents.write(to: entry, atomically: true, encoding: .utf8)
+      try FileManager.default.createDirectory(at: fixtureRoot.appending(path: ".build"), withIntermediateDirectories: true)
+      try writeExecutable(named: "osascript", contents: """
+        #!/bin/sh
+        echo terminal >> "$FAKE_EVENT_LOG"
+        if [ "$FAKE_TERMINAL_DENIED" = 1 ]; then exit 1; fi
+        /bin/sh "$2"
+        exit 0
+        """)
     }
     // Only the stable-controller resolver is replaced; daily dispatch and signing run unchanged.
     let common = scripts.appending(path: "_pinshift-common.fish")
@@ -543,6 +664,11 @@ final class AppResigningWorkflowTests: XCTestCase {
       named: "controller",
       contents: """
         #!/bin/sh
+        if [ "$2" = session-state ]; then
+          if [ -f "$FAKE_STATE_RECORD" ]; then cat "$FAKE_STATE_RECORD"; else echo stopped; fi
+          exit 0
+        fi
+        echo ready > "$FAKE_STATE_RECORD"
         printf 'controller %s %s\n' "$1" "$2" >> "$FAKE_EVENT_LOG"
         if [ -n "$FAKE_REPO_RECORD" ]; then
           printf '%s\n' "$PINSHIFT_REPOSITORY_ROOT" > "$FAKE_REPO_RECORD"
@@ -551,11 +677,12 @@ final class AppResigningWorkflowTests: XCTestCase {
     return try runResign(
       arguments: arguments,
       environment: environment.merging([
-        "FAKE_CONTROLLER": fakeBin.appending(path: "controller").path
+        "FAKE_CONTROLLER": fakeBin.appending(path: "controller").path,
+        "FAKE_STATE_RECORD": fixtureRoot.appending(path: "state").path
       ]) {
         _, new in new
       },
-      script: scripts.appending(path: "pinshift")
+      script: scripts.appending(path: remote ? "pinshift-prepare-remote" : "pinshift")
     )
   }
 
